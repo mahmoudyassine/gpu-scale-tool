@@ -1,0 +1,59 @@
+;; ============================================================
+;; gpuscale.blops.ai -> gpuscale.net alias (Cloudflare)
+;; ============================================================
+;;
+;; PART 1 · DNS record (importable at Cloudflare -> blops.ai zone ->
+;; DNS -> Records -> Import and Export -> Import DNS records).
+;; You already have this record; skip if present. It must stay
+;; Proxied (orange cloud): the import dialog has a "Proxy imported
+;; DNS records" toggle, leave it ON.
+
+$ORIGIN blops.ai.
+$TTL 300
+gpuscale    IN  CNAME   gpuscale.net.
+
+;; ============================================================
+;; PART 2 · Redirect rule. The DNS import screen CANNOT create
+;; rules, which is why the alias still shows GitHub's 404: the
+;; proxied CNAME makes Cloudflare answer for the hostname, but
+;; without a rule it just forwards to GitHub, which does not know
+;; the name. Create the rule in the dashboard (Rules -> Create
+;; rule -> Redirect Rule) or run the script below once.
+;;
+;; Token: Cloudflare -> My Profile -> API Tokens -> Create custom
+;; token -> Zone: blops.ai -> permission "Zone . Dynamic Redirect .
+;; Edit" (plus "Zone . Zone . Read" for the zone lookup). Revoke it
+;; after running.
+;;
+;; CAUTION: the PUT sets the zone's dynamic-redirect rules to
+;; exactly this list. If blops.ai already has redirect rules you
+;; want to keep, do not run this as-is.
+;; ------------------------------------------------------------
+
+export CF_API_TOKEN="paste-your-token-here"
+
+ZONE_ID=$(curl -s -H "Authorization: Bearer $CF_API_TOKEN" \
+  "https://api.cloudflare.com/client/v4/zones?name=blops.ai" \
+  | python3 -c "import sys,json;print(json.load(sys.stdin)['result'][0]['id'])")
+
+curl -s -X PUT \
+  "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/rulesets/phases/http_request_dynamic_redirect/entrypoint" \
+  -H "Authorization: Bearer $CF_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  --data '{
+    "rules": [{
+      "description": "gpuscale alias to gpuscale.net",
+      "expression": "(http.host eq \"gpuscale.blops.ai\")",
+      "action": "redirect",
+      "action_parameters": {
+        "from_value": {
+          "status_code": 301,
+          "target_url": { "expression": "concat(\"https://gpuscale.net\", http.request.uri.path)" },
+          "preserve_query_string": true
+        }
+      }
+    }]
+  }'
+
+;; Verify (success = HTTP/2 301 with location: https://gpuscale.net/):
+;;   curl -sI https://gpuscale.blops.ai/ | head -5
