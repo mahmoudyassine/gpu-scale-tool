@@ -1,5 +1,27 @@
 # Changelog
 
+## Studio 4.10 (2026-07-18)
+
+Usability release driven by user testing with real exports.
+
+- Auto-size now leaves a persistent plain-language explanation of its
+  decision under the button: why this TP was chosen, what crossing nodes
+  costs, the precision change that would avoid it, and whether the result
+  actually solves the problem (fit and SLOs), instead of a toast that
+  disappears.
+- Input flow reordered to match how decisions are made: SLO targets moved
+  into the Workload station (presets set them there), the Hardware station
+  runs GPU, node size, resilience, then Auto-size, with workers and TP after
+  it as labeled fine-tune controls. Efficiency assumptions (MFU, MBU,
+  interconnect, overhead) collapsed into an Advanced tuning drawer.
+- New P95 recommendation distinguishes fixable misses (lower batch, add
+  speculative decoding, with the batch value that meets the target) from
+  workloads whose token count makes the target mathematically unachievable
+  on any amount of hardware, and says which knob to change.
+- The Balanced configuration card no longer appears when an SLO fails, and
+  the bottleneck line recognizes generation-length vs P95 conflicts.
+
+
 ## Studio 4.9.1 (2026-07-18)
 
 Auto-size now solves TP, workers and batch together and stays consistent

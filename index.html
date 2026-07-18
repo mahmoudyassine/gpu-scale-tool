@@ -138,6 +138,13 @@
       </select>
       <div class="f-help" id="hPolicy">Running batch: only admitted sequences hold KV and the rest queue (the modern default). All sessions: every concurrent call keeps its cache resident (lowest latency variance, far more memory).</div>
     </div>
+    <div class="f-head" style="margin:4px 0 6px"><label>SLO targets</label><button class="info" data-help="hSlo" aria-expanded="false" type="button">i</button></div>
+    <div class="f-help" id="hSlo">Pass/fail thresholds for the compliance panel. A target of 0 disables that check. Presets refill these with workload-appropriate values.</div>
+    <div class="grid3">
+      <div class="field"><div class="f-head"><label>TTFT &le;</label><span class="unit">ms</span></div><input type="number" id="sloTtft" value="300" min="0"></div>
+      <div class="field"><div class="f-head"><label>TPS &ge;</label><span class="unit">tok/s</span></div><input type="number" id="sloTps" value="50" min="0"></div>
+      <div class="field"><div class="f-head"><label>P95 &le;</label><span class="unit">s</span></div><input type="number" id="sloP95" value="3" min="0"></div>
+    </div>
     <details class="drawer">
       <summary>Concurrency estimator · Little's law</summary>
       <div class="drawer-body">
@@ -162,11 +169,7 @@
       <select id="selGpu"></select>
       <div class="f-help" id="hGpu">Bandwidth sets decode speed, dense FP16 Tensor-Core TFLOPS sets prefill speed, VRAM sets what fits. 2026 parts (VR200, MI455X, Rubin CPX) carry pre-launch estimates.</div>
     </div>
-    <div id="m_inWorkers"></div>
     <div id="m_inPerW"></div>
-    <div id="m_inTp"></div>
-    <button class="btn primary apply" id="btnAuto" type="button" title="Solve TP, workers and batch together from the model, GPU, workload and SLO targets"><svg viewBox="0 0 24 24"><path d="M13 2 4.5 14H11l-1 8 8.5-12H12l1-8z"/></svg>Auto-size TP · workers · batch</button>
-    <div class="f-help" id="hAuto" style="display:block;margin-bottom:12px">Not sure what to pick? This solves the hardware split from what you already set: the smallest Tensor parallel that fits one copy of the model (widened if the TTFT target demands it), then the fewest workers and the batch that admit the peak concurrent calls. Workloads without SLO targets are treated as offline: minimal hardware, largest fitting batch, queueing allowed. Adjust freely afterwards.</div>
     <div class="field">
       <div class="f-head"><label for="selResil">Resilience model</label><button class="info" data-help="hResil" aria-expanded="false" type="button">i</button></div>
       <select id="selResil">
@@ -180,22 +183,27 @@
       </select>
       <div class="f-help" id="hResil">Performance is sized on the N load-bearing workers; redundancy adds procurement, not throughput. N+1 survives one node failure. N+N duplicates the system in-site. DR mirrors it to a standby site (active/passive). Active/Active runs two live sites behind global load balancing, each able to carry the full load; add N+1 per site to also absorb node failures after a site loss. N+N + DR runs N+N in each of two active/active sites (4N), the heaviest pattern.</div>
     </div>
+    <button class="btn primary apply" id="btnAuto" type="button" title="Solve TP, workers and batch from everything chosen above"><svg viewBox="0 0 24 24"><path d="M13 2 4.5 14H11l-1 8 8.5-12H12l1-8z"/></svg>Auto-size TP · workers · batch</button>
+    <div class="f-help" id="hAuto" style="display:block;margin-bottom:10px">Uses everything above: model, precision, workload, SLO targets, GPU and node size. Picks the smallest Tensor parallel that fits one copy of the model (widened if the TTFT target demands it), then the fewest workers and the batch that admit the peak concurrent calls. No SLO targets means offline: minimal hardware, largest fitting batch, queueing allowed.</div>
+    <div class="auto-result" id="autoResult" aria-live="polite"></div>
+    <div class="fine-cap">Fine-tune · Auto-size sets these, edit freely</div>
+    <div id="m_inWorkers"></div>
+    <div id="m_inTp"></div>
     <div class="meta-card" id="gpuMeta"></div>
   </section>
 
   <section class="station">
-    <div class="st-title"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h9M19 6h1M4 12h3M13 12h7M4 18h11M21 18h-1"/><circle cx="15.5" cy="6" r="2.2"/><circle cx="9.5" cy="12" r="2.2"/><circle cx="17.5" cy="18" r="2.2"/></svg>Tuning &amp; SLOs</div>
-    <div id="m_inMfu"></div>
-    <div id="m_inMbu"></div>
-    <div id="m_inIc"></div>
-    <div id="m_inOvh"></div>
-    <div class="f-head" style="margin:4px 0 6px"><label>SLO targets</label><button class="info" data-help="hSlo" aria-expanded="false" type="button">i</button></div>
-    <div class="f-help" id="hSlo">Pass/fail thresholds for the compliance panel. A target of 0 disables that check. Presets refill these with workload-appropriate values.</div>
-    <div class="grid3">
-      <div class="field"><div class="f-head"><label>TTFT &le;</label><span class="unit">ms</span></div><input type="number" id="sloTtft" value="300" min="0"></div>
-      <div class="field"><div class="f-head"><label>TPS &ge;</label><span class="unit">tok/s</span></div><input type="number" id="sloTps" value="50" min="0"></div>
-      <div class="field"><div class="f-head"><label>P95 &le;</label><span class="unit">s</span></div><input type="number" id="sloP95" value="3" min="0"></div>
-    </div>
+    <div class="st-title"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h9M19 6h1M4 12h3M13 12h7M4 18h11M21 18h-1"/><circle cx="15.5" cy="6" r="2.2"/><circle cx="9.5" cy="12" r="2.2"/><circle cx="17.5" cy="18" r="2.2"/></svg>Advanced tuning</div>
+    <details class="drawer">
+      <summary>Efficiency assumptions · defaults are sensible</summary>
+      <div class="drawer-body">
+        <div id="m_inMfu"></div>
+        <div id="m_inMbu"></div>
+        <div id="m_inIc"></div>
+        <div id="m_inOvh"></div>
+      </div>
+    </details>
+
   </section>
 
 </aside>

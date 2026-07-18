@@ -6,7 +6,7 @@ if(!MODELS.length || !GPUS.length || !QUANTS.length || !CASES.length){
   document.body.innerHTML = '<div style="font-family:system-ui,sans-serif;max-width:560px;margin:80px auto;padding:0 20px;line-height:1.65;color:#1A2536"><h2 style="margin-bottom:10px">Data files not loaded</h2><p>GPUscale.net could not find its library. Keep <code>index.html</code> together with the <code>data/</code> and <code>assets/</code> folders: the four files <code>data/models.js</code>, <code>data/gpus.js</code>, <code>data/quants.js</code> and <code>data/usecases.js</code> must sit next to this page.</p><p>If you need one portable file instead, use <code>dist/gpuscale_standalone.html</code> or rebuild it with <code>python3 tools/build_single_file.py</code>.</p></div>';
   throw new Error('GPUscale.net data missing');
 }
-const STUDIO_VERSION = '4.9.1', ENGINE_VERSION = 23;
+const STUDIO_VERSION = '4.10.0', ENGINE_VERSION = 23;
 const KV_QUANTS = [{name:'BF16',bytes:2},{name:'FP16',bytes:2},{name:'FP8',bytes:1},{name:'INT8',bytes:1},{name:'INT4',bytes:0.5}];
 const REASON_TOK = {'None':0,'Light reasoning':2000,'Heavy reasoning':8000,'Custom':2000};
 const RESIL = {
@@ -494,6 +494,7 @@ function buildRecs(s,d,m,g,prelaunch){
   if(!d.fits) bottleneck='VRAM capacity';
   else if(d.slo.ttft.on&&!d.slo.ttft.pass) bottleneck='prefill compute (TTFT)';
   else if(d.slo.tps.on&&!d.slo.tps.pass) bottleneck='decode bandwidth';
+  else if(d.slo.p95.on&&!d.slo.p95.pass) bottleneck='generation length vs P95 target';
   else if(d.queued>0) bottleneck='admission (batch × replicas)';
   else if(util>0.92) bottleneck='VRAM headroom';
 
@@ -530,6 +531,17 @@ function buildRecs(s,d,m,g,prelaunch){
     const t2=d.bwEff/(s.active*s.bytesW+halfB*d.effSeq*d.kvTok);
     push('warn','Per-user speed misses its target',`${fmt(d.tps)} tok/s against a ${fmt(s.sloTps)} tok/s target. Halving batch per replica to ${halfB} gives ≈${fmt(t2)} tok/s at lower aggregate; FP8 KV, a higher-bandwidth GPU, or speculative decoding (1.5 to 3x) are the structural fixes.`);
   }
+  if(d.fits&&d.slo.p95.on&&!d.slo.p95.pass){
+    const tpsMax=d.bwEff/(s.active*s.bytesW+d.effSeq*d.kvTok);
+    const minLat=((d.ttft+s.ovh)/1000+d.genTok/tpsMax)*1.3;
+    if(minLat>s.sloP95)
+      push('crit','P95 target is unachievable for this workload',`Each call generates ${fmt(d.genTok)} tokens (${fmt(s.reasonTok)} reasoning + ${fmt(s.visibleOut)} visible). Even alone on this hardware at batch 1, that takes ≈${fmt(minLat)} s at P95 against a ${fmt(s.sloP95)} s target. No amount of GPUs fixes this: cut reasoning or visible tokens, turn reasoning off for this use case, or relax the P95 target.`);
+    else {
+      const tpsNeeded=d.genTok/(s.sloP95/1.3-(d.ttft+s.ovh)/1000);
+      const bNeeded=Math.max(1,Math.floor((d.bwEff/tpsNeeded-s.active*s.bytesW)/(d.effSeq*d.kvTok)));
+      push('warn','P95 latency misses its target',`P95 is ${fmt(d.p95)} s against ${fmt(s.sloP95)} s. Reaching ≈${fmt(tpsNeeded)} tok/s per user would meet it: lower max batch per replica to ≈${bNeeded} (fewer calls admitted per copy), or add speculative decoding (1.5 to 3x decode speed).`);
+    }
+  }
   if(d.queued>0&&d.fits){
     const batchNeeded=Math.ceil(s.concurrent/d.replicas);
     const canBatch=batchNeeded<=Math.min(d.maxBatchMem||0,512);
@@ -550,7 +562,7 @@ function buildRecs(s,d,m,g,prelaunch){
     push('warn','Unified-memory hardware',`Capacity is generous but ${fmt(g.bw)} TB/s of bandwidth caps decode speed. Fine for development or single-user work, not for concurrent serving.`);
   if(d.fits&&util<0.35&&d.queued===0&&s.gpus>1)
     push('ok','Likely over-provisioned',`Only ${(util*100).toFixed(0)}% of serving VRAM is used and every call is admitted. Fewer workers, a smaller TP, or a cheaper part could carry this load; alternatively raise batch and serve more traffic on the same metal.`);
-  if(!recs.some(r=>r.lv!=='ok'))
+  if(!recs.some(r=>r.lv!=='ok')&&d.fits&&d.sloAll)
     push('ok','Balanced configuration',`Fits with ${fmt(d.headroom)} GB headroom (${(util*100).toFixed(0)}% used), all enabled SLOs pass, and every call is admitted at peak. No action needed.`);
   const rank={crit:0,warn:1,ok:2};
   recs.sort((a,b)=>rank[a.lv]-rank[b.lv]);
@@ -924,8 +936,10 @@ function autoSize(){
   const actGB=Math.min(s.resident+(s.extend?s.reasonTok:0),8192)*s.hidden*12*s.bytesW/1e9;
   let tp=[1,2,4,8,16,32,64].find(t=>weights+actGB<=0.8*t*s.gpuVram);
   if(!tp){ toast(`No TP up to 64 fits one copy of ${s.model.name} on ${s.gpu.name}: quantize the weights or pick a higher-VRAM GPU`, true); return; }
+  const tpFit=tp;
   // widen TP while a TTFT target is missed (prefill scales with TP)
   if(s.sloTtft>0){ let t=tp; while(t<64 && 2*s.resident*s.active/(s.gpuTflops*t*s.mfu)>s.sloTtft) t*=2; tp=Math.min(64,t); }
+  const widened=tp>tpFit;
   const crossed=tp>s.perW;
   const ic=crossed? Math.min(s.ic,0.7) : s.ic;
   const interactive=(s.sloTtft>0||s.sloTps>0||s.sloP95>0);
@@ -959,7 +973,15 @@ function autoSize(){
   if(crossed&&+$('inIc').value>0.7){ $('inIc').value=0.7; refreshCtl('inIc'); }
   render();
   const df=compute(readState());
-  toast(`Auto-sized: TP${tp} ${crossed?'(crosses nodes: interconnect set to 0.7)':'(inside the NVLink island)'} · ${df.replicas} replica${df.replicas>1?'s':''} on ${workers} workers · batch ${batch} · ${df.active} of ${s.concurrent} admitted${df.fits?'':' · still over VRAM, see Recommendations'}`);
+  const qAlt=QUANTS.filter(q=>q.bytes<s.bytesW && (s.params*q.bytes+actGB)<=0.8*s.perW*s.gpuVram).sort((a,b)=>b.bytes-a.bytes)[0];
+  let why=`Chose TP${tp}: one ${s.wq.name} copy of ${s.model.name} is ${fmt(weights)} GB, and ${tp} × ${fmt(s.gpuVram)} GB GPUs is the smallest slice group that holds it with room for cache${widened?`, widened from TP${tpFit} to meet the ${fmt(s.sloTtft)} ms TTFT target`:''}. `;
+  why+= crossed
+    ? `Trade-off: one copy spans ${Math.ceil(tp/s.perW)} workers, so decode pays a network penalty (interconnect set to 0.7) and real prefill will be slower than shown. ${qAlt?`To stay inside one worker instead, switch weights to ${qAlt.name} in the Precision station (${fmt(s.params*qAlt.bytes)} GB fits TP${s.perW}). `:''}`
+    : `One copy stays inside a single worker's NVLink island: no network penalty. `;
+  why+=`${workers} worker${workers>1?'s':''} give ${df.replicas} cop${df.replicas>1?'ies':'y'} serving ${df.active} of ${s.concurrent} calls at batch ${batch}. `;
+  why+= df.fits? (df.sloAll? 'Result: fits, and every SLO target passes.' : 'Result: memory fits, but an SLO target still fails. Hardware alone cannot fix that one: see Recommendations below.') : 'Result: still exceeds VRAM, see Recommendations.';
+  const ar=$('autoResult'); if(ar){ ar.textContent=why; ar.classList.add('show'); }
+  toast(`Auto-sized: TP${tp} · ${df.replicas} replica${df.replicas>1?'s':''} on ${workers} workers · batch ${batch} · ${df.active} of ${s.concurrent} admitted${df.fits? (df.sloAll?'':' · an SLO still fails, see Recommendations') : ' · still over VRAM, see Recommendations'}`);
 }
 $('btnAuto').addEventListener('click',autoSize);
 $('btnReset').addEventListener('click',()=>location.reload());
