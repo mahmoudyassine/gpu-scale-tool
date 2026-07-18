@@ -1,7 +1,7 @@
 <p align="center"><img src="assets/logo-robot.svg" alt="GPUscale.net" width="380"></p>
 
 <p align="center">
-  <a href="https://mahmoudyassine.github.io/gpu-scale-tool/"><img src="https://img.shields.io/badge/live-mahmoudyassine.github.io-2dd4bf?style=flat-square" alt="Live site"></a>
+  <a href="https://gpuscale.net/"><img src="https://img.shields.io/badge/live-gpuscale.net-2dd4bf?style=flat-square" alt="Live site"></a>
   <a href="https://github.com/mahmoudyassine/gpu-scale-tool/releases"><img src="https://img.shields.io/github/v/release/mahmoudyassine/gpu-scale-tool?style=flat-square&color=4f63c2" alt="Latest release"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-f59e0b?style=flat-square" alt="MIT license"></a>
   <img src="https://img.shields.io/badge/dependencies-none-475569?style=flat-square" alt="No dependencies">
@@ -14,7 +14,7 @@ workload and hardware; get memory fit, latency, throughput, SLO compliance and
 a resilient worker topology. Free, open source, and fully static: no backend,
 no build step, nothing uploaded.
 
-**▶ Try it now: https://mahmoudyassine.github.io/gpu-scale-tool/**
+**▶ Try it now: https://gpuscale.net/**
 
 ![The studio](docs/screenshot.png)
 
@@ -32,7 +32,7 @@ no build step, nothing uploaded.
 
 | | How |
 |---|---|
-| **Use it online** | Open [the live studio](https://mahmoudyassine.github.io/gpu-scale-tool/) |
+| **Use it online** | Open [the live studio](https://gpuscale.net/) |
 | **Run it locally** | Clone and double-click `index.html` (no server needed), or `python3 -m http.server 8080` |
 | **Carry one file** | Grab [`dist/gpuscale_standalone.html`](dist/gpuscale_standalone.html): the whole studio in a single portable HTML file |
 
