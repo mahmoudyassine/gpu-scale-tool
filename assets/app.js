@@ -6,7 +6,7 @@ if(!MODELS.length || !GPUS.length || !QUANTS.length || !CASES.length){
   document.body.innerHTML = '<div style="font-family:system-ui,sans-serif;max-width:560px;margin:80px auto;padding:0 20px;line-height:1.65;color:#1A2536"><h2 style="margin-bottom:10px">Data files not loaded</h2><p>GPUscale.net could not find its library. Keep <code>index.html</code> together with the <code>data/</code> and <code>assets/</code> folders: the four files <code>data/models.js</code>, <code>data/gpus.js</code>, <code>data/quants.js</code> and <code>data/usecases.js</code> must sit next to this page.</p><p>If you need one portable file instead, use <code>dist/gpuscale_standalone.html</code> or rebuild it with <code>python3 tools/build_single_file.py</code>.</p></div>';
   throw new Error('GPUscale.net data missing');
 }
-const STUDIO_VERSION = '4.11.0', ENGINE_VERSION = 23;
+const STUDIO_VERSION = '4.11.1', ENGINE_VERSION = 23;
 const KV_QUANTS = [{name:'BF16',bytes:2},{name:'FP16',bytes:2},{name:'FP8',bytes:1},{name:'INT8',bytes:1},{name:'INT4',bytes:0.5}];
 const REASON_TOK = {'None':0,'Light reasoning':2000,'Heavy reasoning':8000,'Custom':2000};
 const RESIL = {
@@ -362,7 +362,10 @@ function renderTopology(s,d){
   const cols=Math.min(s.perW,8), rows=Math.ceil(s.perW/8);
   const cardW=20+cols*cell.w+(cols-1)*cell.g;
   const cardH=25+rows*cell.h+(rows-1)*cell.g+24;
-  const W=1000, gapCard=12, framePad=14, frameGap=40;
+  // narrow containers get a narrow canvas so cards stack and text stays legible when scaled
+  const boxW=($('topo')&&$('topo').clientWidth)||1000;
+  const W = boxW&&boxW<640 ? Math.max(320,Math.min(480,boxW)) : 1000;
+  const gapCard=12, framePad=14, frameGap=40;
   const innerW=W-24-framePad*2;
   const perRow=Math.max(1,Math.floor((innerW+gapCard)/(cardW+gapCard)));
   const MODE={active:{col:P.line,tag:null},
@@ -642,8 +645,11 @@ function render(){
   if(!d.fits){ sx.style.display='block'; sx.style.zIndex=2; sx.style.left=pct(d.avail)+'%'; sx.style.width=(pct(d.total)-pct(d.avail))+'%'; }
   else sx.style.display='none';
   const hd=$('lgHead');
-  if(d.fits){ hd.style.left=pct(d.total)+'%'; hd.innerHTML=`headroom <b>${fmt(d.headroom)} GB</b>`; }
-  else { hd.style.left=Math.min(pct(d.total),72)+'%'; hd.innerHTML=`over by <b style="color:var(--red)">${fmt(-d.headroom)} GB</b>`; }
+  const hp = d.fits? pct(d.total) : Math.min(pct(d.total),72);
+  hd.innerHTML = d.fits? `headroom <b>${fmt(d.headroom)} GB</b>` : `over by <b style="color:var(--red)">${fmt(-d.headroom)} GB</b>`;
+  // flip the label to the left of the fill edge when it would clip the right border
+  if(hp>78){ hd.classList.add('flip'); hd.style.left='auto'; hd.style.right=(100-hp)+'%'; hd.style.paddingLeft='0'; hd.style.paddingRight='8px'; }
+  else { hd.classList.remove('flip'); hd.style.right='auto'; hd.style.left=hp+'%'; hd.style.paddingRight='0'; hd.style.paddingLeft='10px'; }
   const sc=$('lgScale'); sc.innerHTML='';
   const step=niceCeil(maxScale/8+0.0001);
   for(let i=0;i*step/2<=maxScale*1.001;i++){ const x2=i*step/2, major=i%2===0;
@@ -1018,6 +1024,8 @@ $('btnTheme').addEventListener('click',()=>{ window.__themeLocked=true;
   setTheme(document.documentElement.dataset.theme==='light'?'dark':'light'); });
 try{ matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e=>{
   if(!window.__themeLocked) setTheme(e.matches?'dark':'light'); }); }catch(e){}
+let __rzT=null;
+window.addEventListener('resize',()=>{ clearTimeout(__rzT); __rzT=setTimeout(render,180); });
 
 function download(blobParts, type, filename){
   const blob=new Blob(blobParts,{type});

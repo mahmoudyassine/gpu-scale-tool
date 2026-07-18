@@ -53,7 +53,7 @@ html[data-theme="dark"]{
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{background:var(--bg)}
-body{min-height:100vh;
+body{min-height:100vh;overflow-x:clip;
   background:var(--bg);
   background-image:radial-gradient(circle at 1px 1px,var(--bg-dots) 1px,transparent 0);
   background-size:26px 26px;
@@ -208,6 +208,7 @@ details.drawer .drawer-body{margin-top:10px}
 .lg-needle::after{content:'capacity';position:absolute;top:-14px;left:50%;transform:translateX(-50%);font-size:9.5px;font-weight:500;color:var(--muted)}
 .lg-headroom{position:absolute;top:50%;transform:translateY(-50%);font-family:var(--mono);font-size:11px;color:var(--muted);white-space:nowrap;transition:left .5s cubic-bezier(.22,1,.36,1);padding-left:10px;z-index:4}
 .lg-headroom b{color:var(--text)}
+.lg-headroom.flip{background:color-mix(in srgb,var(--panel) 85%,transparent);border-radius:6px;padding-top:2px;padding-bottom:2px}
 .lg-legend{display:flex;flex-wrap:wrap;gap:12px 22px;margin-top:14px}
 .lg-li{display:flex;align-items:baseline;gap:8px}
 .lg-sw{width:10px;height:10px;border-radius:3px;flex:none;align-self:center}
@@ -264,7 +265,7 @@ details.drawer .drawer-body{margin-top:10px}
 @media(max-width:900px){.resil-stats{grid-template-columns:1fr 1fr}}
 .rs{background:var(--panel-2);border:1px solid var(--line-soft);border-radius:9px;padding:9px 12px;min-width:0}
 .rs .k{font-family:var(--disp);font-size:9.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
-.rs .v{font-family:var(--mono);font-size:12.5px;font-weight:600;color:var(--teal-strong);margin-top:4px}
+.rs .v{font-family:var(--mono);font-size:12.5px;font-weight:600;color:var(--teal-strong);margin-top:4px;overflow-wrap:anywhere}
 .rs .n{font-size:10.5px;color:var(--muted);margin-top:3px;line-height:1.45}
 .resil-why{font-size:11px;color:var(--faint);margin-top:9px;line-height:1.55;border-left:2px solid var(--line);padding-left:10px}
 
@@ -322,7 +323,6 @@ footer.foot .mono{font-family:var(--mono);color:var(--text)}
   .v-main{font-size:17px}
   .verdict .v-kv{margin-left:0;text-align:left;width:100%;padding-left:29px}
   .lg-legend{gap:8px 16px}
-  .topo-box svg{min-width:560px}
   #toast{left:12px;right:12px}
 }
 
@@ -875,7 +875,7 @@ if(!MODELS.length || !GPUS.length || !QUANTS.length || !CASES.length){
   document.body.innerHTML = '<div style="font-family:system-ui,sans-serif;max-width:560px;margin:80px auto;padding:0 20px;line-height:1.65;color:#1A2536"><h2 style="margin-bottom:10px">Data files not loaded</h2><p>GPUscale.net could not find its library. Keep <code>index.html</code> together with the <code>data/</code> and <code>assets/</code> folders: the four files <code>data/models.js</code>, <code>data/gpus.js</code>, <code>data/quants.js</code> and <code>data/usecases.js</code> must sit next to this page.</p><p>If you need one portable file instead, use <code>dist/gpuscale_standalone.html</code> or rebuild it with <code>python3 tools/build_single_file.py</code>.</p></div>';
   throw new Error('GPUscale.net data missing');
 }
-const STUDIO_VERSION = '4.11.0', ENGINE_VERSION = 23;
+const STUDIO_VERSION = '4.11.1', ENGINE_VERSION = 23;
 const KV_QUANTS = [{name:'BF16',bytes:2},{name:'FP16',bytes:2},{name:'FP8',bytes:1},{name:'INT8',bytes:1},{name:'INT4',bytes:0.5}];
 const REASON_TOK = {'None':0,'Light reasoning':2000,'Heavy reasoning':8000,'Custom':2000};
 const RESIL = {
@@ -1231,7 +1231,10 @@ function renderTopology(s,d){
   const cols=Math.min(s.perW,8), rows=Math.ceil(s.perW/8);
   const cardW=20+cols*cell.w+(cols-1)*cell.g;
   const cardH=25+rows*cell.h+(rows-1)*cell.g+24;
-  const W=1000, gapCard=12, framePad=14, frameGap=40;
+  // narrow containers get a narrow canvas so cards stack and text stays legible when scaled
+  const boxW=($('topo')&&$('topo').clientWidth)||1000;
+  const W = boxW&&boxW<640 ? Math.max(320,Math.min(480,boxW)) : 1000;
+  const gapCard=12, framePad=14, frameGap=40;
   const innerW=W-24-framePad*2;
   const perRow=Math.max(1,Math.floor((innerW+gapCard)/(cardW+gapCard)));
   const MODE={active:{col:P.line,tag:null},
@@ -1511,8 +1514,11 @@ function render(){
   if(!d.fits){ sx.style.display='block'; sx.style.zIndex=2; sx.style.left=pct(d.avail)+'%'; sx.style.width=(pct(d.total)-pct(d.avail))+'%'; }
   else sx.style.display='none';
   const hd=$('lgHead');
-  if(d.fits){ hd.style.left=pct(d.total)+'%'; hd.innerHTML=`headroom <b>${fmt(d.headroom)} GB</b>`; }
-  else { hd.style.left=Math.min(pct(d.total),72)+'%'; hd.innerHTML=`over by <b style="color:var(--red)">${fmt(-d.headroom)} GB</b>`; }
+  const hp = d.fits? pct(d.total) : Math.min(pct(d.total),72);
+  hd.innerHTML = d.fits? `headroom <b>${fmt(d.headroom)} GB</b>` : `over by <b style="color:var(--red)">${fmt(-d.headroom)} GB</b>`;
+  // flip the label to the left of the fill edge when it would clip the right border
+  if(hp>78){ hd.classList.add('flip'); hd.style.left='auto'; hd.style.right=(100-hp)+'%'; hd.style.paddingLeft='0'; hd.style.paddingRight='8px'; }
+  else { hd.classList.remove('flip'); hd.style.right='auto'; hd.style.left=hp+'%'; hd.style.paddingRight='0'; hd.style.paddingLeft='10px'; }
   const sc=$('lgScale'); sc.innerHTML='';
   const step=niceCeil(maxScale/8+0.0001);
   for(let i=0;i*step/2<=maxScale*1.001;i++){ const x2=i*step/2, major=i%2===0;
@@ -1887,6 +1893,8 @@ $('btnTheme').addEventListener('click',()=>{ window.__themeLocked=true;
   setTheme(document.documentElement.dataset.theme==='light'?'dark':'light'); });
 try{ matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e=>{
   if(!window.__themeLocked) setTheme(e.matches?'dark':'light'); }); }catch(e){}
+let __rzT=null;
+window.addEventListener('resize',()=>{ clearTimeout(__rzT); __rzT=setTimeout(render,180); });
 
 function download(blobParts, type, filename){
   const blob=new Blob(blobParts,{type});

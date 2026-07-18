@@ -1,5 +1,18 @@
 # Changelog
 
+## Studio 4.11.1 (2026-07-18)
+
+Mobile pass.
+
+- The topology diagram is now responsive: on narrow screens it draws on a
+  narrow canvas so worker cards stack at full readable size instead of
+  forcing a horizontal scrollbar, and it re-renders on resize and rotation.
+- Page-level horizontal overflow is clipped globally; the memory ledger's
+  headroom label flips inside the bar on a readable chip when the fill
+  approaches the right edge; resilience stat values wrap instead of
+  overflowing their cells.
+
+
 ## Studio 4.11 (2026-07-18)
 
 Answers the question every user asks about resilience: why does doubling the

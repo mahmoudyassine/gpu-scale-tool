@@ -38,7 +38,7 @@ html[data-theme="dark"]{
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{background:var(--bg)}
-body{min-height:100vh;
+body{min-height:100vh;overflow-x:clip;
   background:var(--bg);
   background-image:radial-gradient(circle at 1px 1px,var(--bg-dots) 1px,transparent 0);
   background-size:26px 26px;
@@ -193,6 +193,7 @@ details.drawer .drawer-body{margin-top:10px}
 .lg-needle::after{content:'capacity';position:absolute;top:-14px;left:50%;transform:translateX(-50%);font-size:9.5px;font-weight:500;color:var(--muted)}
 .lg-headroom{position:absolute;top:50%;transform:translateY(-50%);font-family:var(--mono);font-size:11px;color:var(--muted);white-space:nowrap;transition:left .5s cubic-bezier(.22,1,.36,1);padding-left:10px;z-index:4}
 .lg-headroom b{color:var(--text)}
+.lg-headroom.flip{background:color-mix(in srgb,var(--panel) 85%,transparent);border-radius:6px;padding-top:2px;padding-bottom:2px}
 .lg-legend{display:flex;flex-wrap:wrap;gap:12px 22px;margin-top:14px}
 .lg-li{display:flex;align-items:baseline;gap:8px}
 .lg-sw{width:10px;height:10px;border-radius:3px;flex:none;align-self:center}
@@ -249,7 +250,7 @@ details.drawer .drawer-body{margin-top:10px}
 @media(max-width:900px){.resil-stats{grid-template-columns:1fr 1fr}}
 .rs{background:var(--panel-2);border:1px solid var(--line-soft);border-radius:9px;padding:9px 12px;min-width:0}
 .rs .k{font-family:var(--disp);font-size:9.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
-.rs .v{font-family:var(--mono);font-size:12.5px;font-weight:600;color:var(--teal-strong);margin-top:4px}
+.rs .v{font-family:var(--mono);font-size:12.5px;font-weight:600;color:var(--teal-strong);margin-top:4px;overflow-wrap:anywhere}
 .rs .n{font-size:10.5px;color:var(--muted);margin-top:3px;line-height:1.45}
 .resil-why{font-size:11px;color:var(--faint);margin-top:9px;line-height:1.55;border-left:2px solid var(--line);padding-left:10px}
 
@@ -307,7 +308,6 @@ footer.foot .mono{font-family:var(--mono);color:var(--text)}
   .v-main{font-size:17px}
   .verdict .v-kv{margin-left:0;text-align:left;width:100%;padding-left:29px}
   .lg-legend{gap:8px 16px}
-  .topo-box svg{min-width:560px}
   #toast{left:12px;right:12px}
 }
 
