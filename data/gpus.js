@@ -1,5 +1,5 @@
 // GPUscale.net · GPU library (VRAM GB · bandwidth TB/s · dense FP16 Tensor-Core TFLOPS · TDP W)
-// One entry per line. Field reference: README.md → “Data schemas”.
+// One entry per line. Field reference: docs/DATA.md
 window.GPUSCALE_DATA = window.GPUSCALE_DATA || {};
 window.GPUSCALE_DATA.gpus = [
 {"name":"RTX 4060 Ti 16GB","vram":16.0,"bw":0.288,"tflops":44.0,"mem":"GDDR6","arch":"Ada Lovelace","watts":165,"cls":"Consumer","link":"PCIe 4.0","url":"https://www.nvidia.com/en-us/geforce/graphics-cards/40-series/"},

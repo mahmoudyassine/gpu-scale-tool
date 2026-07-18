@@ -1,5 +1,5 @@
 // GPUscale.net · workload presets (resident seq · reasoning · visible out · SLO targets)
-// One entry per line. Field reference: README.md → “Data schemas”.
+// One entry per line. Field reference: docs/DATA.md
 window.GPUSCALE_DATA = window.GPUSCALE_DATA || {};
 window.GPUSCALE_DATA.cases = [
 {"name":"Custom (manual inputs)","resident":0,"reasoning":"None","visibleOut":0,"ttftTarget":0,"tpsTarget":0,"p95Target":0,"note":"Set all values manually; preset auto-populate disabled."},

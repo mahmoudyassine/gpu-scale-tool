@@ -1,5 +1,5 @@
 // GPUscale.net · model library (params B · active B · hidden · layers · effective KV heads × head dim · max ctx)
-// One entry per line. Field reference: README.md → “Data schemas”.
+// One entry per line. Field reference: docs/DATA.md
 window.GPUSCALE_DATA = window.GPUSCALE_DATA || {};
 window.GPUSCALE_DATA.meta = {"library":"v24","engine":23,"updated":"2026-07-18"};
 window.GPUSCALE_DATA.models = [

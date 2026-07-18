@@ -613,7 +613,7 @@ footer.foot .mono{font-family:var(--mono);color:var(--text)}
 
 <script>
 // GPUscale.net · model library (params B · active B · hidden · layers · effective KV heads × head dim · max ctx)
-// One entry per line. Field reference: README.md → “Data schemas”.
+// One entry per line. Field reference: docs/DATA.md
 window.GPUSCALE_DATA = window.GPUSCALE_DATA || {};
 window.GPUSCALE_DATA.meta = {"library":"v24","engine":23,"updated":"2026-07-18"};
 window.GPUSCALE_DATA.models = [
@@ -713,7 +713,7 @@ window.GPUSCALE_DATA.models = [
 {"name":"Mistral Small 4 24B","params":24.0,"active":24.0,"hidden":5120,"layers":40,"kvHeads":8,"headDim":128,"ctx":131072,"experts":null,"activeExperts":null,"arch":"Dense (GQA, est. cfg) · Apache 2.0","dev":"Mistral AI","url":"https://mistral.ai/news/"},
 ];
 // GPUscale.net · GPU library (VRAM GB · bandwidth TB/s · dense FP16 Tensor-Core TFLOPS · TDP W)
-// One entry per line. Field reference: README.md → “Data schemas”.
+// One entry per line. Field reference: docs/DATA.md
 window.GPUSCALE_DATA = window.GPUSCALE_DATA || {};
 window.GPUSCALE_DATA.gpus = [
 {"name":"RTX 4060 Ti 16GB","vram":16.0,"bw":0.288,"tflops":44.0,"mem":"GDDR6","arch":"Ada Lovelace","watts":165,"cls":"Consumer","link":"PCIe 4.0","url":"https://www.nvidia.com/en-us/geforce/graphics-cards/40-series/"},
@@ -756,7 +756,7 @@ window.GPUSCALE_DATA.gpus = [
 {"name":"Apple M3 Ultra 512GB","vram":512.0,"bw":0.819,"tflops":28.0,"mem":"Unified LPDDR5","arch":"Apple M3","watts":270,"cls":"Apple Silicon","link":"—","url":"https://www.apple.com/mac-studio/"},
 ];
 // GPUscale.net · weight quantization tiers (bytes per parameter)
-// One entry per line. Field reference: README.md → “Data schemas”.
+// One entry per line. Field reference: docs/DATA.md
 window.GPUSCALE_DATA = window.GPUSCALE_DATA || {};
 window.GPUSCALE_DATA.quants = [
 {"name":"FP32","bits":32.0,"bytes":4.0,"quality":"100% (baseline)","speed":"Slowest","use":"Training / research only","hw":"All GPUs"},
@@ -780,7 +780,7 @@ window.GPUSCALE_DATA.quants = [
 {"name":"MXFP4","bits":4.25,"bytes":0.53125,"quality":"~93-96%","speed":"Fastest","use":"GPT-OSS native / OCP microscaling (incl. scales)","hw":"Blackwell native; Hopper via SW"},
 ];
 // GPUscale.net · workload presets (resident seq · reasoning · visible out · SLO targets)
-// One entry per line. Field reference: README.md → “Data schemas”.
+// One entry per line. Field reference: docs/DATA.md
 window.GPUSCALE_DATA = window.GPUSCALE_DATA || {};
 window.GPUSCALE_DATA.cases = [
 {"name":"Custom (manual inputs)","resident":0,"reasoning":"None","visibleOut":0,"ttftTarget":0,"tpsTarget":0,"p95Target":0,"note":"Set all values manually; preset auto-populate disabled."},

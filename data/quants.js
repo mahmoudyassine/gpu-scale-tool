@@ -1,5 +1,5 @@
 // GPUscale.net · weight quantization tiers (bytes per parameter)
-// One entry per line. Field reference: README.md → “Data schemas”.
+// One entry per line. Field reference: docs/DATA.md
 window.GPUSCALE_DATA = window.GPUSCALE_DATA || {};
 window.GPUSCALE_DATA.quants = [
 {"name":"FP32","bits":32.0,"bytes":4.0,"quality":"100% (baseline)","speed":"Slowest","use":"Training / research only","hw":"All GPUs"},
