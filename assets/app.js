@@ -6,7 +6,7 @@ if(!MODELS.length || !GPUS.length || !QUANTS.length || !CASES.length){
   document.body.innerHTML = '<div style="font-family:system-ui,sans-serif;max-width:560px;margin:80px auto;padding:0 20px;line-height:1.65;color:#1A2536"><h2 style="margin-bottom:10px">Data files not loaded</h2><p>GPUscale.net could not find its library. Keep <code>index.html</code> together with the <code>data/</code> and <code>assets/</code> folders: the four files <code>data/models.js</code>, <code>data/gpus.js</code>, <code>data/quants.js</code> and <code>data/usecases.js</code> must sit next to this page.</p><p>If you need one portable file instead, use <code>dist/gpuscale_standalone.html</code> or rebuild it with <code>python3 tools/build_single_file.py</code>.</p></div>';
   throw new Error('GPUscale.net data missing');
 }
-const STUDIO_VERSION = '4.8.2', ENGINE_VERSION = 23;
+const STUDIO_VERSION = '4.9.0', ENGINE_VERSION = 23;
 const KV_QUANTS = [{name:'BF16',bytes:2},{name:'FP16',bytes:2},{name:'FP8',bytes:1},{name:'INT8',bytes:1},{name:'INT4',bytes:0.5}];
 const REASON_TOK = {'None':0,'Light reasoning':2000,'Heavy reasoning':8000,'Custom':2000};
 const RESIL = {
@@ -570,7 +570,9 @@ function render(){
     `<div class="mrow"><span>${g.arch}</span><b>${g.mem} · ${g.watts} W · ${g.link}</b></div>`+
     `<div class="mrow"><span>Fleet</span><b>${s.workers}× worker · ${s.perW} GPU = ${s.gpus} GPU</b></div>`+
     `<div class="mrow"><span>Replicas</span><b>${d.replicas} × TP${s.tp}${s.gpus%s.tp? ' · '+(s.gpus%s.tp)+' idle':''}</b></div>`+
-    (d.replicas>1?`<div style="margin-top:4px">${d.replicas} replicas: each loads a full copy of the weights (${fmt(d.weights)} GB). Raise TP to distribute one copy across more GPUs instead.</div>`:'')+
+    `<div style="margin-top:4px">${d.replicas>1
+      ? `${d.replicas} replicas: each is a full ${fmt(d.weights)} GB copy of the model on ${s.tp} GPUs, serving up to ${s.batch} calls. More TP distributes one copy wider; more workers add copies for more users.`
+      : `One copy of the model, distributed across ${s.tp} GPU${s.tp>1?'s':''}, serving up to ${s.batch} calls at once. Add workers to create more copies for more users.`}</div>`+
     (prelaunch?`<div class="badges"><span class="badge est">pre-launch estimates</span></div>`:'');
   $('quantMeta').innerHTML =
     `<div class="mrow"><span>Weights ${s.wq.name}</span><b>${s.wq.bytes} B/param</b></div>`+
@@ -905,6 +907,26 @@ document.querySelectorAll('input,select').forEach(el=>{
   });
 });
 $('ccApply').addEventListener('click',()=>{ $('inConc').value=Math.max(1,+$('ccDerived').dataset.cc||1); refreshCtl('inConc'); render(); toast('Concurrency applied'); });
+
+/* ================= AUTO-SIZE ================= */
+function autoSize(){
+  const s=readState();
+  const weights=s.params*s.bytesW;
+  const actGB=Math.min(s.resident+(s.extend?s.reasonTok:0),8192)*s.hidden*12*s.bytesW/1e9;
+  const need=weights+actGB;
+  const tp=[1,2,4,8,16,32,64].find(t=>need<=0.8*t*s.gpuVram);
+  if(!tp){ toast(`No TP up to 64 fits one copy of ${s.model.name} on ${s.gpu.name}: quantize the weights or pick a higher-VRAM GPU`, true); return; }
+  const crossed=tp>s.perW;
+  const repNeeded=Math.max(1,Math.ceil(s.concurrent/s.batch));
+  const workers=Math.min(64,Math.max(Math.ceil(repNeeded*tp/s.perW),Math.ceil(tp/s.perW)));
+  $('inTp').value=tp; refreshCtl('inTp');
+  $('inWorkers').value=workers; refreshCtl('inWorkers');
+  if(crossed&&+$('inIc').value>0.7){ $('inIc').value=0.7; refreshCtl('inIc'); }
+  render();
+  const d2=compute(readState());
+  toast(`Auto-sized: TP${tp} ${crossed?'(crosses nodes: interconnect set to 0.7)':'(inside the NVLink island)'} · ${d2.replicas} replica${d2.replicas>1?'s':''} on ${workers} workers · ${d2.active} of ${s.concurrent} calls admitted${d2.fits?'':' · still over VRAM, see Recommendations'}`);
+}
+$('btnAuto').addEventListener('click',autoSize);
 $('btnReset').addEventListener('click',()=>location.reload());
 
 const MOON='<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>';
@@ -950,7 +972,7 @@ $('fileImport').addEventListener('change',e=>{
 });
 
 /* ================= PUBLIC API & BOOT ================= */
-window.GPUscale = {compute, readState, serialize, applyConfig, buildXls, render, MODELS, GPUS, QUANTS, CASES};
+window.GPUscale = {compute, readState, serialize, applyConfig, buildXls, render, autoSize, MODELS, GPUS, QUANTS, CASES};
 window.SizingConsole = window.GPUscale;
 (function boot(){
   const mi=MODELS.findIndex(m=>/Kimi K2\.5/.test(m.name)); if(mi>=0)$('selModel').value=mi;

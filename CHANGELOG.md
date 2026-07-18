@@ -1,5 +1,18 @@
 # Changelog
 
+## Studio 4.9 (2026-07-18)
+
+- Auto-size button in the Hardware station: picks the smallest Tensor
+  parallel size that fits one copy of the selected model on the selected GPU
+  (with headroom for KV), then adds workers until the peak concurrency is
+  admitted at the current batch. Crossing the NVLink island also lowers
+  interconnect efficiency to 0.7 and says so. Exposed as
+  window.GPUscale.autoSize().
+- The hardware card now always explains the fleet in plain language: how many
+  replicas, that each is a full copy of the model on TP GPUs, and that more
+  TP distributes a copy wider while more workers add copies for more users.
+
+
 ## Studio 4.8.2 (2026-07-18)
 
 - Clearer distribution mental model throughout: the Tensor parallel help text

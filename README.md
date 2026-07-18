@@ -27,6 +27,7 @@ no build step, nothing uploaded.
 - 🔒 **Private by design**: everything runs in your browser; nothing you enter is saved, uploaded or tracked
 - 📚 **Library**: 94 models (GQA, MoE, MLA, SSM hybrids, Arabic/GCC sovereign set) and 38 GPUs, one line each
 - 📤 **Exports**: JSON configs, an Excel template with live formulas, and a print-ready PDF report
+- 🪄 **Auto-size**: one click picks the TP that fits one copy of the model and the workers that admit your peak load
 - 🌓 **Polished**: light and dark themes, mobile friendly, installable, keyboard accessible
 
 ## 🚀 Quick start
