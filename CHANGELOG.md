@@ -1,5 +1,15 @@
 # Changelog
 
+## Studio 4.8.2 (2026-07-18)
+
+- Clearer distribution mental model throughout: the Tensor parallel help text
+  now states that TP is the control that distributes the model and that GPUs
+  beyond TP form additional full copies; the hardware meta card shows a note
+  whenever replicas exceed one; the structural-misfit recommendation explains
+  the copy-vs-room distinction and points at the exact slider, including the
+  full-fleet TP value that distributes a single copy.
+
+
 ## Studio 4.8.1 (2026-07-18)
 
 - The studio now explains structural misfits: when a single TP replica cannot
