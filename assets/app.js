@@ -3,20 +3,21 @@
 const DATA = window.GPUSCALE_DATA || {};
 const MODELS = DATA.models||[], GPUS = DATA.gpus||[], QUANTS = DATA.quants||[], CASES = DATA.cases||[];
 if(!MODELS.length || !GPUS.length || !QUANTS.length || !CASES.length){
-  document.body.innerHTML = '<div style="font-family:system-ui,sans-serif;max-width:560px;margin:80px auto;padding:0 20px;line-height:1.65;color:#1A2536"><h2 style="margin-bottom:10px">Data files not loaded</h2><p>GPUscale.net could not find its library. Keep <code>index.html</code> together with the <code>data/</code> and <code>assets/</code> folders — the four files <code>data/models.js</code>, <code>data/gpus.js</code>, <code>data/quants.js</code> and <code>data/usecases.js</code> must sit next to this page.</p><p>If you need one portable file instead, use <code>dist/gpuscale_standalone.html</code> or rebuild it with <code>python3 tools/build_single_file.py</code>.</p></div>';
+  document.body.innerHTML = '<div style="font-family:system-ui,sans-serif;max-width:560px;margin:80px auto;padding:0 20px;line-height:1.65;color:#1A2536"><h2 style="margin-bottom:10px">Data files not loaded</h2><p>GPUscale.net could not find its library. Keep <code>index.html</code> together with the <code>data/</code> and <code>assets/</code> folders: the four files <code>data/models.js</code>, <code>data/gpus.js</code>, <code>data/quants.js</code> and <code>data/usecases.js</code> must sit next to this page.</p><p>If you need one portable file instead, use <code>dist/gpuscale_standalone.html</code> or rebuild it with <code>python3 tools/build_single_file.py</code>.</p></div>';
   throw new Error('GPUscale.net data missing');
 }
+const STUDIO_VERSION = '4.7.0', ENGINE_VERSION = 23;
 const KV_QUANTS = [{name:'BF16',bytes:2},{name:'FP16',bytes:2},{name:'FP8',bytes:1},{name:'INT8',bytes:1},{name:'INT4',bytes:0.5}];
 const REASON_TOK = {'None':0,'Light reasoning':2000,'Heavy reasoning':8000,'Custom':2000};
 const RESIL = {
-  n:   {code:0, label:'N',      long:'N — capacity only',                        extraW:n=>0},
-  n1:  {code:1, label:'N+1',    long:'N+1 — one standby worker',                 extraW:n=>1},
-  nn:  {code:2, label:'N+N',    long:'N+N — in-site mirror (2N)',                extraW:n=>n},
-  dr:  {code:3, label:'DR',     long:'DR — remote standby site (active/passive)',extraW:n=>n},
-  nndr:{code:4, label:'N+N+DR', long:'N+N + DR — active/active twin sites (4N)', extraW:n=>3*n},
+  n:   {code:0, label:'N',      long:'N · capacity only',                        extraW:n=>0},
+  n1:  {code:1, label:'N+1',    long:'N+1 · one standby worker',                 extraW:n=>1},
+  nn:  {code:2, label:'N+N',    long:'N+N · in-site mirror (2N)',                extraW:n=>n},
+  dr:  {code:3, label:'DR',     long:'DR · remote standby site (active/passive)',extraW:n=>n},
+  nndr:{code:4, label:'N+N+DR', long:'N+N + DR · active/active twin sites (4N)', extraW:n=>3*n},
 };
 
-/* ================= ENGINE (pure — mirrors workbook v22) ================= */
+/* ================= ENGINE (pure · v23: workbook v22 + per-replica weight/activation accounting) ================= */
 /*ENGINE-START*/
 function compute(s){
   const bw = s.bytesW, bk = s.bytesK;
@@ -29,8 +30,10 @@ function compute(s){
   const kvTotal = active * effSeq * kvTok;
   const act = Math.min(effSeq, 8192) * s.hidden * 12 * bw / 1e9;
   const fixed = 5, multi = Math.max(0, s.gpus - 1) * 15;
-  const total = weights + kvTotal + act + fixed + multi;
-  const avail = s.gpus * s.gpuVram;
+  const weightsAll = replicas * weights, actAll = replicas * act;
+  const total = weightsAll + kvTotal + actAll + fixed + multi;
+  const servingGpus = replicas * Math.max(s.tp,1), idleGpus = s.gpus - servingGpus;
+  const avail = servingGpus * s.gpuVram;
   const bwEff = s.gpuBw * s.tp * s.ic * s.mbu * 1000;
   const batchPerRep = Math.max(1, active / replicas);
   const tps = bwEff / (s.active * bw + batchPerRep * effSeq * kvTok);
@@ -40,9 +43,9 @@ function compute(s){
   const genTok = s.reasonTok + s.visibleOut;
   const latency = (ttft + s.ovh) / 1000 + genTok / tps;
   const p95 = latency * 1.3;
-  const maxBatchMem = Math.max(0, Math.floor((avail - weights - act - fixed - multi) / (effSeq * kvTok) / replicas)) || 0;
+  const maxBatchMem = Math.max(0, Math.floor((avail - weightsAll - actAll - fixed - multi) / (effSeq * kvTok) / replicas)) || 0;
   const kvDelta = effSeq * kvTok;
-  const allActiveVram = weights + s.concurrent * effSeq * kvTok + act + fixed + multi;
+  const allActiveVram = weightsAll + s.concurrent * effSeq * kvTok + actAll + fixed + multi;
   const queued = Math.max(0, s.concurrent - active);
   const fits = total <= avail;
   const slo = {
@@ -51,8 +54,8 @@ function compute(s){
     p95:  s.sloP95  > 0 ? {on:true, pass: p95  <= s.sloP95 } : {on:false, pass:true},
   };
   const sloAll = slo.ttft.pass && slo.tps.pass && slo.p95.pass;
-  return {weights,kvTok,effSeq,replicas,active,kvTotal,act,fixed,multi,total,avail,
-          bwEff,batchPerRep,tps,agg,ttft,itl,latency,p95,genTok,maxBatchMem,kvDelta,
+  return {weights,weightsAll,kvTok,effSeq,replicas,active,kvTotal,act,actAll,fixed,multi,total,avail,
+          servingGpus,idleGpus,bwEff,batchPerRep,tps,agg,ttft,itl,latency,p95,genTok,maxBatchMem,kvDelta,
           allActiveVram,queued,fits,slo,sloAll,headroom:avail-total};
 }
 /*ENGINE-END*/
@@ -103,7 +106,7 @@ function toast(msg, err){
 const FIELDS = {
   inSeq:{mount:'m_inSeq',label:'Resident sequence',unit:'tokens',scale:'log',min:128,max:1048576,snap:64,val:4096,
     band:[2048,65536],marks:[[4096,'4K'],[32768,'32K'],[262144,'256K']],disp:fmtTok,
-    help:'Prompt + retained history + tool traces + expected output actually held per request — not the model\'s max context. Drives KV size and prefill time.',
+    help:'Prompt + retained history + tool traces + expected output actually held per request, not the model\'s max context. Drives KV size and prefill time.',
     typ:'Chat 4–8K · RAG 16–64K · long-doc 64–128K · agents 32–256K'},
   inOut:{mount:'m_inOut',label:'Visible output',unit:'tokens',scale:'log',min:16,max:16384,snap:8,val:200,
     band:[200,3000],marks:[[200,'200'],[2500,'2.5K']],disp:fmtTok,
@@ -115,7 +118,7 @@ const FIELDS = {
     typ:'Light ≈ 2K · Heavy ≈ 8K · deep agents 8–16K'},
   inConc:{mount:'m_inConc',label:'Concurrent LLM calls',unit:'peak',scale:'log',min:1,max:10000,snap:1,val:250,
     band:[10,500],marks:[[50,'50'],[500,'500']],disp:v=>fmt(v),
-    help:'Simultaneous in-flight requests at peak — not total users. Use the Little\'s-law estimator below to derive it from headcount.',
+    help:'Simultaneous in-flight requests at peak, not total users. Use the Little\'s-law estimator below to derive it from headcount.',
     typ:'Dozens of users → single digits · thousands of users → 50–500'},
   inBatch:{mount:'m_inBatch',label:'Max batch per replica',unit:'seqs',scale:'log',min:1,max:512,snap:1,val:4,
     band:[4,64],marks:[[4,'4'],[16,'16'],[64,'64']],disp:v=>fmt(v),
@@ -123,7 +126,7 @@ const FIELDS = {
     typ:'Voice 2–8 · chat 8–32 · offline 32–256'},
   inWorkers:{mount:'m_inWorkers',label:'GPU workers (nodes)',unit:'N · load-bearing',scale:'log',min:1,max:64,snap:1,val:1,
     band:[1,8],marks:[[1,'1'],[4,'4'],[8,'8'],[16,'16']],disp:v=>fmt(v),
-    help:'Servers carrying the load — the N in N+1 / N+N / DR. Performance and fit are computed on these; the resilience model below adds standby units on top.',
+    help:'Servers carrying the load: the N in N+1 / N+N / DR. Performance and fit are computed on these; the resilience model below adds standby units on top.',
     typ:'One HGX node handles most pilots · scale out for concurrency'},
   inPerW:{mount:'m_inPerW',label:'GPUs per worker',unit:'devices',scale:'lin',min:1,max:16,snap:1,val:8,
     band:[4,8],marks:[[4,'4'],[8,'8']],disp:v=>fmt(v),
@@ -131,15 +134,15 @@ const FIELDS = {
     typ:'PCIe boxes 2–4 · HGX/DGX 8 · MI300X platform 8'},
   inTp:{mount:'m_inTp',label:'Tensor parallel size',unit:'GPUs/replica',scale:'log',min:1,max:64,snap:1,val:8,
     band:[1,8],marks:[[2,'2'],[4,'4'],[8,'8']],disp:v=>fmt(v),
-    help:'GPUs cooperating on one replica. Must be large enough for the weights to fit; prefill for a single request runs on this group, so TP — not total GPUs — drives TTFT. Keep TP ≤ GPUs per worker to stay inside NVLink.',
+    help:'GPUs cooperating on one replica. Must be large enough for the weights to fit; prefill for a single request runs on this group, so TP, not total GPUs, drives TTFT. Keep TP ≤ GPUs per worker to stay inside NVLink.',
     typ:'Fit-driven: smallest TP whose replica holds weights + cache'},
   inMfu:{mount:'m_inMfu',label:'Prefill MFU',unit:'',scale:'lin',min:0.1,max:0.9,snap:0.01,val:0.5,
     band:[0.3,0.7],marks:[[0.5,'0.5']],disp:v=>(+v).toFixed(2),
-    help:'Model FLOPs utilization during prefill — fraction of theoretical peak actually achieved. FlashAttention lands 0.3–0.7; chunked prefill trends lower.',
+    help:'Model FLOPs utilization during prefill: the fraction of theoretical peak actually achieved. FlashAttention lands 0.3–0.7; chunked prefill trends lower.',
     typ:'Conservative 0.4 · typical 0.5 · well-tuned 0.6–0.7'},
   inMbu:{mount:'m_inMbu',label:'Decode MBU',unit:'',scale:'lin',min:0.2,max:0.95,snap:0.01,val:0.65,
     band:[0.5,0.75],marks:[[0.65,'0.65']],disp:v=>(+v).toFixed(2),
-    help:'Memory-bandwidth utilization during decode. Engine efficiency only — batch effects are modeled explicitly, so don\'t lower this for big batches.',
+    help:'Memory-bandwidth utilization during decode. Engine efficiency only; batch effects are modeled explicitly, so don\'t lower this for big batches.',
     typ:'vLLM / TRT-LLM on H100–B200: 0.5–0.75'},
   inIc:{mount:'m_inIc',label:'Interconnect efficiency',unit:'',scale:'lin',min:0.4,max:1,snap:0.01,val:0.85,
     band:[0.6,0.9],marks:[[0.85,'0.85']],disp:v=>(+v).toFixed(2),
@@ -234,28 +237,32 @@ function readState(){
   const g = GPUS[+$('selGpu').value||0];
   const wq = QUANTS[+$('selWQuant').value||0];
   const kq = KV_QUANTS[+$('selKQuant').value||0];
-  const workers = Math.max(1, Math.round(+$('inWorkers').value||1));
-  const perW = Math.max(1, Math.round(+$('inPerW').value||1));
+  // clamp every slider-backed field through its config so the engine, the readout
+  // and the visible input can never disagree (typed out-of-range or cleared values)
+  const fv = id => { const c=FIELDS[id]; const raw = $(id).value===''? c.val : +$(id).value;
+    const v = isFinite(raw)? raw : c.val; return Math.min(c.max, Math.max(c.min, v)); };
+  const workers = Math.round(fv('inWorkers'));
+  const perW = Math.round(fv('inPerW'));
   const gpus = workers*perW;
-  let tp = Math.max(1, Math.round(+$('inTp').value||1));
+  let tp = Math.round(fv('inTp'));
   if(tp>gpus){ tp=gpus; $('inTp').value=tp; refreshCtl('inTp'); }
   return {
     model:m, gpu:g, wq, kq,
     params:m.params, active:m.active, hidden:m.hidden, layers:m.layers,
     kvHeads:m.kvHeads, headDim:m.headDim, ctx:m.ctx,
     bytesW:wq.bytes, bytesK:kq.bytes,
-    resident:Math.max(128,+$('inSeq').value||128),
-    visibleOut:Math.max(1,+$('inOut').value||1),
+    resident:Math.round(fv('inSeq')),
+    visibleOut:Math.round(fv('inOut')),
     reasonMode:$('selReason').value,
-    reasonTok:Math.max(0,+$('inReasonTok').value||0),
+    reasonTok:Math.round(fv('inReasonTok')),
     extend:$('chkExtend').checked,
-    concurrent:Math.max(1,Math.round(+$('inConc').value||1)),
-    batch:Math.max(1,Math.round(+$('inBatch').value||1)),
+    concurrent:Math.round(fv('inConc')),
+    batch:Math.round(fv('inBatch')),
     policy:$('selPolicy').value,
     workers, perW, gpus, tp, resil:$('selResil').value,
     gpuVram:g.vram, gpuBw:g.bw, gpuTflops:g.tflops,
-    mfu:+$('inMfu').value, mbu:+$('inMbu').value, ic:+$('inIc').value,
-    ovh:Math.max(0,+$('inOvh').value||0),
+    mfu:fv('inMfu'), mbu:fv('inMbu'), ic:fv('inIc'),
+    ovh:fv('inOvh'),
     sloTtft:+$('sloTtft').value||0, sloTps:+$('sloTps').value||0, sloP95:+$('sloP95').value||0,
   };
 }
@@ -342,10 +349,10 @@ function renderCtxChart(s,d){
   });
 }
 
-/* ================= TOPOLOGY — server cards with per-GPU utilization ================= */
+/* ================= TOPOLOGY · server cards with per-GPU utilization ================= */
 function renderTopology(s,d){
   const P=pal();
-  const perGpu=d.total/s.gpus, cap=s.gpuVram, fillPct=Math.min(1,perGpu/cap), hot=perGpu>cap;
+  const perGpu=d.total/(d.servingGpus||s.gpus), cap=s.gpuVram, fillPct=Math.min(1,perGpu/cap), hot=perGpu>cap;
   const utilTxt=(perGpu/cap*100).toFixed(0)+'%';
   const cell={w:20,h:34,g:4};
   const cols=Math.min(s.perW,8), rows=Math.ceil(s.perW/8);
@@ -382,10 +389,11 @@ function renderTopology(s,d){
     const maxDraw=8;
     let list=items;
     if(items.length>maxDraw){
-      const keepSpecial=items.filter(it=>it.mode!=='active');
+      const specials=items.filter(it=>it.mode!=='active');
       const actives=items.filter(it=>it.mode==='active');
-      const room=maxDraw-1-keepSpecial.length;
-      list=[...actives.slice(0,Math.max(1,room)),{mode:'more',n:actives.length-Math.max(1,room)},...keepSpecial];
+      const room=Math.max(actives.length?1:0, maxDraw-1-specials.length);
+      const shown=[...actives.slice(0,room),...specials].slice(0,maxDraw-1);
+      list=[...shown,{mode:'more',n:items.length-shown.length}];
     }
     const rowsN=Math.ceil(list.length/perRow);
     const fh=32+framePad+rowsN*(cardH+gapCard)-gapCard+framePad;
@@ -413,24 +421,24 @@ function renderTopology(s,d){
   let y=4, parts=[], links=[];
   const gpuChip=(n,extra)=>`${n} worker${n>1?'s':''} · ${n*s.perW} GPU · ${fmt(n*s.perW*s.gpu.watts/1000)} kW${extra||''}`;
   if(r==='n'){
-    const f=frame(y,`Production site — N=${N}`,act('WK-'),gpuChip(N),'building'); parts.push(f.svg); y+=f.h;
+    const f=frame(y,`Production site · N=${N}`,act('WK-'),gpuChip(N),'building'); parts.push(f.svg); y+=f.h;
   } else if(r==='n1'){
-    const f=frame(y,`Production site — N+1`,[...act('WK-'),{mode:'standby'}],gpuChip(N+1),'building'); parts.push(f.svg); y+=f.h;
+    const f=frame(y,`Production site · N+1`,[...act('WK-'),{mode:'standby'}],gpuChip(N+1),'building'); parts.push(f.svg); y+=f.h;
   } else if(r==='nn'){
-    const fa=frame(y,`System A — active · N=${N}`,act('WK-'),gpuChip(N),'building'); parts.push(fa.svg); y+=fa.h;
+    const fa=frame(y,`System A · active · N=${N}`,act('WK-'),gpuChip(N),'building'); parts.push(fa.svg); y+=fa.h;
     links.push({y:y+frameGap/2, lab:'in-site failover', both:true});
     y+=frameGap;
-    const fb=frame(y,`System B — mirror · N=${N}`,dup('mirror'),gpuChip(N,' · idle'),'shield'); parts.push(fb.svg); y+=fb.h;
+    const fb=frame(y,`System B · mirror · N=${N}`,dup('mirror'),gpuChip(N,' · idle'),'shield'); parts.push(fb.svg); y+=fb.h;
   } else if(r==='dr'){
-    const fa=frame(y,`Primary site — active · N=${N}`,act('WK-'),gpuChip(N),'building'); parts.push(fa.svg); y+=fa.h;
+    const fa=frame(y,`Primary site · active · N=${N}`,act('WK-'),gpuChip(N),'building'); parts.push(fa.svg); y+=fa.h;
     links.push({y:y+frameGap/2, lab:'async replication', both:false});
     y+=frameGap;
-    const fb=frame(y,`DR site — standby · N=${N}`,dup('drs'),gpuChip(N,' · standby'),'globe'); parts.push(fb.svg); y+=fb.h;
-  } else { /* nndr — active/active twin sites, each N+N */
-    const fa=frame(y,`Site A — active · N+N`,[...act('A-'),...dup('mirror')],gpuChip(2*N),'building'); parts.push(fa.svg); y+=fa.h;
+    const fb=frame(y,`DR site · standby · N=${N}`,dup('drs'),gpuChip(N,' · standby'),'globe'); parts.push(fb.svg); y+=fb.h;
+  } else { /* nndr: active/active twin sites, each N+N */
+    const fa=frame(y,`Site A · active · N+N`,[...act('A-'),...dup('mirror')],gpuChip(2*N),'building'); parts.push(fa.svg); y+=fa.h;
     links.push({y:y+frameGap/2, lab:'active / active · geo-replication', both:true});
     y+=frameGap;
-    const fb=frame(y,`Site B — active · N+N`,[...act('B-'),...dup('mirror')],gpuChip(2*N),'building'); parts.push(fb.svg); y+=fb.h;
+    const fb=frame(y,`Site B · active · N+N`,[...act('B-'),...dup('mirror')],gpuChip(2*N),'building'); parts.push(fb.svg); y+=fb.h;
   }
   let linkSvg='';
   links.forEach(L=>{
@@ -442,7 +450,7 @@ function renderTopology(s,d){
   });
   $('topo').innerHTML=`<svg viewBox="0 0 ${W} ${y+4}" style="aspect-ratio:${W}/${y+4};width:100%;height:auto" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Deployment topology with per-GPU memory utilization">${parts.join('')}${linkSvg}</svg>`;
 
-  const legend=[['box',P.segkv,`active worker — GPU bars show memory fill (${utilTxt} of ${fmt(cap)} GB each)`]];
+  const legend=[['box',P.segkv,`active worker · GPU bars show memory fill (${utilTxt} of ${fmt(cap)} GB each)`]];
   if(r==='n1') legend.push(['dashed',P.amber,'standby worker (N+1)']);
   if(r==='nn'||r==='nndr') legend.push(['dashed',P.teal,'mirror workers (N+N)']);
   if(r==='dr') legend.push(['dashed',P.violet,'DR standby site']);
@@ -456,9 +464,9 @@ function renderTopology(s,d){
     : r==='n1'? 'One idle standby absorbs a single node failure with no capacity loss after failover.'
     : r==='nn'? 'A full second system in the same site: survives node and system-level failures; can also cover maintenance windows.'
     : r==='dr'? 'A standby remote site behind asynchronous replication: survives full site loss; the standby idles during normal operation.'
-    : 'Two active/active sites, each carrying N+N: traffic is shared across sites in normal operation, and the deployment survives any worker failure or the loss of an entire site without dropping below N. The most resilient — and most procurement-heavy — enterprise pattern.';
+    : 'Two active/active sites, each carrying N+N: traffic is shared across sites in normal operation, and the deployment survives any worker failure or the loss of an entire site without dropping below N. The most resilient, and most procurement-heavy, enterprise pattern.';
   $('topoSum').innerHTML=
-    `Load: <b>N = ${N} worker${N>1?'s':''} · ${s.gpus} GPUs</b> (${s.perW}/worker) — performance and fit are computed on these. `+
+    `Load: <b>N = ${N} worker${N>1?'s':''} · ${s.gpus} GPUs</b> (${s.perW}/worker): performance and fit are computed on these. `+
     `Procured for ${info.long}: <b>${procW} workers · ${procG} GPUs · ≈ ${fmt(kW)} kW</b> GPU TDP. ${resLine}`;
   return {procW, procG, kW};
 }
@@ -491,8 +499,8 @@ function render(){
   const v=$('verdict'); v.classList.remove('ok','warn','fail');
   let main,sub;
   if(!d.fits){ v.classList.add('fail'); main='Exceeds VRAM';
-    sub=`Needs ${fmt(d.total)} GB but only ${fmt(d.avail)} GB available — quantize further, cut context or batch, or add workers.`; }
-  else if(!d.sloAll){ v.classList.add('warn'); main='Fits — SLO targets missed';
+    sub=`Needs ${fmt(d.total)} GB but only ${fmt(d.avail)} GB available: quantize further, cut context or batch, or add workers.`; }
+  else if(!d.sloAll){ v.classList.add('warn'); main='Fits, but SLO targets missed';
     sub='Memory fits with headroom, but at least one latency/throughput target fails. See SLO compliance below.'; }
   else { v.classList.add('ok'); main='Fits & SLO targets met';
     sub=`Ready to deploy: ${fmt(d.headroom)} GB headroom, ${d.active} of ${s.concurrent} calls resident in KV.`; }
@@ -502,7 +510,7 @@ function render(){
   const maxScale=niceCeil(Math.max(d.total,d.avail)*1.04);
   const pct=x=>Math.max(0,Math.min(100,x/maxScale*100));
   let acc=0;
-  [['segW',d.weights],['segK',d.kvTotal],['segA',d.act],['segO',d.fixed+d.multi]].forEach(([id,val])=>{
+  [['segW',d.weightsAll],['segK',d.kvTotal],['segA',d.actAll],['segO',d.fixed+d.multi]].forEach(([id,val])=>{
     const el=$(id); el.style.left=pct(acc)+'%'; el.style.width=Math.max(0,pct(acc+val)-pct(acc))+'%'; acc+=val; });
   $('lgNeedle').style.left=pct(d.avail)+'%';
   const sx=$('segX');
@@ -521,8 +529,8 @@ function render(){
   $('ledgerNote').textContent=`scale 0–${fmt(maxScale)} GB · ${s.gpus}× ${g.name}`;
   const SEG={weights:cssVar('--seg-w'),kv:cssVar('--seg-kv'),act:cssVar('--seg-act'),ovh:cssVar('--seg-ovh')};
   $('lgLegend').innerHTML =
-    [['Weights',d.weights,'weights'],['KV cache · '+d.active+' seq',d.kvTotal,'kv'],
-     ['Activations',d.act,'act'],['Overhead · fixed+multi-GPU',d.fixed+d.multi,'ovh']]
+    [['Weights'+(d.replicas>1?' · '+d.replicas+' replicas':''),d.weightsAll,'weights'],['KV cache · '+d.active+' seq',d.kvTotal,'kv'],
+     ['Activations',d.actAll,'act'],['Overhead · fixed+multi-GPU',d.fixed+d.multi,'ovh']]
     .map(([k,val,c])=>`<span class="lg-li"><span class="lg-sw" style="background:${SEG[c]}"></span><span class="k">${k}</span><span class="v">${fmt(val)} GB</span><span class="pct">${(val/d.total*100).toFixed(0)}%</span></span>`).join('')
     +`<span class="lg-li"><span class="lg-sw" style="background:${d.fits?'transparent':cssVar('--red')};border:1px solid var(--line)"></span><span class="k">Utilization</span><span class="v" style="color:${d.fits?'var(--teal-strong)':'var(--red)'}">${(d.total/d.avail*100).toFixed(1)}%</span></span>`;
 
@@ -559,14 +567,15 @@ function render(){
   const topoInfo=renderTopology(s,d);
 
   const ins=[];
+  if(d.effSeq>m.ctx) ins.push(['bad',`Resident sequence + reasoning (${fmtTok(d.effSeq)}) exceeds ${m.name}'s max context (${fmtTok(m.ctx)}): an unservable configuration. Trim resident tokens or pick a longer-context model.`]);
   if(s.tp>s.perW) ins.push(['bad',`TP${s.tp} spans workers (${s.perW} GPU/worker): tensor-parallel traffic leaves the NVLink domain. Either raise GPUs per worker, lower TP, or set interconnect efficiency to 0.6–0.7 to model the cross-node penalty.`]);
-  if(d.queued>0) ins.push(['warn',`${d.queued} of ${s.concurrent} calls queue at peak (only ${d.active} admitted). Memory allows up to ${d.maxBatchMem} per replica — ${d.maxBatchMem>s.batch? 'raise max batch toward that':'add workers or trim context to admit more'}.`]);
-  if(d.kvTotal>d.weights) ins.push(['warn',`KV-dominated deployment: cache (${fmt(d.kvTotal)} GB) outweighs weights (${fmt(d.weights)} GB). FP8/INT8 KV, compressed-KV models, or shorter resident sequences pay off most here.`]);
+  if(d.queued>0) ins.push(['warn',`${d.queued} of ${s.concurrent} calls queue at peak (only ${d.active} admitted). Memory allows up to ${d.maxBatchMem} per replica: ${d.maxBatchMem>s.batch? 'raise max batch toward that':'add workers or trim context to admit more'}.`]);
+  if(d.kvTotal>d.weightsAll) ins.push(['warn',`KV-dominated deployment: cache (${fmt(d.kvTotal)} GB) outweighs weights (${fmt(d.weightsAll)} GB). FP8/INT8 KV, compressed-KV models, or shorter resident sequences pay off most here.`]);
   if(d.slo.ttft.on&&!d.slo.ttft.pass) ins.push(['bad',`Prefill misses the TTFT target. Options: prefix caching for repeated prompts, chunked prefill, TP ${s.tp}→${Math.min(s.tp*2,s.gpus)}, or a higher-TFLOPS part; disaggregated prefill (Dynamo / Rubin CPX) exists for exactly this.`]);
-  if(/MHA/.test(m.arch||'')) ins.push(['warn',`${m.name.split(' ')[0]} uses full multi-head attention — KV is ${fmt(d.kvTok*1e6)} MB per token, an order beyond GQA peers. Budget context tightly.`]);
-  if(/Unified/i.test(g.mem)) ins.push(['warn','Unified-memory hardware: capacity is generous but bandwidth caps decode speed — fine for single-user or development, not for concurrent serving.']);
-  if(prelaunch) ins.push(['warn','Selected GPU is announced but not shipping: specs are pre-launch estimates — re-validate against datasheets before committing a proposal.']);
-  if(s.policy==='all'&&d.allActiveVram>d.avail&&d.fits) ins.push(['warn',`Keeping every session in KV would need ${fmt(d.allActiveVram)} GB — the running-batch policy is what makes this configuration fit.`]);
+  if(/MHA/.test(m.arch||'')) ins.push(['warn',`${m.name.split(' ')[0]} uses full multi-head attention: KV is ${fmt(d.kvTok*1e3)} MB per token, an order beyond GQA peers. Budget context tightly.`]);
+  if(/Unified/i.test(g.mem)) ins.push(['warn','Unified-memory hardware: capacity is generous but bandwidth caps decode speed: fine for single-user or development, not for concurrent serving.']);
+  if(prelaunch) ins.push(['warn','Selected GPU is announced but not shipping: specs are pre-launch estimates; re-validate against datasheets before committing a proposal.']);
+  if(s.policy==='all'&&d.allActiveVram>d.avail&&d.fits) ins.push(['warn',`Keeping every session in KV would need ${fmt(d.allActiveVram)} GB: the running-batch policy is what makes this configuration fit.`]);
   if(ins.length===0) ins.push(['ok',`Balanced configuration: ${(d.total/d.avail*100).toFixed(0)}% memory utilization, ${fmt(d.tps)} tok/s per user at batch ${fmt(d.batchPerRep)}, ${fmt(d.headroom)} GB headroom for growth.`]);
   ins.push(['ok',`Marginal cost of one more admitted call: ${fmt(d.kvDelta)} GB of KV. Speculative decoding (EAGLE-3 / MTP) would add 1.5–3× on top of the decode figures.`]);
   $('insights').innerHTML=ins.slice(0,5).map(([c,t])=>`<div class="ins ${c==='ok'?'':c}">${t}</div>`).join('');
@@ -577,7 +586,7 @@ function render(){
   $('ccDerived').dataset.cc=cc;
 
   $('printConfig').textContent =
-    `GPUscale.net · ${$('scenarioName').value||'Untitled scenario'} — ${m.name} · weights ${s.wq.name} / KV ${s.kq.name} · seq ${fmtTok(s.resident)} (+${fmtTok(s.reasonTok)} reasoning) · `+
+    `GPUscale.net · ${$('scenarioName').value||'Untitled scenario'} · ${m.name} · weights ${s.wq.name} / KV ${s.kq.name} · seq ${fmtTok(s.resident)} (+${fmtTok(s.reasonTok)} reasoning) · `+
     `${s.concurrent} concurrent, batch ${s.batch}/replica · ${s.workers}× worker (${s.perW} GPU) ${g.name} · TP${s.tp} · ${RESIL[s.resil].long} → ${topoInfo.procW} workers procured · ${new Date().toLocaleDateString()}`;
 }
 
@@ -585,7 +594,8 @@ function render(){
 function applyCase(i){
   if(i<0) return;
   const c=CASES[i];
-  $('inSeq').value=c.resident; $('inOut').value=c.visibleOut;
+  if(c.resident) $('inSeq').value=c.resident;
+  if(c.visibleOut) $('inOut').value=c.visibleOut;
   $('selReason').value=REASON_TOK.hasOwnProperty(c.reasoning)?c.reasoning:'None';
   syncReason();
   $('sloTtft').value=c.ttftTarget; $('sloTps').value=c.tpsTarget; $('sloP95').value=c.p95Target;
@@ -602,7 +612,7 @@ function syncReason(){
 function serialize(){
   const s=readState(), d=compute(s);
   return {
-    schema:'gpuscale.net/3', engine:22,
+    schema:'gpuscale.net/3', engine:ENGINE_VERSION, studio:STUDIO_VERSION,
     name: $('scenarioName').value||'Untitled scenario',
     savedAt: new Date().toISOString(),
     config:{
@@ -678,7 +688,7 @@ function applyConfig(raw){
   if(sl.tps!=null) $('sloTps').value=sl.tps;
   if(sl.p95s!=null) $('sloP95').value=sl.p95s;
   if(raw.name) $('scenarioName').value = raw.name==='Untitled scenario'? '' : raw.name;
-  if(c.theme==='dark'||c.theme==='light') setTheme(c.theme);
+  if(c.theme==='dark'||c.theme==='light'){ window.__themeLocked=true; setTheme(c.theme); }
   Object.keys(FIELDS).forEach(refreshCtl);
   render();
 }
@@ -689,9 +699,9 @@ function buildXls(){
   const esc=x=>String(x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   const INP=[
     ['modelName','Model', s.model.name, 'Selected model (informational)','s'],
-    ['params','Total params (B)', s.params, 'All weights in VRAM — MoE loads every expert'],
-    ['activeP','Active params (B)', s.active, 'Params used per token — compute & decode reads'],
-    ['hidden','Hidden dim', s.hidden, 'Model width — activation workspace'],
+    ['params','Total params (B)', s.params, 'All weights in VRAM; MoE loads every expert'],
+    ['activeP','Active params (B)', s.active, 'Params used per token: compute and decode reads'],
+    ['hidden','Hidden dim', s.hidden, 'Model width: activation workspace'],
     ['layers','Layers', s.layers, 'KV cache scales linearly with layers'],
     ['kvh','KV heads (effective)', s.kvHeads, '1 for MLA-style compressed caches'],
     ['hdim','Head dim (effective)', s.headDim, 'Compressed-latent equivalent for MLA'],
@@ -706,7 +716,7 @@ function buildXls(){
     ['policy','KV policy (1=all,0=running)', s.policy==='all'?1:0, 'Residency policy'],
     ['workers','GPU workers N', s.workers, 'Load-bearing nodes'],
     ['perW','GPUs per worker', s.perW, '8 = HGX/DGX standard'],
-    ['tp','Tensor parallel size', s.tp, 'GPUs per replica — drives TTFT'],
+    ['tp','Tensor parallel size', s.tp, 'GPUs per replica: drives TTFT'],
     ['vram','GPU VRAM (GB)', s.gpuVram, s.gpu.name],
     ['bwTB','GPU bandwidth (TB/s)', s.gpuBw, 'Decode ceiling'],
     ['tflops','GPU dense FP16 TFLOPS', s.gpuTflops, 'Prefill ceiling (dense Tensor-Core)'],
@@ -736,8 +746,8 @@ function buildXls(){
   res('activ','Activations','GB', ()=>`MIN(${R('effSeq')},8192)*${I('hidden')}*12*${I('bytesW')}/1000000000`);
   res('fixed','Fixed overhead','GB', ()=>`5`);
   res('multi','Multi-GPU overhead','GB', ()=>`MAX(0,${R('gpusTotal')}-1)*15`);
-  res('total','Total VRAM required','GB', ()=>`${R('weights')}+${R('kvTotal')}+${R('activ')}+${R('fixed')}+${R('multi')}`);
-  res('avail','VRAM available','GB', ()=>`${R('gpusTotal')}*${I('vram')}`);
+  res('total','Total VRAM required','GB', ()=>`${R('replicas')}*(${R('weights')}+${R('activ')})+${R('kvTotal')}+${R('fixed')}+${R('multi')}`);
+  res('avail','VRAM available (serving GPUs)','GB', ()=>`${R('replicas')}*${I('tp')}*${I('vram')}`);
   res('headroom','Headroom','GB', ()=>`${R('avail')}-${R('total')}`);
   res('fits','Memory verdict','', ()=>`IF(${R('total')}<=${R('avail')},"FITS","EXCEEDS")`, true);
   res('bwEff','Effective bandwidth','GB/s', ()=>`${I('bwTB')}*${I('tp')}*${I('ic')}*${I('mbu')}*1000`);
@@ -775,18 +785,18 @@ function buildXls(){
 </Styles>
 <Worksheet ss:Name="Inputs"><Table>
 <Column ss:Width="215"/><Column ss:Width="120"/><Column ss:Width="330"/>
-${row(cS('GPUscale.net — sizing template · '+name,'sTitle'))}
+${row(cS('GPUscale.net · sizing template · '+name,'sTitle'))}
 ${row(cS('Parameter','sHead')+cS('Value (edit me)','sHead')+cS('Notes','sHead'))}
 ${inpRows}
 </Table></Worksheet>
 <Worksheet ss:Name="Results"><Table>
 <Column ss:Width="235"/><Column ss:Width="120"/><Column ss:Width="90"/>
-${row(cS('Results — live formulas (engine v22)','sTitle'))}
+${row(cS('Results · live formulas (engine v'+ENGINE_VERSION+')','sTitle'))}
 ${row(cS('Metric','sHead')+cS('Value','sHead')+cS('Unit','sHead'))}
 ${resRows}
 </Table></Worksheet>
 <Worksheet ss:Name="Notes"><Table><Column ss:Width="700"/>
-${row(cS('Generated by GPUscale.net — LLM Capacity & Dimensioning Studio on '+new Date().toISOString(),'sNote'))}
+${row(cS('Generated by GPUscale.net · LLM Capacity & Dimensioning Studio on '+new Date().toISOString(),'sNote'))}
 ${row(cS('Edit the amber cells on the Inputs sheet; Results recompute live with the same engine as the studio.','sNote'))}
 ${row(cS('Performance is sized on N load-bearing workers; the resilience code adds standby procurement (N+1 = +1 · N+N = +N · DR = +N · N+N+DR = +3N).','sNote'))}
 ${row(cS('Estimates are peak numbers; production typically achieves 70–90%. Validate with vLLM bench / GenAI-Perf before final commitments.','sNote'))}
@@ -805,7 +815,7 @@ document.querySelectorAll('input,select').forEach(el=>{
     render();
   });
 });
-$('ccApply').addEventListener('click',()=>{ $('inConc').value=$('ccDerived').dataset.cc||1; refreshCtl('inConc'); render(); toast('Concurrency applied'); });
+$('ccApply').addEventListener('click',()=>{ $('inConc').value=Math.max(1,+$('ccDerived').dataset.cc||1); refreshCtl('inConc'); render(); toast('Concurrency applied'); });
 $('btnReset').addEventListener('click',()=>location.reload());
 
 const MOON='<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>';
@@ -833,15 +843,18 @@ $('btnExport').addEventListener('click',()=>{
 });
 $('btnXls').addEventListener('click',()=>{
   download([buildXls()],'application/vnd.ms-excel',`gpuscale-${slug()}-template.xls`);
-  toast('Excel template exported — edit the amber Inputs cells');
+  toast('Excel template exported: edit the amber Inputs cells');
 });
 $('btnPdf').addEventListener('click',()=>{ render(); window.print(); });
+let printThemeRestore=null;
+window.addEventListener('beforeprint',()=>{ if(document.documentElement.dataset.theme==='dark'){ printThemeRestore='dark'; setTheme('light'); } });
+window.addEventListener('afterprint',()=>{ if(printThemeRestore){ setTheme(printThemeRestore); printThemeRestore=null; } });
 $('btnImport').addEventListener('click',()=>$('fileImport').click());
 $('fileImport').addEventListener('change',e=>{
   const f=e.target.files[0]; if(!f) return;
   const r=new FileReader();
   r.onload=()=>{ try{ applyConfig(JSON.parse(r.result)); toast('Configuration imported'); }
-    catch(err){ toast('Import failed — not a valid configuration file', true); } };
+    catch(err){ toast('Import failed: not a valid configuration file', true); } };
   r.onerror=()=>toast('Could not read the file', true);
   r.readAsText(f);
   e.target.value='';
@@ -860,5 +873,8 @@ window.SizingConsole = window.GPUscale;
   Object.keys(FIELDS).forEach(refreshCtl);
   const lv=document.getElementById('libVer');
   if(lv && DATA.meta) lv.textContent = (DATA.meta.library||'?')+' ('+(DATA.meta.updated||'')+')';
+  const av=document.getElementById('appVer'); if(av) av.textContent='Studio '+STUDIO_VERSION;
+  const ev=document.getElementById('engVer'); if(ev) ev.textContent='v'+ENGINE_VERSION;
+  const vc=document.getElementById('verChip'); if(vc) vc.textContent='v'+STUDIO_VERSION.replace(/\.0$/,'');
   render();
 })();

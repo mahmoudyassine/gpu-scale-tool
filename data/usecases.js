@@ -1,4 +1,4 @@
-// GPUscale.net — workload presets (resident seq · reasoning · visible out · SLO targets)
+// GPUscale.net · workload presets (resident seq · reasoning · visible out · SLO targets)
 // One entry per line. Field reference: README.md → “Data schemas”.
 window.GPUSCALE_DATA = window.GPUSCALE_DATA || {};
 window.GPUSCALE_DATA.cases = [

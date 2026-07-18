@@ -1,0 +1,14 @@
+{
+  "name": "GPUscale.net · LLM Capacity & Dimensioning Studio",
+  "short_name": "GPUscale",
+  "description": "Size self-hosted LLM deployments: memory fit, latency, throughput, SLO compliance and resilient worker topology.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#F6F7FA",
+  "theme_color": "#0F766E",
+  "icons": [
+    { "src": "assets/favicon-32.png", "sizes": "32x32", "type": "image/png" },
+    { "src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

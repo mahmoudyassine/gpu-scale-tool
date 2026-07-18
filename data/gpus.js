@@ -1,4 +1,4 @@
-// GPUscale.net — GPU library (VRAM GB · bandwidth TB/s · dense FP16 Tensor-Core TFLOPS · TDP W)
+// GPUscale.net · GPU library (VRAM GB · bandwidth TB/s · dense FP16 Tensor-Core TFLOPS · TDP W)
 // One entry per line. Field reference: README.md → “Data schemas”.
 window.GPUSCALE_DATA = window.GPUSCALE_DATA || {};
 window.GPUSCALE_DATA.gpus = [
@@ -10,7 +10,7 @@ window.GPUSCALE_DATA.gpus = [
 {"name":"RTX 5080 16GB","vram":16.0,"bw":0.96,"tflops":113.0,"mem":"GDDR7","arch":"Blackwell","watts":360,"cls":"Consumer","link":"PCIe 5.0","url":"https://www.nvidia.com/en-us/geforce/graphics-cards/50-series/"},
 {"name":"RTX 5090 32GB","vram":32.0,"bw":1.792,"tflops":210.0,"mem":"GDDR7","arch":"Blackwell","watts":575,"cls":"Consumer","link":"PCIe 5.0","url":"https://www.nvidia.com/en-us/geforce/graphics-cards/50-series/"},
 {"name":"RTX 6000 Ada 48GB","vram":48.0,"bw":0.96,"tflops":182.0,"mem":"GDDR6","arch":"Ada Lovelace","watts":300,"cls":"Workstation","link":"PCIe 4.0","url":"https://www.nvidia.com/en-us/products/workstations/rtx-6000/"},
-{"name":"RTX PRO 6000 Blackwell Server Edition 96GB","vram":96.0,"bw":1.597,"tflops":500.0,"mem":"GDDR7","arch":"Blackwell","watts":600,"cls":"Server / Workstation","link":"PCIe 5.0","url":"https://www.nvidia.com/en-us/data-center/rtx-pro-6000-blackwell-server-edition/"},
+{"name":"RTX PRO 6000 Blackwell Server Edition 96GB","vram":96.0,"bw":1.597,"tflops":250.0,"mem":"GDDR7","arch":"Blackwell","watts":600,"cls":"Server / Workstation","link":"PCIe 5.0","url":"https://www.nvidia.com/en-us/data-center/rtx-pro-6000-blackwell-server-edition/"},
 {"name":"A100 40GB SXM","vram":40.0,"bw":1.555,"tflops":312.0,"mem":"HBM2e","arch":"Ampere","watts":400,"cls":"Data Center","link":"NVLink Gen3","url":"https://www.nvidia.com/en-us/data-center/a100/"},
 {"name":"A100 80GB SXM","vram":80.0,"bw":2.039,"tflops":312.0,"mem":"HBM2e","arch":"Ampere","watts":400,"cls":"Data Center","link":"NVLink Gen3","url":"https://www.nvidia.com/en-us/data-center/a100/"},
 {"name":"A100 80GB PCIe","vram":80.0,"bw":1.935,"tflops":312.0,"mem":"HBM2e","arch":"Ampere","watts":300,"cls":"Data Center","link":"PCIe 4.0","url":"https://www.nvidia.com/en-us/data-center/a100/"},

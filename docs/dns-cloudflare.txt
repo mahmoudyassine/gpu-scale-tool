@@ -1,0 +1,24 @@
+;; GPUscale.net DNS zone for Cloudflare import
+;; Cloudflare dashboard: DNS -> Records -> Import and Export -> Import DNS records
+;;
+;; Points the apex at GitHub Pages and www at the Pages hostname.
+;; IMPORTANT: after import, set all records to "DNS only" (grey cloud) until
+;; GitHub has issued the HTTPS certificate. Then in GitHub: repo Settings ->
+;; Pages -> Custom domain = gpuscale.net -> Save, and enable "Enforce HTTPS"
+;; once the certificate is ready. Proxying (orange cloud) can be enabled
+;; afterwards if wanted, but plain DNS is the simplest reliable setup.
+
+$ORIGIN gpuscale.net.
+$TTL 300
+
+@       IN  A       185.199.108.153
+@       IN  A       185.199.109.153
+@       IN  A       185.199.110.153
+@       IN  A       185.199.111.153
+
+@       IN  AAAA    2606:50c0:8000::153
+@       IN  AAAA    2606:50c0:8001::153
+@       IN  AAAA    2606:50c0:8002::153
+@       IN  AAAA    2606:50c0:8003::153
+
+www     IN  CNAME   mahmoudyassine.github.io.

@@ -3,13 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GPUscale.net — LLM Capacity &amp; Dimensioning Studio</title>
+<title>GPUscale.net · LLM Capacity &amp; Dimensioning Studio</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+PHJlY3QgeD0iMTMiIHk9IjgiIHdpZHRoPSI0MiIgaGVpZ2h0PSIxMCIgcng9IjQiIGZpbGw9IiMxNjIzM0IiLz48cmVjdCB4PSIzIiB5PSIyMCIgd2lkdGg9IjYiIGhlaWdodD0iNy41IiByeD0iMS44IiBmaWxsPSIjOTRBM0I4Ii8+PHJlY3QgeD0iMyIgeT0iMzEiIHdpZHRoPSI2IiBoZWlnaHQ9IjcuNSIgcng9IjEuOCIgZmlsbD0iIzk0QTNCOCIvPjxyZWN0IHg9IjgiIHk9IjEyIiB3aWR0aD0iNDgiIGhlaWdodD0iMzQiIHJ4PSI4IiBmaWxsPSIjMEY3NjZFIi8+PGNpcmNsZSBjeD0iMjMuMCIgY3k9IjI4LjAiIHI9IjguMyIgZmlsbD0iIzE2MjMzQiIvPjxwb2x5Z29uIHBvaW50cz0iMjYuOTAsMjguMDcgMzAuNDYsMjcuMjIgMjkuNTAsMzEuNzUgMjYuNTksMjkuNTIiIGZpbGw9IiMyNjMzNDkiLz48cG9seWdvbiBwb2ludHM9IjI0Ljg5LDMxLjQxIDI3LjQxLDM0LjA3IDIzLjAwLDM1LjUwIDIzLjQ4LDMxLjg3IiBmaWxsPSIjMjYzMzQ5Ii8+PHBvbHlnb24gcG9pbnRzPSIyMC45OSwzMS4zNCAxOS45NSwzNC44NSAxNi41MCwzMS43NSAxOS44OSwzMC4zNSIgZmlsbD0iIzI2MzM0OSIvPjxwb2x5Z29uIHBvaW50cz0iMTkuMTAsMjcuOTMgMTUuNTQsMjguNzggMTYuNTAsMjQuMjUgMTkuNDEsMjYuNDgiIGZpbGw9IiMyNjMzNDkiLz48cG9seWdvbiBwb2ludHM9IjIxLjExLDI0LjU5IDE4LjU5LDIxLjkzIDIzLjAwLDIwLjUwIDIyLjUyLDI0LjEzIiBmaWxsPSIjMjYzMzQ5Ii8+PHBvbHlnb24gcG9pbnRzPSIyNS4wMSwyNC42NiAyNi4wNSwyMS4xNSAyOS41MCwyNC4yNSAyNi4xMSwyNS42NSIgZmlsbD0iIzI2MzM0OSIvPjxjaXJjbGUgY3g9IjIzLjAiIGN5PSIyOC4wIiByPSIzLjEiIGZpbGw9IiNGNTlFMEIiLz48Y2lyY2xlIGN4PSIyMS44NSIgY3k9IjI2Ljg1IiByPSIxLjA1IiBmaWxsPSIjRkZGRkZGIi8+PGNpcmNsZSBjeD0iNDEuMCIgY3k9IjI4LjAiIHI9IjguMyIgZmlsbD0iIzE2MjMzQiIvPjxwb2x5Z29uIHBvaW50cz0iNDQuNDcsMjkuNzcgNDguMDUsMzAuNTcgNDUuMTksMzQuMjIgNDMuNTYsMzAuOTQiIGZpbGw9IiMyNjMzNDkiLz48cG9seWdvbiBwb2ludHM9IjQxLjIwLDMxLjg5IDQyLjMwLDM1LjM5IDM3LjcxLDM0Ljc0IDM5LjczLDMxLjY5IiBmaWxsPSIjMjYzMzQ5Ii8+PHBvbHlnb24gcG9pbnRzPSIzNy43MywzMC4xMiAzNS4yNSwzMi44MiAzMy41MiwyOC41MiAzNy4xNywyOC43NCIgZmlsbD0iIzI2MzM0OSIvPjxwb2x5Z29uIHBvaW50cz0iMzcuNTMsMjYuMjMgMzMuOTUsMjUuNDMgMzYuODEsMjEuNzggMzguNDQsMjUuMDYiIGZpbGw9IiMyNjMzNDkiLz48cG9seWdvbiBwb2ludHM9IjQwLjgwLDI0LjExIDM5LjcwLDIwLjYxIDQ0LjI5LDIxLjI2IDQyLjI3LDI0LjMxIiBmaWxsPSIjMjYzMzQ5Ii8+PHBvbHlnb24gcG9pbnRzPSI0NC4yNywyNS44OCA0Ni43NSwyMy4xOCA0OC40OCwyNy40OCA0NC44MywyNy4yNiIgZmlsbD0iIzI2MzM0OSIvPjxjaXJjbGUgY3g9IjQxLjAiIGN5PSIyOC4wIiByPSIzLjEiIGZpbGw9IiNGNTlFMEIiLz48Y2lyY2xlIGN4PSIzOS44NSIgY3k9IjI2Ljg1IiByPSIxLjA1IiBmaWxsPSIjRkZGRkZGIi8+PHJlY3QgeD0iMTUiIHk9IjQ1IiB3aWR0aD0iMzQiIGhlaWdodD0iNS40IiByeD0iMi43IiBmaWxsPSIjMTYyMzNCIi8+PHJlY3QgeD0iMTcuNjAiIHk9IjUwIiB3aWR0aD0iNC4wIiBoZWlnaHQ9IjQuNiIgcng9IjEuMyIgZmlsbD0iI0Y1OUUwQiIvPjxyZWN0IHg9IjIyLjg1IiB5PSI1MCIgd2lkdGg9IjQuMCIgaGVpZ2h0PSI0LjYiIHJ4PSIxLjMiIGZpbGw9IiNGNTlFMEIiLz48cmVjdCB4PSIyOC4xMCIgeT0iNTAiIHdpZHRoPSI0LjAiIGhlaWdodD0iNC42IiByeD0iMS4zIiBmaWxsPSIjRjU5RTBCIi8+PHJlY3QgeD0iMzMuMzUiIHk9IjUwIiB3aWR0aD0iNC4wIiBoZWlnaHQ9IjQuNiIgcng9IjEuMyIgZmlsbD0iI0Y1OUUwQiIvPjxyZWN0IHg9IjQxLjEwIiB5PSI1MCIgd2lkdGg9IjQuMCIgaGVpZ2h0PSI0LjYiIHJ4PSIxLjMiIGZpbGw9IiNGNTlFMEIiLz48cmVjdCB4PSI0Ni4zNSIgeT0iNTAiIHdpZHRoPSI0LjAiIGhlaWdodD0iNC42IiByeD0iMS4zIiBmaWxsPSIjRjU5RTBCIi8+PC9zdmc+">
 <meta name="color-scheme" content="light dark">
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F6F7FA">
 <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0C1322">
-<meta name="description" content="GPUscale.net — LLM capacity &amp; dimensioning studio: model, precision, workload and hardware in; memory fit, latency, throughput and resilient topology out.">
-<meta property="og:title" content="GPUscale.net — LLM Capacity &amp; Dimensioning Studio">
+<meta name="description" content="GPUscale.net: size self-hosted LLM deployments. Model, precision, workload and hardware in; memory fit, latency, throughput and resilient topology out.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -83,6 +82,14 @@ header.top{display:flex;align-items:center;justify-content:space-between;gap:16p
 .btn.primary{background:var(--teal-strong);border-color:var(--teal-strong);color:#fff}
 .btn.primary:hover{filter:brightness(1.06)}
 .btn.icon-only{padding:8px 9px}
+.btn .gh-ico{fill:currentColor;stroke:none}
+.btn-group{display:inline-flex;background:var(--panel);border:1px solid var(--line);border-radius:9px;box-shadow:var(--shadow);overflow:hidden}
+.btn-group .btn{border:none;border-radius:0;box-shadow:none;border-right:1px solid var(--line-soft)}
+.btn-group .btn:last-child{border-right:none}
+.btn-group .btn:hover{background:var(--panel-2)}
+.btn-group .btn:focus-visible{outline-offset:-2px}
+.ver-chip{font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.04em;color:var(--teal-strong);background:var(--teal-soft);border:1px solid transparent;border-radius:20px;padding:2.5px 9px;margin-left:4px;transition:border-color .15s}
+.ver-chip:hover{border-color:var(--teal);text-decoration:none}
 
 /* ============ LAYOUT ============ */
 .console{display:grid;grid-template-columns:368px minmax(0,1fr);gap:20px;align-items:start}
@@ -137,11 +144,10 @@ select:disabled,input:disabled{opacity:.45;border-left-color:var(--line);cursor:
 .meta-card .mrow b{font-family:var(--mono);font-weight:500;color:var(--text)}
 .badges{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}
 .badge{font-family:var(--mono);font-size:9.5px;letter-spacing:.05em;padding:2.5px 8px;border-radius:20px;border:1px solid var(--line);color:var(--muted);background:var(--panel)}
-.badge.moe{border-color:rgba(79,99,194,.4);color:var(--violet)}
-.badge.mla{border-color:rgba(15,118,110,.45);color:var(--teal-strong)}
-.badge.ssm{border-color:rgba(79,99,194,.4);color:var(--violet)}
-.badge.warn{border-color:rgba(220,38,38,.4);color:var(--red)}
-.badge.est{border-color:rgba(217,119,6,.45);color:var(--amber)}
+.badge.moe,.badge.ssm{border-color:color-mix(in srgb,var(--violet) 45%,transparent);color:var(--violet)}
+.badge.mla{border-color:color-mix(in srgb,var(--teal-strong) 45%,transparent);color:var(--teal-strong)}
+.badge.warn{border-color:color-mix(in srgb,var(--red) 40%,transparent);color:var(--red)}
+.badge.est{border-color:color-mix(in srgb,var(--amber) 45%,transparent);color:var(--amber)}
 .badge.gcc{background:var(--teal-soft);border-color:transparent;color:var(--teal-strong)}
 details.drawer{border:1px dashed var(--line);border-radius:9px;padding:9px 11px;margin-top:6px}
 details.drawer summary{cursor:pointer;font-size:11.5px;font-weight:500;color:var(--muted);list-style:none;display:flex;justify-content:space-between}
@@ -178,7 +184,7 @@ details.drawer .drawer-body{margin-top:10px}
 .lg-tick{position:absolute;top:0;width:1px;height:6px;background:var(--faint);opacity:.6}
 .lg-tick.major{height:10px;opacity:1;background:var(--muted)}
 .lg-ticklab{position:absolute;top:13px;transform:translateX(-50%);font-family:var(--mono);font-size:9.5px;color:var(--faint);white-space:nowrap}
-.lg-wrap{position:relative;margin-top:24px}
+.lg-wrap{position:relative;margin-top:32px}
 .lg-track{position:relative;height:44px;background:var(--panel-2);border:1px solid var(--line);border-radius:8px;overflow:hidden}
 .lg-track .seg{position:absolute;top:0;bottom:0;transition:left .5s cubic-bezier(.22,1,.36,1),width .5s cubic-bezier(.22,1,.36,1)}
 .seg.weights{background:var(--seg-w)}
@@ -249,8 +255,21 @@ details.drawer .drawer-body{margin-top:10px}
 .ins.warn::before{content:'▲';color:var(--amber)}
 .ins.bad::before{content:'▲';color:var(--red)}
 
-footer.foot{margin-top:26px;color:var(--faint);font-size:11.5px;line-height:1.7;border-top:1px solid var(--line-soft);padding-top:14px;display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap}
-footer.foot .mono{font-family:var(--mono)}
+footer.foot{margin-top:34px;color:var(--muted);font-size:12px;line-height:1.7;border-top:1px solid var(--line-soft);padding-top:22px}
+footer.foot .mono{font-family:var(--mono);color:var(--text)}
+.foot-grid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr) minmax(0,1.2fr);gap:22px 40px;max-width:1080px}
+.f-col{display:flex;flex-direction:column;gap:7px;min-width:0}
+.f-col h2{font-family:var(--disp);font-size:11px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);margin-bottom:2px}
+.f-col a{color:var(--muted)}
+.f-col a:hover{color:var(--teal-strong);text-decoration:none}
+.f-brand p{max-width:420px}
+.f-brand-row{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.f-mark{width:22px;height:22px;color:var(--muted);flex:none}
+.f-name{font-family:var(--disp);font-weight:700;font-size:14.5px;color:var(--text)}
+.f-name .tld{color:var(--teal-strong)}
+.f-copy{color:var(--faint);font-size:11px;margin-top:4px}
+.f-fact{color:var(--muted)}
+@media(max-width:760px){.foot-grid{grid-template-columns:1fr;gap:18px}}
 
 #toast{position:fixed;right:20px;bottom:20px;z-index:50;display:flex;flex-direction:column;gap:8px}
 .toast{background:var(--text);color:var(--bg);font-size:12.5px;font-weight:500;border-radius:9px;padding:10px 15px;box-shadow:var(--shadow-lg);opacity:0;transform:translateY(6px);transition:opacity .2s,transform .2s}
@@ -291,6 +310,9 @@ footer.foot .mono{font-family:var(--mono)}
   .readout{gap:12px}
   .charts{display:grid;grid-template-columns:1fr 1fr;gap:12px}
   a::after{content:''}
+  footer.foot{margin-top:16px;padding-top:10px;font-size:9.5px}
+  .foot-grid{grid-template-columns:1.6fr 1.2fr;gap:6px 30px;max-width:none}
+  nav.f-col,.f-col h2,.f-mark{display:none !important}
 }
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{transition:none !important;animation:none !important}
@@ -323,22 +345,27 @@ footer.foot .mono{font-family:var(--mono)}
 
 <header class="top">
   <div class="brand">
-    <div class="brand-row"><svg class="logo-mark" viewBox="0 0 64 64" aria-hidden="true"><rect x="13" y="8" width="42" height="10" rx="4" fill="#16233B"/><rect x="3" y="20" width="6" height="7.5" rx="1.8" fill="var(--faint)"/><rect x="3" y="31" width="6" height="7.5" rx="1.8" fill="var(--faint)"/><rect x="8" y="12" width="48" height="34" rx="8" fill="var(--teal-strong)"/><circle cx="23.0" cy="28.0" r="8.3" fill="#16233B"/><polygon points="26.90,28.07 30.46,27.22 29.50,31.75 26.59,29.52" fill="#263349"/><polygon points="24.89,31.41 27.41,34.07 23.00,35.50 23.48,31.87" fill="#263349"/><polygon points="20.99,31.34 19.95,34.85 16.50,31.75 19.89,30.35" fill="#263349"/><polygon points="19.10,27.93 15.54,28.78 16.50,24.25 19.41,26.48" fill="#263349"/><polygon points="21.11,24.59 18.59,21.93 23.00,20.50 22.52,24.13" fill="#263349"/><polygon points="25.01,24.66 26.05,21.15 29.50,24.25 26.11,25.65" fill="#263349"/><circle cx="23.0" cy="28.0" r="3.1" fill="var(--amber-border)"/><circle cx="21.85" cy="26.85" r="1.05" fill="#FFFFFF"/><circle cx="41.0" cy="28.0" r="8.3" fill="#16233B"/><polygon points="44.47,29.77 48.05,30.57 45.19,34.22 43.56,30.94" fill="#263349"/><polygon points="41.20,31.89 42.30,35.39 37.71,34.74 39.73,31.69" fill="#263349"/><polygon points="37.73,30.12 35.25,32.82 33.52,28.52 37.17,28.74" fill="#263349"/><polygon points="37.53,26.23 33.95,25.43 36.81,21.78 38.44,25.06" fill="#263349"/><polygon points="40.80,24.11 39.70,20.61 44.29,21.26 42.27,24.31" fill="#263349"/><polygon points="44.27,25.88 46.75,23.18 48.48,27.48 44.83,27.26" fill="#263349"/><circle cx="41.0" cy="28.0" r="3.1" fill="var(--amber-border)"/><circle cx="39.85" cy="26.85" r="1.05" fill="#FFFFFF"/><rect x="15" y="45" width="34" height="5.4" rx="2.7" fill="#16233B"/><rect x="17.60" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/><rect x="22.85" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/><rect x="28.10" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/><rect x="33.35" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/><rect x="41.10" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/><rect x="46.35" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/></svg><h1>GPUscale<span class="tld">.net</span></h1></div>
-    <div class="sub">LLM capacity &amp; dimensioning studio — model, precision, workload and hardware in; memory fit, latency, throughput and resilient topology out.</div>
+    <div class="brand-row"><svg class="logo-mark" viewBox="0 0 64 64" aria-hidden="true"><rect x="13" y="8" width="42" height="10" rx="4" fill="#16233B"/><rect x="3" y="20" width="6" height="7.5" rx="1.8" fill="var(--faint)"/><rect x="3" y="31" width="6" height="7.5" rx="1.8" fill="var(--faint)"/><rect x="8" y="12" width="48" height="34" rx="8" fill="var(--teal-strong)"/><circle cx="23.0" cy="28.0" r="8.3" fill="#16233B"/><polygon points="26.90,28.07 30.46,27.22 29.50,31.75 26.59,29.52" fill="#263349"/><polygon points="24.89,31.41 27.41,34.07 23.00,35.50 23.48,31.87" fill="#263349"/><polygon points="20.99,31.34 19.95,34.85 16.50,31.75 19.89,30.35" fill="#263349"/><polygon points="19.10,27.93 15.54,28.78 16.50,24.25 19.41,26.48" fill="#263349"/><polygon points="21.11,24.59 18.59,21.93 23.00,20.50 22.52,24.13" fill="#263349"/><polygon points="25.01,24.66 26.05,21.15 29.50,24.25 26.11,25.65" fill="#263349"/><circle cx="23.0" cy="28.0" r="3.1" fill="var(--amber-border)"/><circle cx="21.85" cy="26.85" r="1.05" fill="#FFFFFF"/><circle cx="41.0" cy="28.0" r="8.3" fill="#16233B"/><polygon points="44.47,29.77 48.05,30.57 45.19,34.22 43.56,30.94" fill="#263349"/><polygon points="41.20,31.89 42.30,35.39 37.71,34.74 39.73,31.69" fill="#263349"/><polygon points="37.73,30.12 35.25,32.82 33.52,28.52 37.17,28.74" fill="#263349"/><polygon points="37.53,26.23 33.95,25.43 36.81,21.78 38.44,25.06" fill="#263349"/><polygon points="40.80,24.11 39.70,20.61 44.29,21.26 42.27,24.31" fill="#263349"/><polygon points="44.27,25.88 46.75,23.18 48.48,27.48 44.83,27.26" fill="#263349"/><circle cx="41.0" cy="28.0" r="3.1" fill="var(--amber-border)"/><circle cx="39.85" cy="26.85" r="1.05" fill="#FFFFFF"/><rect x="15" y="45" width="34" height="5.4" rx="2.7" fill="#16233B"/><rect x="17.60" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/><rect x="22.85" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/><rect x="28.10" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/><rect x="33.35" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/><rect x="41.10" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/><rect x="46.35" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/></svg><h1>GPUscale<span class="tld">.net</span></h1><a class="ver-chip" href="https://github.com/mahmoudyassine/gpu-scale-tool/releases" target="_blank" rel="noopener" title="Release notes" id="verChip">v4.7</a></div>
+    <div class="sub">LLM capacity &amp; dimensioning studio: model, precision, workload and hardware in; memory fit, latency, throughput and resilient topology out.</div>
   </div>
   <div class="top-right">
     <div class="scenario">
       <label for="scenarioName">Scenario</label>
       <input type="text" id="scenarioName" placeholder="Untitled scenario" maxlength="60">
     </div>
+    <div class="btn-group" role="group" aria-label="Import and export">
+      <button class="btn" id="btnImport" type="button" title="Import configuration JSON"><svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 21h16"/></svg><span class="lbl">Import</span></button>
+      <button class="btn" id="btnExport" type="button" title="Export configuration JSON"><svg viewBox="0 0 24 24"><path d="M12 15V3M7 8l5-5 5 5M4 21h16"/></svg><span class="lbl">JSON</span></button>
+      <button class="btn" id="btnXls" type="button" title="Save as Excel template with live formulas"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></svg><span class="lbl">XLS</span></button>
+      <button class="btn" id="btnPdf" type="button" title="Save the report as PDF (print dialog)"><svg viewBox="0 0 24 24"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v7H6z"/></svg><span class="lbl">PDF</span></button>
+    </div>
     <button class="btn icon-only" id="btnTheme" type="button" title="Toggle light / dark" aria-label="Toggle theme">
       <svg viewBox="0 0 24 24" id="icoTheme"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
     </button>
-    <button class="btn" id="btnImport" type="button" title="Import configuration JSON"><svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 21h16"/></svg><span class="lbl">Import</span></button>
-    <button class="btn" id="btnExport" type="button" title="Export configuration JSON"><svg viewBox="0 0 24 24"><path d="M12 15V3M7 8l5-5 5 5M4 21h16"/></svg><span class="lbl">JSON</span></button>
-    <button class="btn" id="btnXls" type="button" title="Save as Excel template with live formulas"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></svg><span class="lbl">XLS</span></button>
-    <button class="btn" id="btnPdf" type="button" title="Save the report as PDF (print dialog)"><svg viewBox="0 0 24 24"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v7H6z"/></svg><span class="lbl">PDF</span></button>
-    <button class="btn" id="btnReset" type="button" title="Reset to defaults"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5"/></svg><span class="lbl">Reset</span></button>
+    <a class="btn icon-only" href="https://github.com/mahmoudyassine/gpu-scale-tool" target="_blank" rel="noopener" title="View source on GitHub" aria-label="GitHub repository">
+      <svg viewBox="0 0 16 16" class="gh-ico" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+    </a>
+    <button class="btn icon-only" id="btnReset" type="button" title="Reset to defaults" aria-label="Reset to defaults"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5"/></svg></button>
     <input type="file" id="fileImport" accept=".json,application/json" style="display:none">
   </div>
 </header>
@@ -355,13 +382,13 @@ footer.foot .mono{font-family:var(--mono)}
       <select id="selModel"></select>
       <div class="f-help" id="hModel">Architecture geometry drives every estimate: total params size the weights, active params drive compute and decode reads, and the effective KV heads &times; head dim encode each model's real cache cost (MLA, sparse and SSM hybrids use sheet-compatible effective values).</div>
     </div>
-    <div class="toggle-row"><input type="checkbox" id="chkCustom"><label for="chkCustom">Custom model — enter geometry manually</label></div>
+    <div class="toggle-row"><input type="checkbox" id="chkCustom"><label for="chkCustom">Custom model · enter geometry manually</label></div>
     <div id="customBox" style="display:none;margin-top:10px">
       <div class="grid2">
-        <div class="field"><div class="f-head"><label>Total params</label><span class="unit">B</span></div><input type="number" id="cusParams" value="70" min="0.1" step="0.1" title="All weights that must sit in VRAM — for MoE, every expert."></div>
-        <div class="field"><div class="f-head"><label>Active params</label><span class="unit">B</span></div><input type="number" id="cusActive" value="70" min="0.1" step="0.1" title="Parameters used per token — drives prefill compute and decode weight reads."></div>
-        <div class="field"><div class="f-head"><label>Hidden dim</label></div><input type="number" id="cusHidden" value="8192" min="64" step="64" title="Model width — drives the activation workspace estimate."></div>
-        <div class="field"><div class="f-head"><label>Layers</label></div><input type="number" id="cusLayers" value="80" min="1" title="Transformer blocks — KV cache scales linearly with layers."></div>
+        <div class="field"><div class="f-head"><label>Total params</label><span class="unit">B</span></div><input type="number" id="cusParams" value="70" min="0.1" step="0.1" title="All weights that must sit in VRAM; for MoE, every expert."></div>
+        <div class="field"><div class="f-head"><label>Active params</label><span class="unit">B</span></div><input type="number" id="cusActive" value="70" min="0.1" step="0.1" title="Parameters used per token; drives prefill compute and decode weight reads."></div>
+        <div class="field"><div class="f-head"><label>Hidden dim</label></div><input type="number" id="cusHidden" value="8192" min="64" step="64" title="Model width; drives the activation workspace estimate."></div>
+        <div class="field"><div class="f-head"><label>Layers</label></div><input type="number" id="cusLayers" value="80" min="1" title="Transformer blocks; KV cache scales linearly with layers."></div>
         <div class="field"><div class="f-head"><label>KV heads</label></div><input type="number" id="cusKvh" value="8" min="1" title="Effective KV heads (GQA groups; 1 for MLA-style compressed caches)."></div>
         <div class="field"><div class="f-head"><label>Head dim</label></div><input type="number" id="cusHdim" value="128" min="8" title="Effective per-head dimension (use the compressed-latent equivalent for MLA)."></div>
       </div>
@@ -401,7 +428,7 @@ footer.foot .mono{font-family:var(--mono)}
       <select id="selReason">
         <option>None</option><option>Light reasoning</option><option>Heavy reasoning</option><option>Custom</option>
       </select>
-      <div class="f-help" id="hReason">Thinking tokens generated before the visible answer. They add decode time, and — if the toggle below is on — extend the KV footprint too.<span class="typ">Light ≈ 2,000 tok · Heavy ≈ 8,000 tok</span></div>
+      <div class="f-help" id="hReason">Thinking tokens generated before the visible answer. They add decode time and, if the toggle below is on, extend the KV footprint too.<span class="typ">Light ≈ 2,000 tok · Heavy ≈ 8,000 tok</span></div>
     </div>
     <div id="m_inReasonTok"></div>
     <div class="toggle-row" style="margin-bottom:12px"><input type="checkbox" id="chkExtend" checked><label for="chkExtend">Reasoning tokens extend the KV cache</label><button class="info" data-help="hExtend" aria-expanded="false" type="button">i</button></div>
@@ -414,10 +441,10 @@ footer.foot .mono{font-family:var(--mono)}
         <option value="running">Running batch only (vLLM-style admission)</option>
         <option value="all">All active sessions stay in KV</option>
       </select>
-      <div class="f-help" id="hPolicy">Running batch: only admitted sequences hold KV; the rest queue — the modern default. All sessions: every concurrent call keeps its cache resident (lowest latency variance, far more memory).</div>
+      <div class="f-help" id="hPolicy">Running batch: only admitted sequences hold KV and the rest queue (the modern default). All sessions: every concurrent call keeps its cache resident (lowest latency variance, far more memory).</div>
     </div>
     <details class="drawer">
-      <summary>Concurrency estimator — Little's law</summary>
+      <summary>Concurrency estimator · Little's law</summary>
       <div class="drawer-body">
         <div class="grid2">
           <div class="field"><div class="f-head"><label>Peak sessions</label></div><input type="number" id="ccSessions" value="200" min="1" title="Users with the app open during the busiest hour."></div>
@@ -446,13 +473,13 @@ footer.foot .mono{font-family:var(--mono)}
     <div class="field">
       <div class="f-head"><label for="selResil">Resilience model</label><button class="info" data-help="hResil" aria-expanded="false" type="button">i</button></div>
       <select id="selResil">
-        <option value="n">N — capacity only, no redundancy</option>
-        <option value="n1">N+1 — one standby worker</option>
-        <option value="nn">N+N — in-site mirror (2N)</option>
-        <option value="dr">DR — remote standby site (2N, active/passive)</option>
-        <option value="nndr">N+N + DR — active/active twin sites (4N)</option>
+        <option value="n">N · capacity only, no redundancy</option>
+        <option value="n1">N+1 · one standby worker</option>
+        <option value="nn">N+N · in-site mirror (2N)</option>
+        <option value="dr">DR · remote standby site (2N, active/passive)</option>
+        <option value="nndr">N+N + DR · active/active twin sites (4N)</option>
       </select>
-      <div class="f-help" id="hResil">Performance is sized on the N load-bearing workers; redundancy adds procurement, not throughput. N+1 survives one node failure. N+N duplicates the system in-site. DR mirrors it to a standby site. N+N + DR — a popular enterprise pattern — runs N+N in each of two active/active sites, surviving a full site loss while both normally share traffic.</div>
+      <div class="f-help" id="hResil">Performance is sized on the N load-bearing workers; redundancy adds procurement, not throughput. N+1 survives one node failure. N+N duplicates the system in-site. DR mirrors it to a standby site. N+N + DR, a popular enterprise pattern, runs N+N in each of two active/active sites, surviving a full site loss while both normally share traffic.</div>
     </div>
     <div class="meta-card" id="gpuMeta"></div>
   </section>
@@ -516,7 +543,7 @@ footer.foot .mono{font-family:var(--mono)}
   </section>
 
   <section class="panel topo-box">
-    <div class="p-head"><span class="p-title"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="2.4"/><circle cx="5" cy="19" r="2.4"/><circle cx="19" cy="19" r="2.4"/><path d="M12 7.4v3.6M12 11 6.6 17.1M12 11l5.4 6.1"/></svg>Deployment topology — workers &amp; GPU utilization</span><span class="p-note" id="topoNote"></span></div>
+    <div class="p-head"><span class="p-title"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="2.4"/><circle cx="5" cy="19" r="2.4"/><circle cx="19" cy="19" r="2.4"/><path d="M12 7.4v3.6M12 11 6.6 17.1M12 11l5.4 6.1"/></svg>Deployment topology · workers &amp; GPU utilization</span><span class="p-note" id="topoNote"></span></div>
     <div id="topo"></div>
     <div class="topo-legend" id="topoLegend"></div>
     <div class="topo-sum" id="topoSum"></div>
@@ -558,25 +585,43 @@ footer.foot .mono{font-family:var(--mono)}
 </div>
 
 <footer class="foot">
-  <span>Peak estimates — production typically achieves 70–90%. Validate with vLLM bench / GenAI-Perf before commitments.</span>
-  <span>Engine v22 · library <span class="mono" id="libVer">—</span> · scripting at <span class="mono">window.GPUscale</span> · <a class="gh-link" href="https://github.com/mahmoudyassine/gpu-scale-tool" target="_blank" rel="noopener"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>mahmoudyassine/gpu-scale-tool</a></span>
-  <span>Open-source project · MIT license · contributions welcome</span>
+  <div class="foot-grid">
+    <div class="f-col f-brand">
+      <div class="f-brand-row"><svg class="f-mark" viewBox="0 0 64 64" aria-hidden="true"><rect x="8" y="12" width="48" height="34" rx="8" fill="currentColor" opacity=".85"/><circle cx="23" cy="28" r="8.3" fill="var(--panel)"/><circle cx="41" cy="28" r="8.3" fill="var(--panel)"/><circle cx="23" cy="28" r="3.1" fill="currentColor"/><circle cx="41" cy="28" r="3.1" fill="currentColor"/><rect x="15" y="45" width="34" height="5.4" rx="2.7" fill="var(--panel)"/></svg><span class="f-name">GPUscale<span class="tld">.net</span></span></div>
+      <p>Capacity &amp; dimensioning studio for self-hosted LLM deployments. All figures are peak estimates; production typically achieves 70–90%. Validate with vLLM bench / GenAI-Perf before commitments.</p>
+      <p class="f-copy">© 2026 GPUscale.net · Released under the <a href="https://github.com/mahmoudyassine/gpu-scale-tool/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a></p>
+    </div>
+    <nav class="f-col" aria-label="Project links">
+      <h2>Project</h2>
+      <a class="gh-link" href="https://github.com/mahmoudyassine/gpu-scale-tool" target="_blank" rel="noopener"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>Source on GitHub</a>
+      <a href="https://github.com/mahmoudyassine/gpu-scale-tool/releases" target="_blank" rel="noopener">Releases &amp; changelog</a>
+      <a href="https://github.com/mahmoudyassine/gpu-scale-tool/issues" target="_blank" rel="noopener">Report an issue</a>
+      <a href="dist/gpuscale_standalone.html" download="gpuscale_standalone.html">Portable single-file build</a>
+    </nav>
+    <div class="f-col" aria-label="Studio internals">
+      <h2>Studio</h2>
+      <span class="f-fact">Version <span class="mono" id="appVer">—</span></span>
+      <span class="f-fact">Engine <span class="mono" id="engVer">—</span> · library <span class="mono" id="libVer">—</span></span>
+      <span class="f-fact">Scripting API at <span class="mono">window.GPUscale</span></span>
+      <span class="f-fact">Static and dependency-free: runs entirely in your browser; nothing is uploaded.</span>
+    </div>
+  </div>
 </footer>
 </div>
 
 <div id="toast" aria-live="polite"></div>
 
 <script>
-// GPUscale.net — model library (params B · active B · hidden · layers · effective KV heads × head dim · max ctx)
+// GPUscale.net · model library (params B · active B · hidden · layers · effective KV heads × head dim · max ctx)
 // One entry per line. Field reference: README.md → “Data schemas”.
 window.GPUSCALE_DATA = window.GPUSCALE_DATA || {};
-window.GPUSCALE_DATA.meta = {"library":"v23","engine":22,"updated":"2026-07-18"};
+window.GPUSCALE_DATA.meta = {"library":"v24","engine":23,"updated":"2026-07-18"};
 window.GPUSCALE_DATA.models = [
 {"name":"Llama 3.1 8B","params":8.0,"active":8.0,"hidden":4096,"layers":32,"kvHeads":8,"headDim":128,"ctx":131072,"experts":null,"activeExperts":null,"arch":"Dense (GQA)","dev":"Meta","url":"https://ai.meta.com/blog/meta-llama-3-1/"},
 {"name":"Llama 3.1 70B","params":70.0,"active":70.0,"hidden":8192,"layers":80,"kvHeads":8,"headDim":128,"ctx":131072,"experts":null,"activeExperts":null,"arch":"Dense (GQA)","dev":"Meta","url":"https://ai.meta.com/blog/meta-llama-3-1/"},
-{"name":"Llama 3.1 405B","params":405.0,"active":405.0,"hidden":16384,"layers":126,"kvHeads":16,"headDim":128,"ctx":131072,"experts":null,"activeExperts":null,"arch":"Dense (GQA)","dev":"Meta","url":"https://ai.meta.com/blog/meta-llama-3-1/"},
-{"name":"Llama 4 Scout 109B (MoE)","params":109.0,"active":17.0,"hidden":5120,"layers":48,"kvHeads":8,"headDim":256,"ctx":10485760,"experts":16,"activeExperts":1,"arch":"MoE (16E/1A)","dev":"Meta","url":"https://ai.meta.com/blog/llama-4-multimodal-intelligence/"},
-{"name":"Llama 4 Maverick 400B (MoE)","params":400.0,"active":17.0,"hidden":8192,"layers":48,"kvHeads":8,"headDim":256,"ctx":1048576,"experts":128,"activeExperts":2,"arch":"MoE (128E/2A)","dev":"Meta","url":"https://ai.meta.com/blog/llama-4-multimodal-intelligence/"},
+{"name":"Llama 3.1 405B","params":405.0,"active":405.0,"hidden":16384,"layers":126,"kvHeads":8,"headDim":128,"ctx":131072,"experts":null,"activeExperts":null,"arch":"Dense (GQA)","dev":"Meta","url":"https://ai.meta.com/blog/meta-llama-3-1/"},
+{"name":"Llama 4 Scout 109B (MoE)","params":109.0,"active":17.0,"hidden":5120,"layers":48,"kvHeads":8,"headDim":128,"ctx":10485760,"experts":16,"activeExperts":1,"arch":"MoE (16E/1A)","dev":"Meta","url":"https://ai.meta.com/blog/llama-4-multimodal-intelligence/"},
+{"name":"Llama 4 Maverick 400B (MoE)","params":400.0,"active":17.0,"hidden":5120,"layers":48,"kvHeads":8,"headDim":128,"ctx":1048576,"experts":128,"activeExperts":2,"arch":"MoE (128E/2A)","dev":"Meta","url":"https://ai.meta.com/blog/llama-4-multimodal-intelligence/"},
 {"name":"Qwen3 0.6B","params":0.6,"active":0.6,"hidden":1024,"layers":28,"kvHeads":8,"headDim":128,"ctx":32768,"experts":null,"activeExperts":null,"arch":"Dense (GQA)","dev":"Alibaba Cloud","url":"https://qwenlm.github.io/blog/qwen3/"},
 {"name":"Qwen3 1.7B","params":1.7,"active":1.7,"hidden":2048,"layers":28,"kvHeads":8,"headDim":128,"ctx":32768,"experts":null,"activeExperts":null,"arch":"Dense (GQA)","dev":"Alibaba Cloud","url":"https://qwenlm.github.io/blog/qwen3/"},
 {"name":"Qwen3 4B","params":4.0,"active":4.0,"hidden":2560,"layers":36,"kvHeads":8,"headDim":128,"ctx":32768,"experts":null,"activeExperts":null,"arch":"Dense (GQA)","dev":"Alibaba Cloud","url":"https://qwenlm.github.io/blog/qwen3/"},
@@ -606,10 +651,10 @@ window.GPUSCALE_DATA.models = [
 {"name":"Gemma 2 2B","params":2.0,"active":2.0,"hidden":2304,"layers":26,"kvHeads":4,"headDim":256,"ctx":8192,"experts":null,"activeExperts":null,"arch":"Dense (GQA+SWA)","dev":"Google","url":"https://ai.google.dev/gemma/docs/core/model_card_2"},
 {"name":"Gemma 2 9B","params":9.0,"active":9.0,"hidden":3584,"layers":42,"kvHeads":8,"headDim":256,"ctx":8192,"experts":null,"activeExperts":null,"arch":"Dense (GQA+SWA)","dev":"Google","url":"https://ai.google.dev/gemma/docs/core/model_card_2"},
 {"name":"Gemma 2 27B","params":27.0,"active":27.0,"hidden":4608,"layers":46,"kvHeads":16,"headDim":128,"ctx":8192,"experts":null,"activeExperts":null,"arch":"Dense (GQA+SWA)","dev":"Google","url":"https://ai.google.dev/gemma/docs/core/model_card_2"},
-{"name":"Gemma 3 1B","params":1.0,"active":1.0,"hidden":1152,"layers":26,"kvHeads":1,"headDim":256,"ctx":32768,"experts":null,"activeExperts":null,"arch":"Dense (GQA)","dev":"Google","url":"https://ai.google.dev/gemma/docs/core/model_card_3"},
-{"name":"Gemma 3 4B","params":4.3,"active":4.3,"hidden":2560,"layers":34,"kvHeads":4,"headDim":256,"ctx":131072,"experts":null,"activeExperts":null,"arch":"Dense (GQA)","dev":"Google","url":"https://ai.google.dev/gemma/docs/core/model_card_3"},
-{"name":"Gemma 3 12B","params":12.2,"active":12.2,"hidden":3840,"layers":48,"kvHeads":8,"headDim":256,"ctx":131072,"experts":null,"activeExperts":null,"arch":"Dense (GQA)","dev":"Google","url":"https://ai.google.dev/gemma/docs/core/model_card_3"},
-{"name":"Gemma 3 27B","params":27.4,"active":27.4,"hidden":5376,"layers":62,"kvHeads":16,"headDim":128,"ctx":131072,"experts":null,"activeExperts":null,"arch":"Dense (GQA)","dev":"Google","url":"https://ai.google.dev/gemma/docs/core/model_card_3"},
+{"name":"Gemma 3 1B","params":1.0,"active":1.0,"hidden":1152,"layers":26,"kvHeads":1,"headDim":256,"ctx":32768,"experts":null,"activeExperts":null,"arch":"Dense (GQA+SWA 5:1)","dev":"Google","url":"https://ai.google.dev/gemma/docs/core/model_card_3"},
+{"name":"Gemma 3 4B","params":4.3,"active":4.3,"hidden":2560,"layers":34,"kvHeads":4,"headDim":256,"ctx":131072,"experts":null,"activeExperts":null,"arch":"Dense (GQA+SWA 5:1)","dev":"Google","url":"https://ai.google.dev/gemma/docs/core/model_card_3"},
+{"name":"Gemma 3 12B","params":12.2,"active":12.2,"hidden":3840,"layers":48,"kvHeads":8,"headDim":256,"ctx":131072,"experts":null,"activeExperts":null,"arch":"Dense (GQA+SWA 5:1)","dev":"Google","url":"https://ai.google.dev/gemma/docs/core/model_card_3"},
+{"name":"Gemma 3 27B","params":27.4,"active":27.4,"hidden":5376,"layers":62,"kvHeads":16,"headDim":128,"ctx":131072,"experts":null,"activeExperts":null,"arch":"Dense (GQA+SWA 5:1)","dev":"Google","url":"https://ai.google.dev/gemma/docs/core/model_card_3"},
 {"name":"Gemma 4 E2B","params":5.1,"active":2.3,"hidden":1536,"layers":35,"kvHeads":1,"headDim":256,"ctx":131072,"experts":null,"activeExperts":null,"arch":"Dense (shared KV approx)","dev":"Google","url":"https://ai.google.dev/gemma/docs/core/model_card_4"},
 {"name":"Gemma 4 E4B","params":8.0,"active":4.5,"hidden":2560,"layers":42,"kvHeads":2,"headDim":256,"ctx":131072,"experts":null,"activeExperts":null,"arch":"Dense (shared KV approx)","dev":"Google","url":"https://ai.google.dev/gemma/docs/core/model_card_4"},
 {"name":"Gemma 4 26B-A4B (MoE)","params":25.2,"active":3.8,"hidden":2816,"layers":30,"kvHeads":8,"headDim":256,"ctx":262144,"experts":129,"activeExperts":9,"arch":"MoE (129E/9A; shared KV approx)","dev":"Google","url":"https://ai.google.dev/gemma/docs/core/model_card_4"},
@@ -618,7 +663,7 @@ window.GPUSCALE_DATA.models = [
 {"name":"Phi-4 14B","params":14.0,"active":14.0,"hidden":5120,"layers":40,"kvHeads":10,"headDim":128,"ctx":16384,"experts":null,"activeExperts":null,"arch":"Dense (GQA)","dev":"Microsoft","url":"https://huggingface.co/microsoft/phi-4"},
 {"name":"GPT-OSS 20B","params":21.0,"active":3.6,"hidden":2880,"layers":24,"kvHeads":8,"headDim":64,"ctx":131072,"experts":32,"activeExperts":4,"arch":"MoE (32E/4A, GQA)","dev":"OpenAI","url":"https://openai.com/index/gpt-oss-model-card/"},
 {"name":"GPT-OSS 120B","params":117.0,"active":5.1,"hidden":2880,"layers":36,"kvHeads":8,"headDim":64,"ctx":131072,"experts":128,"activeExperts":4,"arch":"MoE (128E/4A, GQA)","dev":"OpenAI","url":"https://openai.com/index/gpt-oss-model-card/"},
-{"name":"Qwen3-Next 80B-A3B (MoE, hybrid)","params":80.0,"active":3.9,"hidden":2048,"layers":48,"kvHeads":8,"headDim":128,"ctx":262144,"experts":512,"activeExperts":10,"arch":"MoE (512E/10A, hybrid attn)","dev":"Alibaba","url":"https://huggingface.co/Qwen/Qwen3-Next-80B-A3B-Instruct"},
+{"name":"Qwen3-Next 80B-A3B (MoE, hybrid)","params":80.0,"active":3.9,"hidden":2048,"layers":48,"kvHeads":2,"headDim":64,"ctx":262144,"experts":512,"activeExperts":10,"arch":"MoE (512E/10A, hybrid attn)","dev":"Alibaba","url":"https://huggingface.co/Qwen/Qwen3-Next-80B-A3B-Instruct"},
 {"name":"Qwen3-Coder 480B-A35B (MoE)","params":480.0,"active":35.0,"hidden":6144,"layers":62,"kvHeads":8,"headDim":128,"ctx":262144,"experts":160,"activeExperts":8,"arch":"MoE (160E/8A, GQA)","dev":"Alibaba","url":"https://huggingface.co/Qwen/Qwen3-Coder-480B-A35B-Instruct"},
 {"name":"DeepSeek-V3.1 671B (MoE)","params":671.0,"active":37.0,"hidden":7168,"layers":61,"kvHeads":1,"headDim":288,"ctx":131072,"experts":257,"activeExperts":9,"arch":"MoE (257E/9A, MLA eff.)","dev":"DeepSeek","url":"https://huggingface.co/deepseek-ai/DeepSeek-V3.1"},
 {"name":"DeepSeek-V3.2 671B (MoE, DSA)","params":671.0,"active":37.0,"hidden":7168,"layers":61,"kvHeads":1,"headDim":288,"ctx":131072,"experts":257,"activeExperts":9,"arch":"MoE (DSA sparse attn, MLA eff.)","dev":"DeepSeek","url":"https://huggingface.co/deepseek-ai/DeepSeek-V3.2"},
@@ -639,35 +684,35 @@ window.GPUSCALE_DATA.models = [
 {"name":"Nemotron 3 Ultra 550B-A55B (MoE)","params":550.0,"active":55.0,"hidden":8192,"layers":64,"kvHeads":2,"headDim":128,"ctx":1048576,"experts":null,"activeExperts":null,"arch":"MoE hybrid Mamba+LatentMoE (est. cfg)","dev":"NVIDIA","url":"https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-BF16"},
 {"name":"Falcon-H1-34B","params":34.0,"active":34.0,"hidden":5120,"layers":72,"kvHeads":4,"headDim":128,"ctx":262144,"experts":null,"activeExperts":null,"arch":"Dense hybrid Attn+SSM (GQA-4)","dev":"TII (UAE)","url":"https://huggingface.co/tiiuae/Falcon-H1-34B-Instruct"},
 {"name":"Falcon3-10B","params":10.0,"active":10.0,"hidden":3072,"layers":40,"kvHeads":4,"headDim":256,"ctx":32768,"experts":null,"activeExperts":null,"arch":"Dense (GQA)","dev":"TII (UAE)","url":"https://huggingface.co/tiiuae/Falcon3-10B-Instruct"},
-{"name":"Jais-family-30B (Arabic, 16K)","params":30.0,"active":30.0,"hidden":7168,"layers":48,"kvHeads":56,"headDim":128,"ctx":16384,"experts":null,"activeExperts":null,"arch":"Dense (MHA+ALiBi) — heavy KV","dev":"Inception / G42 (UAE)","url":"https://huggingface.co/inceptionai/jais-family-30b-16k"},
+{"name":"Jais-family-30B (Arabic, 16K)","params":30.0,"active":30.0,"hidden":7168,"layers":48,"kvHeads":56,"headDim":128,"ctx":16384,"experts":null,"activeExperts":null,"arch":"Dense (MHA+ALiBi) · heavy KV","dev":"Inception / G42 (UAE)","url":"https://huggingface.co/inceptionai/jais-family-30b-16k"},
 {"name":"ALLaM-7B (Arabic)","params":7.0,"active":7.0,"hidden":4096,"layers":32,"kvHeads":32,"headDim":128,"ctx":4096,"experts":null,"activeExperts":null,"arch":"Dense (MHA, Llama-2 base)","dev":"SDAIA (KSA)","url":"https://huggingface.co/ALLaM-AI/ALLaM-7B-Instruct-preview"},
 {"name":"Fanar-1-9B (Arabic, Qatar)","params":9.2,"active":9.2,"hidden":3584,"layers":42,"kvHeads":8,"headDim":256,"ctx":8192,"experts":null,"activeExperts":null,"arch":"Dense (GQA+SWA, Gemma2 base)","dev":"QCRI (Qatar)","url":"https://huggingface.co/QCRI/Fanar-1-9B-Instruct"},
 {"name":"K2-Think 32B (reasoning)","params":32.8,"active":32.8,"hidden":5120,"layers":64,"kvHeads":8,"headDim":128,"ctx":32768,"experts":null,"activeExperts":null,"arch":"Dense (GQA, Qwen2.5 base)","dev":"MBZUAI / G42 (UAE)","url":"https://huggingface.co/LLM360/K2-Think"},
 {"name":"Llama 3.2 3B","params":3.2,"active":3.2,"hidden":3072,"layers":28,"kvHeads":8,"headDim":128,"ctx":131072,"experts":null,"activeExperts":null,"arch":"Dense (GQA)","dev":"Meta","url":"https://huggingface.co/meta-llama/Llama-3.2-3B-Instruct"},
 {"name":"Kimi K3 2.8T-A50B (MoE)","params":2800.0,"active":50.0,"hidden":9216,"layers":80,"kvHeads":1,"headDim":72,"ctx":1000000,"experts":896,"activeExperts":16,"arch":"MoE (896E/16A, KDA hybrid + MLA eff., est. cfg)","dev":"Moonshot AI","url":"https://huggingface.co/blog/ResterChed/kimi-k3-model-overview-mxfp4-quantization-open-wei"},
-{"name":"Jais-2-70B (Arabic)","params":70.0,"active":70.0,"hidden":8192,"layers":80,"kvHeads":8,"headDim":128,"ctx":32768,"experts":null,"activeExperts":null,"arch":"Dense (GQA, est. cfg) — from scratch, Cerebras-trained","dev":"Inception / G42 (UAE)","url":"https://huggingface.co/inceptionai"},
-{"name":"Jais-2-8B (Arabic)","params":8.0,"active":8.0,"hidden":4096,"layers":32,"kvHeads":8,"headDim":128,"ctx":32768,"experts":null,"activeExperts":null,"arch":"Dense (GQA, est. cfg) — from scratch, Cerebras-trained","dev":"Inception / G42 (UAE)","url":"https://huggingface.co/inceptionai"},
+{"name":"Jais-2-70B (Arabic)","params":70.0,"active":70.0,"hidden":8192,"layers":80,"kvHeads":8,"headDim":128,"ctx":32768,"experts":null,"activeExperts":null,"arch":"Dense (GQA, est. cfg) · from scratch, Cerebras-trained","dev":"Inception / G42 (UAE)","url":"https://huggingface.co/inceptionai"},
+{"name":"Jais-2-8B (Arabic)","params":8.0,"active":8.0,"hidden":4096,"layers":32,"kvHeads":8,"headDim":128,"ctx":32768,"experts":null,"activeExperts":null,"arch":"Dense (GQA, est. cfg) · from scratch, Cerebras-trained","dev":"Inception / G42 (UAE)","url":"https://huggingface.co/inceptionai"},
 {"name":"Jais-adapted-70B (Arabic)","params":70.0,"active":70.0,"hidden":8192,"layers":80,"kvHeads":8,"headDim":128,"ctx":4096,"experts":null,"activeExperts":null,"arch":"Dense (GQA, Llama-2 adapted)","dev":"Inception / G42 (UAE)","url":"https://huggingface.co/inceptionai/jais-adapted-70b"},
-{"name":"Fanar-2-27B (Arabic, Qatar)","params":27.4,"active":27.4,"hidden":5376,"layers":62,"kvHeads":16,"headDim":128,"ctx":131072,"experts":null,"activeExperts":null,"arch":"Dense (GQA) — Gemma-3-27B continual pretrain","dev":"QCRI (Qatar)","url":"https://huggingface.co/QCRI/Fanar-2-27B-Instruct"},
-{"name":"ALLaM-34B (Arabic)","params":34.0,"active":34.0,"hidden":7168,"layers":60,"kvHeads":8,"headDim":128,"ctx":32768,"experts":null,"activeExperts":null,"arch":"Dense (GQA, est. cfg) — from scratch","dev":"HUMAIN (KSA)","url":"https://www.middleeastainews.com/p/humain-chat-live-allam-34b-llm"},
-{"name":"Falcon-H1-Arabic-34B","params":34.0,"active":34.0,"hidden":5120,"layers":72,"kvHeads":4,"headDim":128,"ctx":262144,"experts":null,"activeExperts":null,"arch":"Dense hybrid Attn+SSM (GQA-4) — OALL #1","dev":"TII (UAE)","url":"https://huggingface.co/blog/tiiuae/falcon-h1-arabic"},
-{"name":"Falcon-Arabic-7B","params":7.0,"active":7.0,"hidden":3072,"layers":28,"kvHeads":4,"headDim":256,"ctx":32768,"experts":null,"activeExperts":null,"arch":"Dense (GQA) — Falcon3-7B base","dev":"TII (UAE)","url":"https://www.tii.ae/news/middle-easts-leading-ai-powerhouse-tii-launches-two-new-ai-models-falcon-arabic-first-arabic"},
-{"name":"SILMA-9B (Arabic)","params":9.0,"active":9.0,"hidden":3584,"layers":42,"kvHeads":8,"headDim":256,"ctx":8192,"experts":null,"activeExperts":null,"arch":"Dense (GQA+SWA) — Gemma-2-9B base","dev":"SILMA AI (KSA)","url":"https://huggingface.co/silma-ai/SILMA-9B-Instruct-v1.0"},
-{"name":"Cohere Command A+ 218B-A25B (MoE)","params":218.0,"active":25.0,"hidden":6144,"layers":48,"kvHeads":8,"headDim":128,"ctx":131072,"experts":null,"activeExperts":null,"arch":"MoE (25B active, est. cfg) — Apache 2.0, vision-in","dev":"Cohere","url":"https://docs.cohere.com/docs/command-a-plus"},
-{"name":"Cohere Command A Reasoning 111B","params":111.0,"active":111.0,"hidden":12288,"layers":64,"kvHeads":8,"headDim":128,"ctx":262144,"experts":null,"activeExperts":null,"arch":"Dense (hybrid SWA, est. cfg) — reasoning","dev":"Cohere","url":"https://docs.cohere.com/docs/models"},
+{"name":"Fanar-2-27B (Arabic, Qatar)","params":27.4,"active":27.4,"hidden":5376,"layers":62,"kvHeads":16,"headDim":128,"ctx":131072,"experts":null,"activeExperts":null,"arch":"Dense (GQA) · Gemma-3-27B continual pretrain","dev":"QCRI (Qatar)","url":"https://huggingface.co/QCRI/Fanar-2-27B-Instruct"},
+{"name":"ALLaM-34B (Arabic)","params":34.0,"active":34.0,"hidden":7168,"layers":60,"kvHeads":8,"headDim":128,"ctx":32768,"experts":null,"activeExperts":null,"arch":"Dense (GQA, est. cfg) · from scratch","dev":"HUMAIN (KSA)","url":"https://www.middleeastainews.com/p/humain-chat-live-allam-34b-llm"},
+{"name":"Falcon-H1-Arabic-34B","params":34.0,"active":34.0,"hidden":5120,"layers":72,"kvHeads":4,"headDim":128,"ctx":262144,"experts":null,"activeExperts":null,"arch":"Dense hybrid Attn+SSM (GQA-4) · OALL #1","dev":"TII (UAE)","url":"https://huggingface.co/blog/tiiuae/falcon-h1-arabic"},
+{"name":"Falcon-Arabic-7B","params":7.0,"active":7.0,"hidden":3072,"layers":28,"kvHeads":4,"headDim":256,"ctx":32768,"experts":null,"activeExperts":null,"arch":"Dense (GQA) · Falcon3-7B base","dev":"TII (UAE)","url":"https://www.tii.ae/news/middle-easts-leading-ai-powerhouse-tii-launches-two-new-ai-models-falcon-arabic-first-arabic"},
+{"name":"SILMA-9B (Arabic)","params":9.0,"active":9.0,"hidden":3584,"layers":42,"kvHeads":8,"headDim":256,"ctx":8192,"experts":null,"activeExperts":null,"arch":"Dense (GQA+SWA) · Gemma-2-9B base","dev":"SILMA AI (KSA)","url":"https://huggingface.co/silma-ai/SILMA-9B-Instruct-v1.0"},
+{"name":"Cohere Command A+ 218B-A25B (MoE)","params":218.0,"active":25.0,"hidden":6144,"layers":48,"kvHeads":8,"headDim":128,"ctx":131072,"experts":null,"activeExperts":null,"arch":"MoE (25B active, est. cfg) · Apache 2.0, vision-in","dev":"Cohere","url":"https://docs.cohere.com/docs/command-a-plus"},
+{"name":"Cohere Command A Reasoning 111B","params":111.0,"active":111.0,"hidden":12288,"layers":64,"kvHeads":8,"headDim":128,"ctx":262144,"experts":null,"activeExperts":null,"arch":"Dense (hybrid SWA, est. cfg) · reasoning","dev":"Cohere","url":"https://docs.cohere.com/docs/models"},
 {"name":"Cohere Command R+ 104B","params":104.0,"active":104.0,"hidden":12288,"layers":64,"kvHeads":8,"headDim":128,"ctx":131072,"experts":null,"activeExperts":null,"arch":"Dense (GQA)","dev":"Cohere","url":"https://huggingface.co/CohereLabs/c4ai-command-r-plus-08-2024"},
 {"name":"Cohere Command R 32B (08-2024)","params":32.3,"active":32.3,"hidden":8192,"layers":40,"kvHeads":8,"headDim":128,"ctx":131072,"experts":null,"activeExperts":null,"arch":"Dense (GQA)","dev":"Cohere","url":"https://huggingface.co/CohereLabs/c4ai-command-r-08-2024"},
 {"name":"Cohere Command R7B","params":8.0,"active":8.0,"hidden":4096,"layers":32,"kvHeads":8,"headDim":128,"ctx":131072,"experts":null,"activeExperts":null,"arch":"Dense (GQA, 3:1 SWA)","dev":"Cohere","url":"https://huggingface.co/CohereLabs/c4ai-command-r7b-12-2024"},
-{"name":"Cohere Command R7B Arabic","params":8.0,"active":8.0,"hidden":4096,"layers":32,"kvHeads":8,"headDim":128,"ctx":131072,"experts":null,"activeExperts":null,"arch":"Dense (GQA, 3:1 SWA) — Arabic-optimized","dev":"Cohere","url":"https://huggingface.co/CohereLabs/c4ai-command-r7b-arabic-02-2025"},
-{"name":"Aya Expanse 32B (multilingual)","params":32.3,"active":32.3,"hidden":8192,"layers":40,"kvHeads":8,"headDim":128,"ctx":131072,"experts":null,"activeExperts":null,"arch":"Dense (GQA) — 23 languages incl. Arabic","dev":"Cohere","url":"https://huggingface.co/CohereLabs/aya-expanse-32b"},
-{"name":"Aya Expanse 8B (multilingual)","params":8.0,"active":8.0,"hidden":4096,"layers":32,"kvHeads":8,"headDim":128,"ctx":8192,"experts":null,"activeExperts":null,"arch":"Dense (GQA) — 23 languages incl. Arabic","dev":"Cohere","url":"https://huggingface.co/CohereLabs/aya-expanse-8b"},
-{"name":"Mistral Saba 24B (MENA/S-Asia)","params":24.0,"active":24.0,"hidden":5120,"layers":40,"kvHeads":8,"headDim":128,"ctx":32768,"experts":null,"activeExperts":null,"arch":"Dense (GQA, est. cfg) — Arabic-focused, on-prem","dev":"Mistral AI","url":"https://mistral.ai/news/mistral-saba/"},
-{"name":"Magistral Small 1.2 24B (reasoning)","params":24.0,"active":24.0,"hidden":5120,"layers":40,"kvHeads":8,"headDim":128,"ctx":131072,"experts":null,"activeExperts":null,"arch":"Dense (GQA) — reasoning","dev":"Mistral AI","url":"https://huggingface.co/mistralai/Magistral-Small-2509"},
+{"name":"Cohere Command R7B Arabic","params":8.0,"active":8.0,"hidden":4096,"layers":32,"kvHeads":8,"headDim":128,"ctx":131072,"experts":null,"activeExperts":null,"arch":"Dense (GQA, 3:1 SWA) · Arabic-optimized","dev":"Cohere","url":"https://huggingface.co/CohereLabs/c4ai-command-r7b-arabic-02-2025"},
+{"name":"Aya Expanse 32B (multilingual)","params":32.3,"active":32.3,"hidden":8192,"layers":40,"kvHeads":8,"headDim":128,"ctx":131072,"experts":null,"activeExperts":null,"arch":"Dense (GQA) · 23 languages incl. Arabic","dev":"Cohere","url":"https://huggingface.co/CohereLabs/aya-expanse-32b"},
+{"name":"Aya Expanse 8B (multilingual)","params":8.0,"active":8.0,"hidden":4096,"layers":32,"kvHeads":8,"headDim":128,"ctx":8192,"experts":null,"activeExperts":null,"arch":"Dense (GQA) · 23 languages incl. Arabic","dev":"Cohere","url":"https://huggingface.co/CohereLabs/aya-expanse-8b"},
+{"name":"Mistral Saba 24B (MENA/S-Asia)","params":24.0,"active":24.0,"hidden":5120,"layers":40,"kvHeads":8,"headDim":128,"ctx":32768,"experts":null,"activeExperts":null,"arch":"Dense (GQA, est. cfg) · Arabic-focused, on-prem","dev":"Mistral AI","url":"https://mistral.ai/news/mistral-saba/"},
+{"name":"Magistral Small 1.2 24B (reasoning)","params":24.0,"active":24.0,"hidden":5120,"layers":40,"kvHeads":8,"headDim":128,"ctx":131072,"experts":null,"activeExperts":null,"arch":"Dense (GQA) · reasoning","dev":"Mistral AI","url":"https://huggingface.co/mistralai/Magistral-Small-2509"},
 {"name":"Mistral Large 2 123B","params":123.0,"active":123.0,"hidden":12288,"layers":88,"kvHeads":8,"headDim":128,"ctx":131072,"experts":null,"activeExperts":null,"arch":"Dense (GQA)","dev":"Mistral AI","url":"https://huggingface.co/mistralai/Mistral-Large-Instruct-2407"},
 {"name":"Ministral 8B","params":8.0,"active":8.0,"hidden":4096,"layers":36,"kvHeads":8,"headDim":128,"ctx":131072,"experts":null,"activeExperts":null,"arch":"Dense (GQA, interleaved SWA)","dev":"Mistral AI","url":"https://huggingface.co/mistralai/Ministral-8B-Instruct-2410"},
-{"name":"Mistral Small 4 24B","params":24.0,"active":24.0,"hidden":5120,"layers":40,"kvHeads":8,"headDim":128,"ctx":131072,"experts":null,"activeExperts":null,"arch":"Dense (GQA, est. cfg) — Apache 2.0","dev":"Mistral AI","url":"https://mistral.ai/news/"},
+{"name":"Mistral Small 4 24B","params":24.0,"active":24.0,"hidden":5120,"layers":40,"kvHeads":8,"headDim":128,"ctx":131072,"experts":null,"activeExperts":null,"arch":"Dense (GQA, est. cfg) · Apache 2.0","dev":"Mistral AI","url":"https://mistral.ai/news/"},
 ];
-// GPUscale.net — GPU library (VRAM GB · bandwidth TB/s · dense FP16 Tensor-Core TFLOPS · TDP W)
+// GPUscale.net · GPU library (VRAM GB · bandwidth TB/s · dense FP16 Tensor-Core TFLOPS · TDP W)
 // One entry per line. Field reference: README.md → “Data schemas”.
 window.GPUSCALE_DATA = window.GPUSCALE_DATA || {};
 window.GPUSCALE_DATA.gpus = [
@@ -679,7 +724,7 @@ window.GPUSCALE_DATA.gpus = [
 {"name":"RTX 5080 16GB","vram":16.0,"bw":0.96,"tflops":113.0,"mem":"GDDR7","arch":"Blackwell","watts":360,"cls":"Consumer","link":"PCIe 5.0","url":"https://www.nvidia.com/en-us/geforce/graphics-cards/50-series/"},
 {"name":"RTX 5090 32GB","vram":32.0,"bw":1.792,"tflops":210.0,"mem":"GDDR7","arch":"Blackwell","watts":575,"cls":"Consumer","link":"PCIe 5.0","url":"https://www.nvidia.com/en-us/geforce/graphics-cards/50-series/"},
 {"name":"RTX 6000 Ada 48GB","vram":48.0,"bw":0.96,"tflops":182.0,"mem":"GDDR6","arch":"Ada Lovelace","watts":300,"cls":"Workstation","link":"PCIe 4.0","url":"https://www.nvidia.com/en-us/products/workstations/rtx-6000/"},
-{"name":"RTX PRO 6000 Blackwell Server Edition 96GB","vram":96.0,"bw":1.597,"tflops":500.0,"mem":"GDDR7","arch":"Blackwell","watts":600,"cls":"Server / Workstation","link":"PCIe 5.0","url":"https://www.nvidia.com/en-us/data-center/rtx-pro-6000-blackwell-server-edition/"},
+{"name":"RTX PRO 6000 Blackwell Server Edition 96GB","vram":96.0,"bw":1.597,"tflops":250.0,"mem":"GDDR7","arch":"Blackwell","watts":600,"cls":"Server / Workstation","link":"PCIe 5.0","url":"https://www.nvidia.com/en-us/data-center/rtx-pro-6000-blackwell-server-edition/"},
 {"name":"A100 40GB SXM","vram":40.0,"bw":1.555,"tflops":312.0,"mem":"HBM2e","arch":"Ampere","watts":400,"cls":"Data Center","link":"NVLink Gen3","url":"https://www.nvidia.com/en-us/data-center/a100/"},
 {"name":"A100 80GB SXM","vram":80.0,"bw":2.039,"tflops":312.0,"mem":"HBM2e","arch":"Ampere","watts":400,"cls":"Data Center","link":"NVLink Gen3","url":"https://www.nvidia.com/en-us/data-center/a100/"},
 {"name":"A100 80GB PCIe","vram":80.0,"bw":1.935,"tflops":312.0,"mem":"HBM2e","arch":"Ampere","watts":300,"cls":"Data Center","link":"PCIe 4.0","url":"https://www.nvidia.com/en-us/data-center/a100/"},
@@ -710,7 +755,7 @@ window.GPUSCALE_DATA.gpus = [
 {"name":"NVIDIA DGX Spark 128GB (GB10)","vram":128.0,"bw":0.273,"tflops":125.0,"mem":"Unified LPDDR5x","arch":"Grace Blackwell","watts":240,"cls":"Desktop","link":"NVLink-C2C","url":"https://www.nvidia.com/en-us/products/workstations/dgx-spark/"},
 {"name":"Apple M3 Ultra 512GB","vram":512.0,"bw":0.819,"tflops":28.0,"mem":"Unified LPDDR5","arch":"Apple M3","watts":270,"cls":"Apple Silicon","link":"—","url":"https://www.apple.com/mac-studio/"},
 ];
-// GPUscale.net — weight quantization tiers (bytes per parameter)
+// GPUscale.net · weight quantization tiers (bytes per parameter)
 // One entry per line. Field reference: README.md → “Data schemas”.
 window.GPUSCALE_DATA = window.GPUSCALE_DATA || {};
 window.GPUSCALE_DATA.quants = [
@@ -724,17 +769,17 @@ window.GPUSCALE_DATA.quants = [
 {"name":"Q8_0","bits":8.0,"bytes":1.0,"quality":"~99%","speed":"Fast","use":"GGUF near-lossless","hw":"All (llama.cpp)"},
 {"name":"Q6_K","bits":6.5,"bytes":0.8125,"quality":"~97-99%","speed":"Fast","use":"GGUF high quality","hw":"All (llama.cpp)"},
 {"name":"Q5_K_M","bits":5.5,"bytes":0.6875,"quality":"~96-98%","speed":"Faster","use":"GGUF recommended balance","hw":"All (llama.cpp)"},
-{"name":"Q5_K_S","bits":5.0,"bytes":0.6,"quality":"~95-97%","speed":"Faster","use":"GGUF good quality, smaller","hw":"All (llama.cpp)"},
+{"name":"Q5_K_S","bits":5.5,"bytes":0.69,"quality":"~95-97%","speed":"Faster","use":"GGUF good quality, smaller","hw":"All (llama.cpp)"},
 {"name":"Q4_K_M","bits":4.5,"bytes":0.575,"quality":"~93-96%","speed":"Fastest","use":"GGUF most popular (Ollama default)","hw":"All (llama.cpp)"},
 {"name":"Q4_K_S","bits":4.3,"bytes":0.5375,"quality":"~92-95%","speed":"Fastest","use":"GGUF smaller Q4 variant","hw":"All (llama.cpp)"},
 {"name":"Q4_0","bits":4.0,"bytes":0.5,"quality":"~91-94%","speed":"Fastest","use":"GGUF basic 4-bit","hw":"All (llama.cpp)"},
 {"name":"Q3_K_M","bits":3.5,"bytes":0.4375,"quality":"~88-93%","speed":"Fastest","use":"GGUF aggressive compression","hw":"All (llama.cpp)"},
 {"name":"Q3_K_L","bits":3.9,"bytes":0.4875,"quality":"~90-94%","speed":"Fastest","use":"GGUF large Q3 variant","hw":"All (llama.cpp)"},
-{"name":"Q3_K_S","bits":3.0,"bytes":0.425,"quality":"~85-90%","speed":"Fastest","use":"GGUF small Q3","hw":"All (llama.cpp)"},
+{"name":"Q3_K_S","bits":3.4,"bytes":0.425,"quality":"~85-90%","speed":"Fastest","use":"GGUF small Q3","hw":"All (llama.cpp)"},
 {"name":"Q2_K","bits":2.6,"bytes":0.32,"quality":"~80-88%","speed":"Fastest","use":"GGUF extreme (quality loss)","hw":"All (llama.cpp)"},
 {"name":"MXFP4","bits":4.25,"bytes":0.53125,"quality":"~93-96%","speed":"Fastest","use":"GPT-OSS native / OCP microscaling (incl. scales)","hw":"Blackwell native; Hopper via SW"},
 ];
-// GPUscale.net — workload presets (resident seq · reasoning · visible out · SLO targets)
+// GPUscale.net · workload presets (resident seq · reasoning · visible out · SLO targets)
 // One entry per line. Field reference: README.md → “Data schemas”.
 window.GPUSCALE_DATA = window.GPUSCALE_DATA || {};
 window.GPUSCALE_DATA.cases = [
@@ -760,20 +805,21 @@ window.GPUSCALE_DATA.cases = [
 const DATA = window.GPUSCALE_DATA || {};
 const MODELS = DATA.models||[], GPUS = DATA.gpus||[], QUANTS = DATA.quants||[], CASES = DATA.cases||[];
 if(!MODELS.length || !GPUS.length || !QUANTS.length || !CASES.length){
-  document.body.innerHTML = '<div style="font-family:system-ui,sans-serif;max-width:560px;margin:80px auto;padding:0 20px;line-height:1.65;color:#1A2536"><h2 style="margin-bottom:10px">Data files not loaded</h2><p>GPUscale.net could not find its library. Keep <code>index.html</code> together with the <code>data/</code> and <code>assets/</code> folders — the four files <code>data/models.js</code>, <code>data/gpus.js</code>, <code>data/quants.js</code> and <code>data/usecases.js</code> must sit next to this page.</p><p>If you need one portable file instead, use <code>dist/gpuscale_standalone.html</code> or rebuild it with <code>python3 tools/build_single_file.py</code>.</p></div>';
+  document.body.innerHTML = '<div style="font-family:system-ui,sans-serif;max-width:560px;margin:80px auto;padding:0 20px;line-height:1.65;color:#1A2536"><h2 style="margin-bottom:10px">Data files not loaded</h2><p>GPUscale.net could not find its library. Keep <code>index.html</code> together with the <code>data/</code> and <code>assets/</code> folders: the four files <code>data/models.js</code>, <code>data/gpus.js</code>, <code>data/quants.js</code> and <code>data/usecases.js</code> must sit next to this page.</p><p>If you need one portable file instead, use <code>dist/gpuscale_standalone.html</code> or rebuild it with <code>python3 tools/build_single_file.py</code>.</p></div>';
   throw new Error('GPUscale.net data missing');
 }
+const STUDIO_VERSION = '4.7.0', ENGINE_VERSION = 23;
 const KV_QUANTS = [{name:'BF16',bytes:2},{name:'FP16',bytes:2},{name:'FP8',bytes:1},{name:'INT8',bytes:1},{name:'INT4',bytes:0.5}];
 const REASON_TOK = {'None':0,'Light reasoning':2000,'Heavy reasoning':8000,'Custom':2000};
 const RESIL = {
-  n:   {code:0, label:'N',      long:'N — capacity only',                        extraW:n=>0},
-  n1:  {code:1, label:'N+1',    long:'N+1 — one standby worker',                 extraW:n=>1},
-  nn:  {code:2, label:'N+N',    long:'N+N — in-site mirror (2N)',                extraW:n=>n},
-  dr:  {code:3, label:'DR',     long:'DR — remote standby site (active/passive)',extraW:n=>n},
-  nndr:{code:4, label:'N+N+DR', long:'N+N + DR — active/active twin sites (4N)', extraW:n=>3*n},
+  n:   {code:0, label:'N',      long:'N · capacity only',                        extraW:n=>0},
+  n1:  {code:1, label:'N+1',    long:'N+1 · one standby worker',                 extraW:n=>1},
+  nn:  {code:2, label:'N+N',    long:'N+N · in-site mirror (2N)',                extraW:n=>n},
+  dr:  {code:3, label:'DR',     long:'DR · remote standby site (active/passive)',extraW:n=>n},
+  nndr:{code:4, label:'N+N+DR', long:'N+N + DR · active/active twin sites (4N)', extraW:n=>3*n},
 };
 
-/* ================= ENGINE (pure — mirrors workbook v22) ================= */
+/* ================= ENGINE (pure · v23: workbook v22 + per-replica weight/activation accounting) ================= */
 /*ENGINE-START*/
 function compute(s){
   const bw = s.bytesW, bk = s.bytesK;
@@ -786,8 +832,10 @@ function compute(s){
   const kvTotal = active * effSeq * kvTok;
   const act = Math.min(effSeq, 8192) * s.hidden * 12 * bw / 1e9;
   const fixed = 5, multi = Math.max(0, s.gpus - 1) * 15;
-  const total = weights + kvTotal + act + fixed + multi;
-  const avail = s.gpus * s.gpuVram;
+  const weightsAll = replicas * weights, actAll = replicas * act;
+  const total = weightsAll + kvTotal + actAll + fixed + multi;
+  const servingGpus = replicas * Math.max(s.tp,1), idleGpus = s.gpus - servingGpus;
+  const avail = servingGpus * s.gpuVram;
   const bwEff = s.gpuBw * s.tp * s.ic * s.mbu * 1000;
   const batchPerRep = Math.max(1, active / replicas);
   const tps = bwEff / (s.active * bw + batchPerRep * effSeq * kvTok);
@@ -797,9 +845,9 @@ function compute(s){
   const genTok = s.reasonTok + s.visibleOut;
   const latency = (ttft + s.ovh) / 1000 + genTok / tps;
   const p95 = latency * 1.3;
-  const maxBatchMem = Math.max(0, Math.floor((avail - weights - act - fixed - multi) / (effSeq * kvTok) / replicas)) || 0;
+  const maxBatchMem = Math.max(0, Math.floor((avail - weightsAll - actAll - fixed - multi) / (effSeq * kvTok) / replicas)) || 0;
   const kvDelta = effSeq * kvTok;
-  const allActiveVram = weights + s.concurrent * effSeq * kvTok + act + fixed + multi;
+  const allActiveVram = weightsAll + s.concurrent * effSeq * kvTok + actAll + fixed + multi;
   const queued = Math.max(0, s.concurrent - active);
   const fits = total <= avail;
   const slo = {
@@ -808,8 +856,8 @@ function compute(s){
     p95:  s.sloP95  > 0 ? {on:true, pass: p95  <= s.sloP95 } : {on:false, pass:true},
   };
   const sloAll = slo.ttft.pass && slo.tps.pass && slo.p95.pass;
-  return {weights,kvTok,effSeq,replicas,active,kvTotal,act,fixed,multi,total,avail,
-          bwEff,batchPerRep,tps,agg,ttft,itl,latency,p95,genTok,maxBatchMem,kvDelta,
+  return {weights,weightsAll,kvTok,effSeq,replicas,active,kvTotal,act,actAll,fixed,multi,total,avail,
+          servingGpus,idleGpus,bwEff,batchPerRep,tps,agg,ttft,itl,latency,p95,genTok,maxBatchMem,kvDelta,
           allActiveVram,queued,fits,slo,sloAll,headroom:avail-total};
 }
 /*ENGINE-END*/
@@ -860,7 +908,7 @@ function toast(msg, err){
 const FIELDS = {
   inSeq:{mount:'m_inSeq',label:'Resident sequence',unit:'tokens',scale:'log',min:128,max:1048576,snap:64,val:4096,
     band:[2048,65536],marks:[[4096,'4K'],[32768,'32K'],[262144,'256K']],disp:fmtTok,
-    help:'Prompt + retained history + tool traces + expected output actually held per request — not the model\'s max context. Drives KV size and prefill time.',
+    help:'Prompt + retained history + tool traces + expected output actually held per request, not the model\'s max context. Drives KV size and prefill time.',
     typ:'Chat 4–8K · RAG 16–64K · long-doc 64–128K · agents 32–256K'},
   inOut:{mount:'m_inOut',label:'Visible output',unit:'tokens',scale:'log',min:16,max:16384,snap:8,val:200,
     band:[200,3000],marks:[[200,'200'],[2500,'2.5K']],disp:fmtTok,
@@ -872,7 +920,7 @@ const FIELDS = {
     typ:'Light ≈ 2K · Heavy ≈ 8K · deep agents 8–16K'},
   inConc:{mount:'m_inConc',label:'Concurrent LLM calls',unit:'peak',scale:'log',min:1,max:10000,snap:1,val:250,
     band:[10,500],marks:[[50,'50'],[500,'500']],disp:v=>fmt(v),
-    help:'Simultaneous in-flight requests at peak — not total users. Use the Little\'s-law estimator below to derive it from headcount.',
+    help:'Simultaneous in-flight requests at peak, not total users. Use the Little\'s-law estimator below to derive it from headcount.',
     typ:'Dozens of users → single digits · thousands of users → 50–500'},
   inBatch:{mount:'m_inBatch',label:'Max batch per replica',unit:'seqs',scale:'log',min:1,max:512,snap:1,val:4,
     band:[4,64],marks:[[4,'4'],[16,'16'],[64,'64']],disp:v=>fmt(v),
@@ -880,7 +928,7 @@ const FIELDS = {
     typ:'Voice 2–8 · chat 8–32 · offline 32–256'},
   inWorkers:{mount:'m_inWorkers',label:'GPU workers (nodes)',unit:'N · load-bearing',scale:'log',min:1,max:64,snap:1,val:1,
     band:[1,8],marks:[[1,'1'],[4,'4'],[8,'8'],[16,'16']],disp:v=>fmt(v),
-    help:'Servers carrying the load — the N in N+1 / N+N / DR. Performance and fit are computed on these; the resilience model below adds standby units on top.',
+    help:'Servers carrying the load: the N in N+1 / N+N / DR. Performance and fit are computed on these; the resilience model below adds standby units on top.',
     typ:'One HGX node handles most pilots · scale out for concurrency'},
   inPerW:{mount:'m_inPerW',label:'GPUs per worker',unit:'devices',scale:'lin',min:1,max:16,snap:1,val:8,
     band:[4,8],marks:[[4,'4'],[8,'8']],disp:v=>fmt(v),
@@ -888,15 +936,15 @@ const FIELDS = {
     typ:'PCIe boxes 2–4 · HGX/DGX 8 · MI300X platform 8'},
   inTp:{mount:'m_inTp',label:'Tensor parallel size',unit:'GPUs/replica',scale:'log',min:1,max:64,snap:1,val:8,
     band:[1,8],marks:[[2,'2'],[4,'4'],[8,'8']],disp:v=>fmt(v),
-    help:'GPUs cooperating on one replica. Must be large enough for the weights to fit; prefill for a single request runs on this group, so TP — not total GPUs — drives TTFT. Keep TP ≤ GPUs per worker to stay inside NVLink.',
+    help:'GPUs cooperating on one replica. Must be large enough for the weights to fit; prefill for a single request runs on this group, so TP, not total GPUs, drives TTFT. Keep TP ≤ GPUs per worker to stay inside NVLink.',
     typ:'Fit-driven: smallest TP whose replica holds weights + cache'},
   inMfu:{mount:'m_inMfu',label:'Prefill MFU',unit:'',scale:'lin',min:0.1,max:0.9,snap:0.01,val:0.5,
     band:[0.3,0.7],marks:[[0.5,'0.5']],disp:v=>(+v).toFixed(2),
-    help:'Model FLOPs utilization during prefill — fraction of theoretical peak actually achieved. FlashAttention lands 0.3–0.7; chunked prefill trends lower.',
+    help:'Model FLOPs utilization during prefill: the fraction of theoretical peak actually achieved. FlashAttention lands 0.3–0.7; chunked prefill trends lower.',
     typ:'Conservative 0.4 · typical 0.5 · well-tuned 0.6–0.7'},
   inMbu:{mount:'m_inMbu',label:'Decode MBU',unit:'',scale:'lin',min:0.2,max:0.95,snap:0.01,val:0.65,
     band:[0.5,0.75],marks:[[0.65,'0.65']],disp:v=>(+v).toFixed(2),
-    help:'Memory-bandwidth utilization during decode. Engine efficiency only — batch effects are modeled explicitly, so don\'t lower this for big batches.',
+    help:'Memory-bandwidth utilization during decode. Engine efficiency only; batch effects are modeled explicitly, so don\'t lower this for big batches.',
     typ:'vLLM / TRT-LLM on H100–B200: 0.5–0.75'},
   inIc:{mount:'m_inIc',label:'Interconnect efficiency',unit:'',scale:'lin',min:0.4,max:1,snap:0.01,val:0.85,
     band:[0.6,0.9],marks:[[0.85,'0.85']],disp:v=>(+v).toFixed(2),
@@ -991,28 +1039,32 @@ function readState(){
   const g = GPUS[+$('selGpu').value||0];
   const wq = QUANTS[+$('selWQuant').value||0];
   const kq = KV_QUANTS[+$('selKQuant').value||0];
-  const workers = Math.max(1, Math.round(+$('inWorkers').value||1));
-  const perW = Math.max(1, Math.round(+$('inPerW').value||1));
+  // clamp every slider-backed field through its config so the engine, the readout
+  // and the visible input can never disagree (typed out-of-range or cleared values)
+  const fv = id => { const c=FIELDS[id]; const raw = $(id).value===''? c.val : +$(id).value;
+    const v = isFinite(raw)? raw : c.val; return Math.min(c.max, Math.max(c.min, v)); };
+  const workers = Math.round(fv('inWorkers'));
+  const perW = Math.round(fv('inPerW'));
   const gpus = workers*perW;
-  let tp = Math.max(1, Math.round(+$('inTp').value||1));
+  let tp = Math.round(fv('inTp'));
   if(tp>gpus){ tp=gpus; $('inTp').value=tp; refreshCtl('inTp'); }
   return {
     model:m, gpu:g, wq, kq,
     params:m.params, active:m.active, hidden:m.hidden, layers:m.layers,
     kvHeads:m.kvHeads, headDim:m.headDim, ctx:m.ctx,
     bytesW:wq.bytes, bytesK:kq.bytes,
-    resident:Math.max(128,+$('inSeq').value||128),
-    visibleOut:Math.max(1,+$('inOut').value||1),
+    resident:Math.round(fv('inSeq')),
+    visibleOut:Math.round(fv('inOut')),
     reasonMode:$('selReason').value,
-    reasonTok:Math.max(0,+$('inReasonTok').value||0),
+    reasonTok:Math.round(fv('inReasonTok')),
     extend:$('chkExtend').checked,
-    concurrent:Math.max(1,Math.round(+$('inConc').value||1)),
-    batch:Math.max(1,Math.round(+$('inBatch').value||1)),
+    concurrent:Math.round(fv('inConc')),
+    batch:Math.round(fv('inBatch')),
     policy:$('selPolicy').value,
     workers, perW, gpus, tp, resil:$('selResil').value,
     gpuVram:g.vram, gpuBw:g.bw, gpuTflops:g.tflops,
-    mfu:+$('inMfu').value, mbu:+$('inMbu').value, ic:+$('inIc').value,
-    ovh:Math.max(0,+$('inOvh').value||0),
+    mfu:fv('inMfu'), mbu:fv('inMbu'), ic:fv('inIc'),
+    ovh:fv('inOvh'),
     sloTtft:+$('sloTtft').value||0, sloTps:+$('sloTps').value||0, sloP95:+$('sloP95').value||0,
   };
 }
@@ -1099,10 +1151,10 @@ function renderCtxChart(s,d){
   });
 }
 
-/* ================= TOPOLOGY — server cards with per-GPU utilization ================= */
+/* ================= TOPOLOGY · server cards with per-GPU utilization ================= */
 function renderTopology(s,d){
   const P=pal();
-  const perGpu=d.total/s.gpus, cap=s.gpuVram, fillPct=Math.min(1,perGpu/cap), hot=perGpu>cap;
+  const perGpu=d.total/(d.servingGpus||s.gpus), cap=s.gpuVram, fillPct=Math.min(1,perGpu/cap), hot=perGpu>cap;
   const utilTxt=(perGpu/cap*100).toFixed(0)+'%';
   const cell={w:20,h:34,g:4};
   const cols=Math.min(s.perW,8), rows=Math.ceil(s.perW/8);
@@ -1139,10 +1191,11 @@ function renderTopology(s,d){
     const maxDraw=8;
     let list=items;
     if(items.length>maxDraw){
-      const keepSpecial=items.filter(it=>it.mode!=='active');
+      const specials=items.filter(it=>it.mode!=='active');
       const actives=items.filter(it=>it.mode==='active');
-      const room=maxDraw-1-keepSpecial.length;
-      list=[...actives.slice(0,Math.max(1,room)),{mode:'more',n:actives.length-Math.max(1,room)},...keepSpecial];
+      const room=Math.max(actives.length?1:0, maxDraw-1-specials.length);
+      const shown=[...actives.slice(0,room),...specials].slice(0,maxDraw-1);
+      list=[...shown,{mode:'more',n:items.length-shown.length}];
     }
     const rowsN=Math.ceil(list.length/perRow);
     const fh=32+framePad+rowsN*(cardH+gapCard)-gapCard+framePad;
@@ -1170,24 +1223,24 @@ function renderTopology(s,d){
   let y=4, parts=[], links=[];
   const gpuChip=(n,extra)=>`${n} worker${n>1?'s':''} · ${n*s.perW} GPU · ${fmt(n*s.perW*s.gpu.watts/1000)} kW${extra||''}`;
   if(r==='n'){
-    const f=frame(y,`Production site — N=${N}`,act('WK-'),gpuChip(N),'building'); parts.push(f.svg); y+=f.h;
+    const f=frame(y,`Production site · N=${N}`,act('WK-'),gpuChip(N),'building'); parts.push(f.svg); y+=f.h;
   } else if(r==='n1'){
-    const f=frame(y,`Production site — N+1`,[...act('WK-'),{mode:'standby'}],gpuChip(N+1),'building'); parts.push(f.svg); y+=f.h;
+    const f=frame(y,`Production site · N+1`,[...act('WK-'),{mode:'standby'}],gpuChip(N+1),'building'); parts.push(f.svg); y+=f.h;
   } else if(r==='nn'){
-    const fa=frame(y,`System A — active · N=${N}`,act('WK-'),gpuChip(N),'building'); parts.push(fa.svg); y+=fa.h;
+    const fa=frame(y,`System A · active · N=${N}`,act('WK-'),gpuChip(N),'building'); parts.push(fa.svg); y+=fa.h;
     links.push({y:y+frameGap/2, lab:'in-site failover', both:true});
     y+=frameGap;
-    const fb=frame(y,`System B — mirror · N=${N}`,dup('mirror'),gpuChip(N,' · idle'),'shield'); parts.push(fb.svg); y+=fb.h;
+    const fb=frame(y,`System B · mirror · N=${N}`,dup('mirror'),gpuChip(N,' · idle'),'shield'); parts.push(fb.svg); y+=fb.h;
   } else if(r==='dr'){
-    const fa=frame(y,`Primary site — active · N=${N}`,act('WK-'),gpuChip(N),'building'); parts.push(fa.svg); y+=fa.h;
+    const fa=frame(y,`Primary site · active · N=${N}`,act('WK-'),gpuChip(N),'building'); parts.push(fa.svg); y+=fa.h;
     links.push({y:y+frameGap/2, lab:'async replication', both:false});
     y+=frameGap;
-    const fb=frame(y,`DR site — standby · N=${N}`,dup('drs'),gpuChip(N,' · standby'),'globe'); parts.push(fb.svg); y+=fb.h;
-  } else { /* nndr — active/active twin sites, each N+N */
-    const fa=frame(y,`Site A — active · N+N`,[...act('A-'),...dup('mirror')],gpuChip(2*N),'building'); parts.push(fa.svg); y+=fa.h;
+    const fb=frame(y,`DR site · standby · N=${N}`,dup('drs'),gpuChip(N,' · standby'),'globe'); parts.push(fb.svg); y+=fb.h;
+  } else { /* nndr: active/active twin sites, each N+N */
+    const fa=frame(y,`Site A · active · N+N`,[...act('A-'),...dup('mirror')],gpuChip(2*N),'building'); parts.push(fa.svg); y+=fa.h;
     links.push({y:y+frameGap/2, lab:'active / active · geo-replication', both:true});
     y+=frameGap;
-    const fb=frame(y,`Site B — active · N+N`,[...act('B-'),...dup('mirror')],gpuChip(2*N),'building'); parts.push(fb.svg); y+=fb.h;
+    const fb=frame(y,`Site B · active · N+N`,[...act('B-'),...dup('mirror')],gpuChip(2*N),'building'); parts.push(fb.svg); y+=fb.h;
   }
   let linkSvg='';
   links.forEach(L=>{
@@ -1199,7 +1252,7 @@ function renderTopology(s,d){
   });
   $('topo').innerHTML=`<svg viewBox="0 0 ${W} ${y+4}" style="aspect-ratio:${W}/${y+4};width:100%;height:auto" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Deployment topology with per-GPU memory utilization">${parts.join('')}${linkSvg}</svg>`;
 
-  const legend=[['box',P.segkv,`active worker — GPU bars show memory fill (${utilTxt} of ${fmt(cap)} GB each)`]];
+  const legend=[['box',P.segkv,`active worker · GPU bars show memory fill (${utilTxt} of ${fmt(cap)} GB each)`]];
   if(r==='n1') legend.push(['dashed',P.amber,'standby worker (N+1)']);
   if(r==='nn'||r==='nndr') legend.push(['dashed',P.teal,'mirror workers (N+N)']);
   if(r==='dr') legend.push(['dashed',P.violet,'DR standby site']);
@@ -1213,9 +1266,9 @@ function renderTopology(s,d){
     : r==='n1'? 'One idle standby absorbs a single node failure with no capacity loss after failover.'
     : r==='nn'? 'A full second system in the same site: survives node and system-level failures; can also cover maintenance windows.'
     : r==='dr'? 'A standby remote site behind asynchronous replication: survives full site loss; the standby idles during normal operation.'
-    : 'Two active/active sites, each carrying N+N: traffic is shared across sites in normal operation, and the deployment survives any worker failure or the loss of an entire site without dropping below N. The most resilient — and most procurement-heavy — enterprise pattern.';
+    : 'Two active/active sites, each carrying N+N: traffic is shared across sites in normal operation, and the deployment survives any worker failure or the loss of an entire site without dropping below N. The most resilient, and most procurement-heavy, enterprise pattern.';
   $('topoSum').innerHTML=
-    `Load: <b>N = ${N} worker${N>1?'s':''} · ${s.gpus} GPUs</b> (${s.perW}/worker) — performance and fit are computed on these. `+
+    `Load: <b>N = ${N} worker${N>1?'s':''} · ${s.gpus} GPUs</b> (${s.perW}/worker): performance and fit are computed on these. `+
     `Procured for ${info.long}: <b>${procW} workers · ${procG} GPUs · ≈ ${fmt(kW)} kW</b> GPU TDP. ${resLine}`;
   return {procW, procG, kW};
 }
@@ -1248,8 +1301,8 @@ function render(){
   const v=$('verdict'); v.classList.remove('ok','warn','fail');
   let main,sub;
   if(!d.fits){ v.classList.add('fail'); main='Exceeds VRAM';
-    sub=`Needs ${fmt(d.total)} GB but only ${fmt(d.avail)} GB available — quantize further, cut context or batch, or add workers.`; }
-  else if(!d.sloAll){ v.classList.add('warn'); main='Fits — SLO targets missed';
+    sub=`Needs ${fmt(d.total)} GB but only ${fmt(d.avail)} GB available: quantize further, cut context or batch, or add workers.`; }
+  else if(!d.sloAll){ v.classList.add('warn'); main='Fits, but SLO targets missed';
     sub='Memory fits with headroom, but at least one latency/throughput target fails. See SLO compliance below.'; }
   else { v.classList.add('ok'); main='Fits & SLO targets met';
     sub=`Ready to deploy: ${fmt(d.headroom)} GB headroom, ${d.active} of ${s.concurrent} calls resident in KV.`; }
@@ -1259,7 +1312,7 @@ function render(){
   const maxScale=niceCeil(Math.max(d.total,d.avail)*1.04);
   const pct=x=>Math.max(0,Math.min(100,x/maxScale*100));
   let acc=0;
-  [['segW',d.weights],['segK',d.kvTotal],['segA',d.act],['segO',d.fixed+d.multi]].forEach(([id,val])=>{
+  [['segW',d.weightsAll],['segK',d.kvTotal],['segA',d.actAll],['segO',d.fixed+d.multi]].forEach(([id,val])=>{
     const el=$(id); el.style.left=pct(acc)+'%'; el.style.width=Math.max(0,pct(acc+val)-pct(acc))+'%'; acc+=val; });
   $('lgNeedle').style.left=pct(d.avail)+'%';
   const sx=$('segX');
@@ -1278,8 +1331,8 @@ function render(){
   $('ledgerNote').textContent=`scale 0–${fmt(maxScale)} GB · ${s.gpus}× ${g.name}`;
   const SEG={weights:cssVar('--seg-w'),kv:cssVar('--seg-kv'),act:cssVar('--seg-act'),ovh:cssVar('--seg-ovh')};
   $('lgLegend').innerHTML =
-    [['Weights',d.weights,'weights'],['KV cache · '+d.active+' seq',d.kvTotal,'kv'],
-     ['Activations',d.act,'act'],['Overhead · fixed+multi-GPU',d.fixed+d.multi,'ovh']]
+    [['Weights'+(d.replicas>1?' · '+d.replicas+' replicas':''),d.weightsAll,'weights'],['KV cache · '+d.active+' seq',d.kvTotal,'kv'],
+     ['Activations',d.actAll,'act'],['Overhead · fixed+multi-GPU',d.fixed+d.multi,'ovh']]
     .map(([k,val,c])=>`<span class="lg-li"><span class="lg-sw" style="background:${SEG[c]}"></span><span class="k">${k}</span><span class="v">${fmt(val)} GB</span><span class="pct">${(val/d.total*100).toFixed(0)}%</span></span>`).join('')
     +`<span class="lg-li"><span class="lg-sw" style="background:${d.fits?'transparent':cssVar('--red')};border:1px solid var(--line)"></span><span class="k">Utilization</span><span class="v" style="color:${d.fits?'var(--teal-strong)':'var(--red)'}">${(d.total/d.avail*100).toFixed(1)}%</span></span>`;
 
@@ -1316,14 +1369,15 @@ function render(){
   const topoInfo=renderTopology(s,d);
 
   const ins=[];
+  if(d.effSeq>m.ctx) ins.push(['bad',`Resident sequence + reasoning (${fmtTok(d.effSeq)}) exceeds ${m.name}'s max context (${fmtTok(m.ctx)}): an unservable configuration. Trim resident tokens or pick a longer-context model.`]);
   if(s.tp>s.perW) ins.push(['bad',`TP${s.tp} spans workers (${s.perW} GPU/worker): tensor-parallel traffic leaves the NVLink domain. Either raise GPUs per worker, lower TP, or set interconnect efficiency to 0.6–0.7 to model the cross-node penalty.`]);
-  if(d.queued>0) ins.push(['warn',`${d.queued} of ${s.concurrent} calls queue at peak (only ${d.active} admitted). Memory allows up to ${d.maxBatchMem} per replica — ${d.maxBatchMem>s.batch? 'raise max batch toward that':'add workers or trim context to admit more'}.`]);
-  if(d.kvTotal>d.weights) ins.push(['warn',`KV-dominated deployment: cache (${fmt(d.kvTotal)} GB) outweighs weights (${fmt(d.weights)} GB). FP8/INT8 KV, compressed-KV models, or shorter resident sequences pay off most here.`]);
+  if(d.queued>0) ins.push(['warn',`${d.queued} of ${s.concurrent} calls queue at peak (only ${d.active} admitted). Memory allows up to ${d.maxBatchMem} per replica: ${d.maxBatchMem>s.batch? 'raise max batch toward that':'add workers or trim context to admit more'}.`]);
+  if(d.kvTotal>d.weightsAll) ins.push(['warn',`KV-dominated deployment: cache (${fmt(d.kvTotal)} GB) outweighs weights (${fmt(d.weightsAll)} GB). FP8/INT8 KV, compressed-KV models, or shorter resident sequences pay off most here.`]);
   if(d.slo.ttft.on&&!d.slo.ttft.pass) ins.push(['bad',`Prefill misses the TTFT target. Options: prefix caching for repeated prompts, chunked prefill, TP ${s.tp}→${Math.min(s.tp*2,s.gpus)}, or a higher-TFLOPS part; disaggregated prefill (Dynamo / Rubin CPX) exists for exactly this.`]);
-  if(/MHA/.test(m.arch||'')) ins.push(['warn',`${m.name.split(' ')[0]} uses full multi-head attention — KV is ${fmt(d.kvTok*1e6)} MB per token, an order beyond GQA peers. Budget context tightly.`]);
-  if(/Unified/i.test(g.mem)) ins.push(['warn','Unified-memory hardware: capacity is generous but bandwidth caps decode speed — fine for single-user or development, not for concurrent serving.']);
-  if(prelaunch) ins.push(['warn','Selected GPU is announced but not shipping: specs are pre-launch estimates — re-validate against datasheets before committing a proposal.']);
-  if(s.policy==='all'&&d.allActiveVram>d.avail&&d.fits) ins.push(['warn',`Keeping every session in KV would need ${fmt(d.allActiveVram)} GB — the running-batch policy is what makes this configuration fit.`]);
+  if(/MHA/.test(m.arch||'')) ins.push(['warn',`${m.name.split(' ')[0]} uses full multi-head attention: KV is ${fmt(d.kvTok*1e3)} MB per token, an order beyond GQA peers. Budget context tightly.`]);
+  if(/Unified/i.test(g.mem)) ins.push(['warn','Unified-memory hardware: capacity is generous but bandwidth caps decode speed: fine for single-user or development, not for concurrent serving.']);
+  if(prelaunch) ins.push(['warn','Selected GPU is announced but not shipping: specs are pre-launch estimates; re-validate against datasheets before committing a proposal.']);
+  if(s.policy==='all'&&d.allActiveVram>d.avail&&d.fits) ins.push(['warn',`Keeping every session in KV would need ${fmt(d.allActiveVram)} GB: the running-batch policy is what makes this configuration fit.`]);
   if(ins.length===0) ins.push(['ok',`Balanced configuration: ${(d.total/d.avail*100).toFixed(0)}% memory utilization, ${fmt(d.tps)} tok/s per user at batch ${fmt(d.batchPerRep)}, ${fmt(d.headroom)} GB headroom for growth.`]);
   ins.push(['ok',`Marginal cost of one more admitted call: ${fmt(d.kvDelta)} GB of KV. Speculative decoding (EAGLE-3 / MTP) would add 1.5–3× on top of the decode figures.`]);
   $('insights').innerHTML=ins.slice(0,5).map(([c,t])=>`<div class="ins ${c==='ok'?'':c}">${t}</div>`).join('');
@@ -1334,7 +1388,7 @@ function render(){
   $('ccDerived').dataset.cc=cc;
 
   $('printConfig').textContent =
-    `GPUscale.net · ${$('scenarioName').value||'Untitled scenario'} — ${m.name} · weights ${s.wq.name} / KV ${s.kq.name} · seq ${fmtTok(s.resident)} (+${fmtTok(s.reasonTok)} reasoning) · `+
+    `GPUscale.net · ${$('scenarioName').value||'Untitled scenario'} · ${m.name} · weights ${s.wq.name} / KV ${s.kq.name} · seq ${fmtTok(s.resident)} (+${fmtTok(s.reasonTok)} reasoning) · `+
     `${s.concurrent} concurrent, batch ${s.batch}/replica · ${s.workers}× worker (${s.perW} GPU) ${g.name} · TP${s.tp} · ${RESIL[s.resil].long} → ${topoInfo.procW} workers procured · ${new Date().toLocaleDateString()}`;
 }
 
@@ -1342,7 +1396,8 @@ function render(){
 function applyCase(i){
   if(i<0) return;
   const c=CASES[i];
-  $('inSeq').value=c.resident; $('inOut').value=c.visibleOut;
+  if(c.resident) $('inSeq').value=c.resident;
+  if(c.visibleOut) $('inOut').value=c.visibleOut;
   $('selReason').value=REASON_TOK.hasOwnProperty(c.reasoning)?c.reasoning:'None';
   syncReason();
   $('sloTtft').value=c.ttftTarget; $('sloTps').value=c.tpsTarget; $('sloP95').value=c.p95Target;
@@ -1359,7 +1414,7 @@ function syncReason(){
 function serialize(){
   const s=readState(), d=compute(s);
   return {
-    schema:'gpuscale.net/3', engine:22,
+    schema:'gpuscale.net/3', engine:ENGINE_VERSION, studio:STUDIO_VERSION,
     name: $('scenarioName').value||'Untitled scenario',
     savedAt: new Date().toISOString(),
     config:{
@@ -1435,7 +1490,7 @@ function applyConfig(raw){
   if(sl.tps!=null) $('sloTps').value=sl.tps;
   if(sl.p95s!=null) $('sloP95').value=sl.p95s;
   if(raw.name) $('scenarioName').value = raw.name==='Untitled scenario'? '' : raw.name;
-  if(c.theme==='dark'||c.theme==='light') setTheme(c.theme);
+  if(c.theme==='dark'||c.theme==='light'){ window.__themeLocked=true; setTheme(c.theme); }
   Object.keys(FIELDS).forEach(refreshCtl);
   render();
 }
@@ -1446,9 +1501,9 @@ function buildXls(){
   const esc=x=>String(x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   const INP=[
     ['modelName','Model', s.model.name, 'Selected model (informational)','s'],
-    ['params','Total params (B)', s.params, 'All weights in VRAM — MoE loads every expert'],
-    ['activeP','Active params (B)', s.active, 'Params used per token — compute & decode reads'],
-    ['hidden','Hidden dim', s.hidden, 'Model width — activation workspace'],
+    ['params','Total params (B)', s.params, 'All weights in VRAM; MoE loads every expert'],
+    ['activeP','Active params (B)', s.active, 'Params used per token: compute and decode reads'],
+    ['hidden','Hidden dim', s.hidden, 'Model width: activation workspace'],
     ['layers','Layers', s.layers, 'KV cache scales linearly with layers'],
     ['kvh','KV heads (effective)', s.kvHeads, '1 for MLA-style compressed caches'],
     ['hdim','Head dim (effective)', s.headDim, 'Compressed-latent equivalent for MLA'],
@@ -1463,7 +1518,7 @@ function buildXls(){
     ['policy','KV policy (1=all,0=running)', s.policy==='all'?1:0, 'Residency policy'],
     ['workers','GPU workers N', s.workers, 'Load-bearing nodes'],
     ['perW','GPUs per worker', s.perW, '8 = HGX/DGX standard'],
-    ['tp','Tensor parallel size', s.tp, 'GPUs per replica — drives TTFT'],
+    ['tp','Tensor parallel size', s.tp, 'GPUs per replica: drives TTFT'],
     ['vram','GPU VRAM (GB)', s.gpuVram, s.gpu.name],
     ['bwTB','GPU bandwidth (TB/s)', s.gpuBw, 'Decode ceiling'],
     ['tflops','GPU dense FP16 TFLOPS', s.gpuTflops, 'Prefill ceiling (dense Tensor-Core)'],
@@ -1493,8 +1548,8 @@ function buildXls(){
   res('activ','Activations','GB', ()=>`MIN(${R('effSeq')},8192)*${I('hidden')}*12*${I('bytesW')}/1000000000`);
   res('fixed','Fixed overhead','GB', ()=>`5`);
   res('multi','Multi-GPU overhead','GB', ()=>`MAX(0,${R('gpusTotal')}-1)*15`);
-  res('total','Total VRAM required','GB', ()=>`${R('weights')}+${R('kvTotal')}+${R('activ')}+${R('fixed')}+${R('multi')}`);
-  res('avail','VRAM available','GB', ()=>`${R('gpusTotal')}*${I('vram')}`);
+  res('total','Total VRAM required','GB', ()=>`${R('replicas')}*(${R('weights')}+${R('activ')})+${R('kvTotal')}+${R('fixed')}+${R('multi')}`);
+  res('avail','VRAM available (serving GPUs)','GB', ()=>`${R('replicas')}*${I('tp')}*${I('vram')}`);
   res('headroom','Headroom','GB', ()=>`${R('avail')}-${R('total')}`);
   res('fits','Memory verdict','', ()=>`IF(${R('total')}<=${R('avail')},"FITS","EXCEEDS")`, true);
   res('bwEff','Effective bandwidth','GB/s', ()=>`${I('bwTB')}*${I('tp')}*${I('ic')}*${I('mbu')}*1000`);
@@ -1532,18 +1587,18 @@ function buildXls(){
 </Styles>
 <Worksheet ss:Name="Inputs"><Table>
 <Column ss:Width="215"/><Column ss:Width="120"/><Column ss:Width="330"/>
-${row(cS('GPUscale.net — sizing template · '+name,'sTitle'))}
+${row(cS('GPUscale.net · sizing template · '+name,'sTitle'))}
 ${row(cS('Parameter','sHead')+cS('Value (edit me)','sHead')+cS('Notes','sHead'))}
 ${inpRows}
 </Table></Worksheet>
 <Worksheet ss:Name="Results"><Table>
 <Column ss:Width="235"/><Column ss:Width="120"/><Column ss:Width="90"/>
-${row(cS('Results — live formulas (engine v22)','sTitle'))}
+${row(cS('Results · live formulas (engine v'+ENGINE_VERSION+')','sTitle'))}
 ${row(cS('Metric','sHead')+cS('Value','sHead')+cS('Unit','sHead'))}
 ${resRows}
 </Table></Worksheet>
 <Worksheet ss:Name="Notes"><Table><Column ss:Width="700"/>
-${row(cS('Generated by GPUscale.net — LLM Capacity & Dimensioning Studio on '+new Date().toISOString(),'sNote'))}
+${row(cS('Generated by GPUscale.net · LLM Capacity & Dimensioning Studio on '+new Date().toISOString(),'sNote'))}
 ${row(cS('Edit the amber cells on the Inputs sheet; Results recompute live with the same engine as the studio.','sNote'))}
 ${row(cS('Performance is sized on N load-bearing workers; the resilience code adds standby procurement (N+1 = +1 · N+N = +N · DR = +N · N+N+DR = +3N).','sNote'))}
 ${row(cS('Estimates are peak numbers; production typically achieves 70–90%. Validate with vLLM bench / GenAI-Perf before final commitments.','sNote'))}
@@ -1562,7 +1617,7 @@ document.querySelectorAll('input,select').forEach(el=>{
     render();
   });
 });
-$('ccApply').addEventListener('click',()=>{ $('inConc').value=$('ccDerived').dataset.cc||1; refreshCtl('inConc'); render(); toast('Concurrency applied'); });
+$('ccApply').addEventListener('click',()=>{ $('inConc').value=Math.max(1,+$('ccDerived').dataset.cc||1); refreshCtl('inConc'); render(); toast('Concurrency applied'); });
 $('btnReset').addEventListener('click',()=>location.reload());
 
 const MOON='<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>';
@@ -1590,15 +1645,18 @@ $('btnExport').addEventListener('click',()=>{
 });
 $('btnXls').addEventListener('click',()=>{
   download([buildXls()],'application/vnd.ms-excel',`gpuscale-${slug()}-template.xls`);
-  toast('Excel template exported — edit the amber Inputs cells');
+  toast('Excel template exported: edit the amber Inputs cells');
 });
 $('btnPdf').addEventListener('click',()=>{ render(); window.print(); });
+let printThemeRestore=null;
+window.addEventListener('beforeprint',()=>{ if(document.documentElement.dataset.theme==='dark'){ printThemeRestore='dark'; setTheme('light'); } });
+window.addEventListener('afterprint',()=>{ if(printThemeRestore){ setTheme(printThemeRestore); printThemeRestore=null; } });
 $('btnImport').addEventListener('click',()=>$('fileImport').click());
 $('fileImport').addEventListener('change',e=>{
   const f=e.target.files[0]; if(!f) return;
   const r=new FileReader();
   r.onload=()=>{ try{ applyConfig(JSON.parse(r.result)); toast('Configuration imported'); }
-    catch(err){ toast('Import failed — not a valid configuration file', true); } };
+    catch(err){ toast('Import failed: not a valid configuration file', true); } };
   r.onerror=()=>toast('Could not read the file', true);
   r.readAsText(f);
   e.target.value='';
@@ -1617,6 +1675,9 @@ window.SizingConsole = window.GPUscale;
   Object.keys(FIELDS).forEach(refreshCtl);
   const lv=document.getElementById('libVer');
   if(lv && DATA.meta) lv.textContent = (DATA.meta.library||'?')+' ('+(DATA.meta.updated||'')+')';
+  const av=document.getElementById('appVer'); if(av) av.textContent='Studio '+STUDIO_VERSION;
+  const ev=document.getElementById('engVer'); if(ev) ev.textContent='v'+ENGINE_VERSION;
+  const vc=document.getElementById('verChip'); if(vc) vc.textContent='v'+STUDIO_VERSION.replace(/\.0$/,'');
   render();
 })();
 

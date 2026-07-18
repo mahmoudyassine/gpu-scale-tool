@@ -3,16 +3,29 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GPUscale.net — LLM Capacity &amp; Dimensioning Studio</title>
+<title>GPUscale.net · LLM Capacity &amp; Dimensioning Studio</title>
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="icon" type="image/png" sizes="512x512" href="assets/icon-512.png">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<link rel="manifest" href="site.webmanifest">
 <meta name="color-scheme" content="light dark">
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F6F7FA">
 <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0C1322">
-<meta name="description" content="GPUscale.net — LLM capacity &amp; dimensioning studio: model, precision, workload and hardware in; memory fit, latency, throughput and resilient topology out.">
-<meta property="og:title" content="GPUscale.net — LLM Capacity &amp; Dimensioning Studio">
-<meta property="og:image" content="assets/logo-preview.png">
+<meta name="description" content="GPUscale.net: size self-hosted LLM deployments. Model, precision, workload and hardware in; memory fit, latency, throughput and resilient topology out.">
+<link rel="canonical" href="https://mahmoudyassine.github.io/gpu-scale-tool/">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://mahmoudyassine.github.io/gpu-scale-tool/">
+<meta property="og:site_name" content="GPUscale.net">
+<meta property="og:title" content="GPUscale.net · LLM Capacity &amp; Dimensioning Studio">
+<meta property="og:description" content="Size self-hosted LLM deployments: memory fit, latency, throughput, SLO compliance and resilient worker topology. Free, open source, no backend.">
+<meta property="og:image" content="https://mahmoudyassine.github.io/gpu-scale-tool/assets/og-card.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="GPUscale.net · LLM Capacity &amp; Dimensioning Studio">
+<meta name="twitter:description" content="Size self-hosted LLM deployments: memory fit, latency, throughput, SLO compliance and resilient worker topology. Free, open source, no backend.">
+<meta name="twitter:image" content="https://mahmoudyassine.github.io/gpu-scale-tool/assets/og-card.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -25,22 +38,27 @@
 
 <header class="top">
   <div class="brand">
-    <div class="brand-row"><svg class="logo-mark" viewBox="0 0 64 64" aria-hidden="true"><rect x="13" y="8" width="42" height="10" rx="4" fill="#16233B"/><rect x="3" y="20" width="6" height="7.5" rx="1.8" fill="var(--faint)"/><rect x="3" y="31" width="6" height="7.5" rx="1.8" fill="var(--faint)"/><rect x="8" y="12" width="48" height="34" rx="8" fill="var(--teal-strong)"/><circle cx="23.0" cy="28.0" r="8.3" fill="#16233B"/><polygon points="26.90,28.07 30.46,27.22 29.50,31.75 26.59,29.52" fill="#263349"/><polygon points="24.89,31.41 27.41,34.07 23.00,35.50 23.48,31.87" fill="#263349"/><polygon points="20.99,31.34 19.95,34.85 16.50,31.75 19.89,30.35" fill="#263349"/><polygon points="19.10,27.93 15.54,28.78 16.50,24.25 19.41,26.48" fill="#263349"/><polygon points="21.11,24.59 18.59,21.93 23.00,20.50 22.52,24.13" fill="#263349"/><polygon points="25.01,24.66 26.05,21.15 29.50,24.25 26.11,25.65" fill="#263349"/><circle cx="23.0" cy="28.0" r="3.1" fill="var(--amber-border)"/><circle cx="21.85" cy="26.85" r="1.05" fill="#FFFFFF"/><circle cx="41.0" cy="28.0" r="8.3" fill="#16233B"/><polygon points="44.47,29.77 48.05,30.57 45.19,34.22 43.56,30.94" fill="#263349"/><polygon points="41.20,31.89 42.30,35.39 37.71,34.74 39.73,31.69" fill="#263349"/><polygon points="37.73,30.12 35.25,32.82 33.52,28.52 37.17,28.74" fill="#263349"/><polygon points="37.53,26.23 33.95,25.43 36.81,21.78 38.44,25.06" fill="#263349"/><polygon points="40.80,24.11 39.70,20.61 44.29,21.26 42.27,24.31" fill="#263349"/><polygon points="44.27,25.88 46.75,23.18 48.48,27.48 44.83,27.26" fill="#263349"/><circle cx="41.0" cy="28.0" r="3.1" fill="var(--amber-border)"/><circle cx="39.85" cy="26.85" r="1.05" fill="#FFFFFF"/><rect x="15" y="45" width="34" height="5.4" rx="2.7" fill="#16233B"/><rect x="17.60" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/><rect x="22.85" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/><rect x="28.10" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/><rect x="33.35" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/><rect x="41.10" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/><rect x="46.35" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/></svg><h1>GPUscale<span class="tld">.net</span></h1></div>
-    <div class="sub">LLM capacity &amp; dimensioning studio — model, precision, workload and hardware in; memory fit, latency, throughput and resilient topology out.</div>
+    <div class="brand-row"><svg class="logo-mark" viewBox="0 0 64 64" aria-hidden="true"><rect x="13" y="8" width="42" height="10" rx="4" fill="#16233B"/><rect x="3" y="20" width="6" height="7.5" rx="1.8" fill="var(--faint)"/><rect x="3" y="31" width="6" height="7.5" rx="1.8" fill="var(--faint)"/><rect x="8" y="12" width="48" height="34" rx="8" fill="var(--teal-strong)"/><circle cx="23.0" cy="28.0" r="8.3" fill="#16233B"/><polygon points="26.90,28.07 30.46,27.22 29.50,31.75 26.59,29.52" fill="#263349"/><polygon points="24.89,31.41 27.41,34.07 23.00,35.50 23.48,31.87" fill="#263349"/><polygon points="20.99,31.34 19.95,34.85 16.50,31.75 19.89,30.35" fill="#263349"/><polygon points="19.10,27.93 15.54,28.78 16.50,24.25 19.41,26.48" fill="#263349"/><polygon points="21.11,24.59 18.59,21.93 23.00,20.50 22.52,24.13" fill="#263349"/><polygon points="25.01,24.66 26.05,21.15 29.50,24.25 26.11,25.65" fill="#263349"/><circle cx="23.0" cy="28.0" r="3.1" fill="var(--amber-border)"/><circle cx="21.85" cy="26.85" r="1.05" fill="#FFFFFF"/><circle cx="41.0" cy="28.0" r="8.3" fill="#16233B"/><polygon points="44.47,29.77 48.05,30.57 45.19,34.22 43.56,30.94" fill="#263349"/><polygon points="41.20,31.89 42.30,35.39 37.71,34.74 39.73,31.69" fill="#263349"/><polygon points="37.73,30.12 35.25,32.82 33.52,28.52 37.17,28.74" fill="#263349"/><polygon points="37.53,26.23 33.95,25.43 36.81,21.78 38.44,25.06" fill="#263349"/><polygon points="40.80,24.11 39.70,20.61 44.29,21.26 42.27,24.31" fill="#263349"/><polygon points="44.27,25.88 46.75,23.18 48.48,27.48 44.83,27.26" fill="#263349"/><circle cx="41.0" cy="28.0" r="3.1" fill="var(--amber-border)"/><circle cx="39.85" cy="26.85" r="1.05" fill="#FFFFFF"/><rect x="15" y="45" width="34" height="5.4" rx="2.7" fill="#16233B"/><rect x="17.60" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/><rect x="22.85" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/><rect x="28.10" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/><rect x="33.35" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/><rect x="41.10" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/><rect x="46.35" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/></svg><h1>GPUscale<span class="tld">.net</span></h1><a class="ver-chip" href="https://github.com/mahmoudyassine/gpu-scale-tool/releases" target="_blank" rel="noopener" title="Release notes" id="verChip">v4.7</a></div>
+    <div class="sub">LLM capacity &amp; dimensioning studio: model, precision, workload and hardware in; memory fit, latency, throughput and resilient topology out.</div>
   </div>
   <div class="top-right">
     <div class="scenario">
       <label for="scenarioName">Scenario</label>
       <input type="text" id="scenarioName" placeholder="Untitled scenario" maxlength="60">
     </div>
+    <div class="btn-group" role="group" aria-label="Import and export">
+      <button class="btn" id="btnImport" type="button" title="Import configuration JSON"><svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 21h16"/></svg><span class="lbl">Import</span></button>
+      <button class="btn" id="btnExport" type="button" title="Export configuration JSON"><svg viewBox="0 0 24 24"><path d="M12 15V3M7 8l5-5 5 5M4 21h16"/></svg><span class="lbl">JSON</span></button>
+      <button class="btn" id="btnXls" type="button" title="Save as Excel template with live formulas"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></svg><span class="lbl">XLS</span></button>
+      <button class="btn" id="btnPdf" type="button" title="Save the report as PDF (print dialog)"><svg viewBox="0 0 24 24"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v7H6z"/></svg><span class="lbl">PDF</span></button>
+    </div>
     <button class="btn icon-only" id="btnTheme" type="button" title="Toggle light / dark" aria-label="Toggle theme">
       <svg viewBox="0 0 24 24" id="icoTheme"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
     </button>
-    <button class="btn" id="btnImport" type="button" title="Import configuration JSON"><svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 21h16"/></svg><span class="lbl">Import</span></button>
-    <button class="btn" id="btnExport" type="button" title="Export configuration JSON"><svg viewBox="0 0 24 24"><path d="M12 15V3M7 8l5-5 5 5M4 21h16"/></svg><span class="lbl">JSON</span></button>
-    <button class="btn" id="btnXls" type="button" title="Save as Excel template with live formulas"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></svg><span class="lbl">XLS</span></button>
-    <button class="btn" id="btnPdf" type="button" title="Save the report as PDF (print dialog)"><svg viewBox="0 0 24 24"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v7H6z"/></svg><span class="lbl">PDF</span></button>
-    <button class="btn" id="btnReset" type="button" title="Reset to defaults"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5"/></svg><span class="lbl">Reset</span></button>
+    <a class="btn icon-only" href="https://github.com/mahmoudyassine/gpu-scale-tool" target="_blank" rel="noopener" title="View source on GitHub" aria-label="GitHub repository">
+      <svg viewBox="0 0 16 16" class="gh-ico" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+    </a>
+    <button class="btn icon-only" id="btnReset" type="button" title="Reset to defaults" aria-label="Reset to defaults"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5"/></svg></button>
     <input type="file" id="fileImport" accept=".json,application/json" style="display:none">
   </div>
 </header>
@@ -57,13 +75,13 @@
       <select id="selModel"></select>
       <div class="f-help" id="hModel">Architecture geometry drives every estimate: total params size the weights, active params drive compute and decode reads, and the effective KV heads &times; head dim encode each model's real cache cost (MLA, sparse and SSM hybrids use sheet-compatible effective values).</div>
     </div>
-    <div class="toggle-row"><input type="checkbox" id="chkCustom"><label for="chkCustom">Custom model — enter geometry manually</label></div>
+    <div class="toggle-row"><input type="checkbox" id="chkCustom"><label for="chkCustom">Custom model · enter geometry manually</label></div>
     <div id="customBox" style="display:none;margin-top:10px">
       <div class="grid2">
-        <div class="field"><div class="f-head"><label>Total params</label><span class="unit">B</span></div><input type="number" id="cusParams" value="70" min="0.1" step="0.1" title="All weights that must sit in VRAM — for MoE, every expert."></div>
-        <div class="field"><div class="f-head"><label>Active params</label><span class="unit">B</span></div><input type="number" id="cusActive" value="70" min="0.1" step="0.1" title="Parameters used per token — drives prefill compute and decode weight reads."></div>
-        <div class="field"><div class="f-head"><label>Hidden dim</label></div><input type="number" id="cusHidden" value="8192" min="64" step="64" title="Model width — drives the activation workspace estimate."></div>
-        <div class="field"><div class="f-head"><label>Layers</label></div><input type="number" id="cusLayers" value="80" min="1" title="Transformer blocks — KV cache scales linearly with layers."></div>
+        <div class="field"><div class="f-head"><label>Total params</label><span class="unit">B</span></div><input type="number" id="cusParams" value="70" min="0.1" step="0.1" title="All weights that must sit in VRAM; for MoE, every expert."></div>
+        <div class="field"><div class="f-head"><label>Active params</label><span class="unit">B</span></div><input type="number" id="cusActive" value="70" min="0.1" step="0.1" title="Parameters used per token; drives prefill compute and decode weight reads."></div>
+        <div class="field"><div class="f-head"><label>Hidden dim</label></div><input type="number" id="cusHidden" value="8192" min="64" step="64" title="Model width; drives the activation workspace estimate."></div>
+        <div class="field"><div class="f-head"><label>Layers</label></div><input type="number" id="cusLayers" value="80" min="1" title="Transformer blocks; KV cache scales linearly with layers."></div>
         <div class="field"><div class="f-head"><label>KV heads</label></div><input type="number" id="cusKvh" value="8" min="1" title="Effective KV heads (GQA groups; 1 for MLA-style compressed caches)."></div>
         <div class="field"><div class="f-head"><label>Head dim</label></div><input type="number" id="cusHdim" value="128" min="8" title="Effective per-head dimension (use the compressed-latent equivalent for MLA)."></div>
       </div>
@@ -103,7 +121,7 @@
       <select id="selReason">
         <option>None</option><option>Light reasoning</option><option>Heavy reasoning</option><option>Custom</option>
       </select>
-      <div class="f-help" id="hReason">Thinking tokens generated before the visible answer. They add decode time, and — if the toggle below is on — extend the KV footprint too.<span class="typ">Light ≈ 2,000 tok · Heavy ≈ 8,000 tok</span></div>
+      <div class="f-help" id="hReason">Thinking tokens generated before the visible answer. They add decode time and, if the toggle below is on, extend the KV footprint too.<span class="typ">Light ≈ 2,000 tok · Heavy ≈ 8,000 tok</span></div>
     </div>
     <div id="m_inReasonTok"></div>
     <div class="toggle-row" style="margin-bottom:12px"><input type="checkbox" id="chkExtend" checked><label for="chkExtend">Reasoning tokens extend the KV cache</label><button class="info" data-help="hExtend" aria-expanded="false" type="button">i</button></div>
@@ -116,10 +134,10 @@
         <option value="running">Running batch only (vLLM-style admission)</option>
         <option value="all">All active sessions stay in KV</option>
       </select>
-      <div class="f-help" id="hPolicy">Running batch: only admitted sequences hold KV; the rest queue — the modern default. All sessions: every concurrent call keeps its cache resident (lowest latency variance, far more memory).</div>
+      <div class="f-help" id="hPolicy">Running batch: only admitted sequences hold KV and the rest queue (the modern default). All sessions: every concurrent call keeps its cache resident (lowest latency variance, far more memory).</div>
     </div>
     <details class="drawer">
-      <summary>Concurrency estimator — Little's law</summary>
+      <summary>Concurrency estimator · Little's law</summary>
       <div class="drawer-body">
         <div class="grid2">
           <div class="field"><div class="f-head"><label>Peak sessions</label></div><input type="number" id="ccSessions" value="200" min="1" title="Users with the app open during the busiest hour."></div>
@@ -148,13 +166,13 @@
     <div class="field">
       <div class="f-head"><label for="selResil">Resilience model</label><button class="info" data-help="hResil" aria-expanded="false" type="button">i</button></div>
       <select id="selResil">
-        <option value="n">N — capacity only, no redundancy</option>
-        <option value="n1">N+1 — one standby worker</option>
-        <option value="nn">N+N — in-site mirror (2N)</option>
-        <option value="dr">DR — remote standby site (2N, active/passive)</option>
-        <option value="nndr">N+N + DR — active/active twin sites (4N)</option>
+        <option value="n">N · capacity only, no redundancy</option>
+        <option value="n1">N+1 · one standby worker</option>
+        <option value="nn">N+N · in-site mirror (2N)</option>
+        <option value="dr">DR · remote standby site (2N, active/passive)</option>
+        <option value="nndr">N+N + DR · active/active twin sites (4N)</option>
       </select>
-      <div class="f-help" id="hResil">Performance is sized on the N load-bearing workers; redundancy adds procurement, not throughput. N+1 survives one node failure. N+N duplicates the system in-site. DR mirrors it to a standby site. N+N + DR — a popular enterprise pattern — runs N+N in each of two active/active sites, surviving a full site loss while both normally share traffic.</div>
+      <div class="f-help" id="hResil">Performance is sized on the N load-bearing workers; redundancy adds procurement, not throughput. N+1 survives one node failure. N+N duplicates the system in-site. DR mirrors it to a standby site. N+N + DR, a popular enterprise pattern, runs N+N in each of two active/active sites, surviving a full site loss while both normally share traffic.</div>
     </div>
     <div class="meta-card" id="gpuMeta"></div>
   </section>
@@ -218,7 +236,7 @@
   </section>
 
   <section class="panel topo-box">
-    <div class="p-head"><span class="p-title"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="2.4"/><circle cx="5" cy="19" r="2.4"/><circle cx="19" cy="19" r="2.4"/><path d="M12 7.4v3.6M12 11 6.6 17.1M12 11l5.4 6.1"/></svg>Deployment topology — workers &amp; GPU utilization</span><span class="p-note" id="topoNote"></span></div>
+    <div class="p-head"><span class="p-title"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="2.4"/><circle cx="5" cy="19" r="2.4"/><circle cx="19" cy="19" r="2.4"/><path d="M12 7.4v3.6M12 11 6.6 17.1M12 11l5.4 6.1"/></svg>Deployment topology · workers &amp; GPU utilization</span><span class="p-note" id="topoNote"></span></div>
     <div id="topo"></div>
     <div class="topo-legend" id="topoLegend"></div>
     <div class="topo-sum" id="topoSum"></div>
@@ -260,9 +278,27 @@
 </div>
 
 <footer class="foot">
-  <span>Peak estimates — production typically achieves 70–90%. Validate with vLLM bench / GenAI-Perf before commitments.</span>
-  <span>Engine v22 · library <span class="mono" id="libVer">—</span> · scripting at <span class="mono">window.GPUscale</span> · <a class="gh-link" href="https://github.com/mahmoudyassine/gpu-scale-tool" target="_blank" rel="noopener"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>mahmoudyassine/gpu-scale-tool</a></span>
-  <span>Open-source project · MIT license · contributions welcome</span>
+  <div class="foot-grid">
+    <div class="f-col f-brand">
+      <div class="f-brand-row"><svg class="f-mark" viewBox="0 0 64 64" aria-hidden="true"><rect x="8" y="12" width="48" height="34" rx="8" fill="currentColor" opacity=".85"/><circle cx="23" cy="28" r="8.3" fill="var(--panel)"/><circle cx="41" cy="28" r="8.3" fill="var(--panel)"/><circle cx="23" cy="28" r="3.1" fill="currentColor"/><circle cx="41" cy="28" r="3.1" fill="currentColor"/><rect x="15" y="45" width="34" height="5.4" rx="2.7" fill="var(--panel)"/></svg><span class="f-name">GPUscale<span class="tld">.net</span></span></div>
+      <p>Capacity &amp; dimensioning studio for self-hosted LLM deployments. All figures are peak estimates; production typically achieves 70–90%. Validate with vLLM bench / GenAI-Perf before commitments.</p>
+      <p class="f-copy">© 2026 GPUscale.net · Released under the <a href="https://github.com/mahmoudyassine/gpu-scale-tool/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a></p>
+    </div>
+    <nav class="f-col" aria-label="Project links">
+      <h2>Project</h2>
+      <a class="gh-link" href="https://github.com/mahmoudyassine/gpu-scale-tool" target="_blank" rel="noopener"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>Source on GitHub</a>
+      <a href="https://github.com/mahmoudyassine/gpu-scale-tool/releases" target="_blank" rel="noopener">Releases &amp; changelog</a>
+      <a href="https://github.com/mahmoudyassine/gpu-scale-tool/issues" target="_blank" rel="noopener">Report an issue</a>
+      <a href="dist/gpuscale_standalone.html" download="gpuscale_standalone.html">Portable single-file build</a>
+    </nav>
+    <div class="f-col" aria-label="Studio internals">
+      <h2>Studio</h2>
+      <span class="f-fact">Version <span class="mono" id="appVer">—</span></span>
+      <span class="f-fact">Engine <span class="mono" id="engVer">—</span> · library <span class="mono" id="libVer">—</span></span>
+      <span class="f-fact">Scripting API at <span class="mono">window.GPUscale</span></span>
+      <span class="f-fact">Static and dependency-free: runs entirely in your browser; nothing is uploaded.</span>
+    </div>
+  </div>
 </footer>
 </div>
 
