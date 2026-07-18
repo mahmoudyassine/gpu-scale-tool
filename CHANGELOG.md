@@ -1,5 +1,18 @@
 # Changelog
 
+## Studio 4.8.1 (2026-07-18)
+
+- The studio now explains structural misfits: when a single TP replica cannot
+  hold one copy of the model, the verdict, insights and a new top-ranked
+  recommendation say so explicitly, with the minimum TP that would fit, the
+  largest weight quant that fits at the current TP, and a note that adding
+  workers only adds more weight copies (and that pipeline parallelism is not
+  modeled).
+- "Add workers" is no longer suggested when it cannot help; queueing guidance
+  is hidden while the configuration does not fit; the "balanced configuration"
+  insight no longer appears on non-fitting configurations.
+
+
 ## Studio 4.8 (2026-07-18)
 
 - Recommendations panel: names the primary bottleneck (VRAM, prefill, decode

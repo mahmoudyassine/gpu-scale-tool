@@ -843,7 +843,7 @@ if(!MODELS.length || !GPUS.length || !QUANTS.length || !CASES.length){
   document.body.innerHTML = '<div style="font-family:system-ui,sans-serif;max-width:560px;margin:80px auto;padding:0 20px;line-height:1.65;color:#1A2536"><h2 style="margin-bottom:10px">Data files not loaded</h2><p>GPUscale.net could not find its library. Keep <code>index.html</code> together with the <code>data/</code> and <code>assets/</code> folders: the four files <code>data/models.js</code>, <code>data/gpus.js</code>, <code>data/quants.js</code> and <code>data/usecases.js</code> must sit next to this page.</p><p>If you need one portable file instead, use <code>dist/gpuscale_standalone.html</code> or rebuild it with <code>python3 tools/build_single_file.py</code>.</p></div>';
   throw new Error('GPUscale.net data missing');
 }
-const STUDIO_VERSION = '4.8.0', ENGINE_VERSION = 23;
+const STUDIO_VERSION = '4.8.1', ENGINE_VERSION = 23;
 const KV_QUANTS = [{name:'BF16',bytes:2},{name:'FP16',bytes:2},{name:'FP8',bytes:1},{name:'INT8',bytes:1},{name:'INT4',bytes:0.5}];
 const REASON_TOK = {'None':0,'Light reasoning':2000,'Heavy reasoning':8000,'Custom':2000};
 const RESIL = {
@@ -1334,13 +1334,21 @@ function buildRecs(s,d,m,g,prelaunch){
   else if(d.queued>0) bottleneck='admission (batch × replicas)';
   else if(util>0.92) bottleneck='VRAM headroom';
 
+  const perRepCap=s.tp*s.gpuVram, perRepNeed=d.weights+d.act;
+  if(perRepNeed>perRepCap){
+    const minTp=Math.ceil(perRepNeed/s.gpuVram);
+    const fitQ=QUANTS.filter(q=>q.bytes<s.bytesW && (s.params*q.bytes+d.act)<perRepCap).sort((a,b)=>b.bytes-a.bytes)[0];
+    push('crit','One replica cannot hold the model',
+      `Each TP${s.tp} replica spans ${fmt(perRepCap)} GB of VRAM but a single copy of ${m.name} needs ${fmt(perRepNeed)} GB. Adding workers cannot fix this: every ${s.tp}-GPU group is another full copy of the weights. Fixes: TP ≥ ${minTp}${minTp>s.perW?` (crosses the ${s.perW}-GPU NVLink island: use a rack-scale part or set interconnect efficiency 0.6 to 0.7)`:''}${fitQ?`, ${fitQ.name} weights (${fmt(s.params*fitQ.bytes)} GB fits at TP${s.tp})`:''}, a higher-VRAM GPU, or a smaller model. Pipeline parallelism is not modeled here.`);
+  }
   if(!d.fits){
     const overBy=d.total-d.avail, addW=Math.max(1,Math.ceil(overBy/(s.perW*s.gpuVram)));
-    let opts=[`add ≈${addW} worker${addW>1?'s':''}`];
+    let opts=[];
+    if(perRepNeed<=perRepCap) opts.push(`add ≈${addW} worker${addW>1?'s':''}`);
     if(s.bytesW>1) opts.push(`FP8 weights (saves ${fmt(d.weightsAll/2)} GB)`);
     if(s.bytesK>1) opts.push(`FP8 KV cache (saves ${fmt(d.kvTotal/2)} GB)`);
     opts.push('trim resident context or batch');
-    push('crit','Configuration does not fit',`Needs ${fmt(d.total)} GB against ${fmt(d.avail)} GB of serving VRAM, over by ${fmt(overBy)} GB. Options: ${opts.join(', ')}.`);
+    push('crit','Configuration does not fit',`Needs ${fmt(d.total)} GB against ${fmt(d.avail)} GB of serving VRAM, over by ${fmt(overBy)} GB${d.replicas>1?` (${d.replicas} replicas × ${fmt(d.weights)} GB weights each)`:''}. Options: ${opts.join(', ')}.`);
   }
   if(d.effSeq>m.ctx)
     push('crit','Context exceeds the model',`Resident + reasoning is ${fmtTok(d.effSeq)} but ${m.name} tops out at ${fmtTok(m.ctx)}. Reduce resident tokens${s.extend&&s.reasonTok?', disable KV extension,':''} or pick a longer-context model.`);
@@ -1355,7 +1363,7 @@ function buildRecs(s,d,m,g,prelaunch){
     const t2=d.bwEff/(s.active*s.bytesW+halfB*d.effSeq*d.kvTok);
     push('warn','Per-user speed misses its target',`${fmt(d.tps)} tok/s against a ${fmt(s.sloTps)} tok/s target. Halving batch per replica to ${halfB} gives ≈${fmt(t2)} tok/s at lower aggregate; FP8 KV, a higher-bandwidth GPU, or speculative decoding (1.5 to 3x) are the structural fixes.`);
   }
-  if(d.queued>0){
+  if(d.queued>0&&d.fits){
     const rpw=Math.max(1,Math.floor(s.perW/Math.max(s.tp,1)));
     const needW=Math.ceil(s.concurrent/(s.batch*rpw));
     const capB=d.maxBatchMem>s.batch? ` Memory would allow batch up to ${fmt(Math.min(d.maxBatchMem,512))} per replica.`:'';
@@ -1408,7 +1416,10 @@ function render(){
   const v=$('verdict'); v.classList.remove('ok','warn','fail');
   let main,sub;
   if(!d.fits){ v.classList.add('fail'); main='Exceeds VRAM';
-    sub=`Needs ${fmt(d.total)} GB but only ${fmt(d.avail)} GB available: quantize further, cut context or batch, or add workers.`; }
+    const repNeed=d.weights+d.act, repCap=s.tp*s.gpuVram;
+    sub= repNeed>repCap
+      ? `Each TP${s.tp} replica must hold a full ${fmt(d.weights)} GB copy of the weights but spans only ${fmt(repCap)} GB of VRAM. More workers only add more copies: raise TP, quantize further, or pick a smaller model. See Recommendations below.`
+      : `Needs ${fmt(d.total)} GB but only ${fmt(d.avail)} GB available: quantize further, cut context or batch, or add workers.`; }
   else if(!d.sloAll){ v.classList.add('warn'); main='Fits, but SLO targets missed';
     sub='Memory fits with headroom, but at least one latency/throughput target fails. See SLO compliance below.'; }
   else { v.classList.add('ok'); main='Fits & SLO targets met';
@@ -1476,16 +1487,17 @@ function render(){
   const topoInfo=renderTopology(s,d);
 
   const ins=[];
+  if(!d.fits) ins.push(['bad',`Memory is the binding constraint: ${(d.total/d.avail*100).toFixed(0)}% of serving VRAM would be needed${d.replicas>1?`, dominated by ${d.replicas} replica copies of the weights (${fmt(d.weightsAll)} GB)`:''}. The Recommendations panel below lists the viable fixes.`]);
   if(d.effSeq>m.ctx) ins.push(['bad',`Resident sequence + reasoning (${fmtTok(d.effSeq)}) exceeds ${m.name}'s max context (${fmtTok(m.ctx)}): an unservable configuration. Trim resident tokens or pick a longer-context model.`]);
   if(s.tp>s.perW) ins.push(['bad',`TP${s.tp} spans workers (${s.perW} GPU/worker): tensor-parallel traffic leaves the NVLink domain. Either raise GPUs per worker, lower TP, or set interconnect efficiency to 0.6–0.7 to model the cross-node penalty.`]);
-  if(d.queued>0) ins.push(['warn',`${d.queued} of ${s.concurrent} calls queue at peak (only ${d.active} admitted). Memory allows up to ${d.maxBatchMem} per replica: ${d.maxBatchMem>s.batch? 'raise max batch toward that':'add workers or trim context to admit more'}.`]);
+  if(d.queued>0&&d.fits) ins.push(['warn',`${d.queued} of ${s.concurrent} calls queue at peak (only ${d.active} admitted). Memory allows up to ${d.maxBatchMem} per replica: ${d.maxBatchMem>s.batch? 'raise max batch toward that':'add workers or trim context to admit more'}.`]);
   if(d.kvTotal>d.weightsAll) ins.push(['warn',`KV-dominated deployment: cache (${fmt(d.kvTotal)} GB) outweighs weights (${fmt(d.weightsAll)} GB). FP8/INT8 KV, compressed-KV models, or shorter resident sequences pay off most here.`]);
   if(d.slo.ttft.on&&!d.slo.ttft.pass) ins.push(['bad',`Prefill misses the TTFT target. Options: prefix caching for repeated prompts, chunked prefill, TP ${s.tp}→${Math.min(s.tp*2,s.gpus)}, or a higher-TFLOPS part; disaggregated prefill (Dynamo / Rubin CPX) exists for exactly this.`]);
   if(/MHA/.test(m.arch||'')) ins.push(['warn',`${m.name.split(' ')[0]} uses full multi-head attention: KV is ${fmt(d.kvTok*1e3)} MB per token, an order beyond GQA peers. Budget context tightly.`]);
   if(/Unified/i.test(g.mem)) ins.push(['warn','Unified-memory hardware: capacity is generous but bandwidth caps decode speed: fine for single-user or development, not for concurrent serving.']);
   if(prelaunch) ins.push(['warn','Selected GPU is announced but not shipping: specs are pre-launch estimates; re-validate against datasheets before committing a proposal.']);
   if(s.policy==='all'&&d.allActiveVram>d.avail&&d.fits) ins.push(['warn',`Keeping every session in KV would need ${fmt(d.allActiveVram)} GB: the running-batch policy is what makes this configuration fit.`]);
-  if(ins.length===0) ins.push(['ok',`Balanced configuration: ${(d.total/d.avail*100).toFixed(0)}% memory utilization, ${fmt(d.tps)} tok/s per user at batch ${fmt(d.batchPerRep)}, ${fmt(d.headroom)} GB headroom for growth.`]);
+  if(ins.length===0&&d.fits) ins.push(['ok',`Balanced configuration: ${(d.total/d.avail*100).toFixed(0)}% memory utilization, ${fmt(d.tps)} tok/s per user at batch ${fmt(d.batchPerRep)}, ${fmt(d.headroom)} GB headroom for growth.`]);
   ins.push(['ok',`Marginal cost of one more admitted call: ${fmt(d.kvDelta)} GB of KV. Speculative decoding (EAGLE-3 / MTP) would add 1.5–3× on top of the decode figures.`]);
   $('insights').innerHTML=ins.slice(0,5).map(([c,t])=>`<div class="ins ${c==='ok'?'':c}">${t}</div>`).join('');
 
