@@ -94,7 +94,16 @@ header.top{display:flex;align-items:center;justify-content:space-between;gap:16p
 /* ============ LAYOUT ============ */
 .console{display:grid;grid-template-columns:368px minmax(0,1fr);gap:20px;align-items:start}
 @media(max-width:1020px){.console{grid-template-columns:1fr}}
-.rail{display:flex;flex-direction:column;gap:14px}
+.rail{display:flex;flex-direction:column;gap:14px;counter-reset:station}
+.col-cap{font-family:var(--disp);font-size:10.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);padding:0 2px}
+.station .st-title::before{counter-increment:station;content:counter(station);font-family:var(--mono);font-size:10px;font-weight:600;color:var(--teal-strong);background:var(--teal-soft);border-radius:6px;padding:2.5px 7px;line-height:1;flex:none}
+/* desktop: pin the input rail and let it scroll independently of the results canvas */
+@media(min-width:1021px){
+  .rail{position:sticky;top:12px;max-height:calc(100vh - 24px);overflow-y:auto;overscroll-behavior:contain;padding:2px 6px 2px 2px;scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+  .rail::-webkit-scrollbar{width:8px}
+  .rail::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px}
+  .rail::-webkit-scrollbar-track{background:transparent}
+}
 .station{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:15px 16px 16px;box-shadow:var(--shadow)}
 .st-title{font-family:var(--disp);font-weight:600;font-size:14.5px;color:var(--text);margin-bottom:13px;padding-bottom:9px;border-bottom:1px solid var(--line-soft)}
 
@@ -249,6 +258,15 @@ details.drawer .drawer-body{margin-top:10px}
 .topo-sum b{color:var(--text);font-weight:600;font-family:var(--mono);font-size:11.5px}
 .topo-legend{display:flex;flex-wrap:wrap;gap:12px 18px;margin-top:11px}
 
+.recs{display:flex;flex-direction:column;gap:9px}
+.rec{border:1px solid var(--line-soft);border-left:3px solid var(--teal-strong);border-radius:9px;padding:10px 13px;background:var(--panel-2)}
+.rec.warn{border-left-color:var(--amber-border)}
+.rec.crit{border-left-color:var(--red)}
+.rec .r-t{font-family:var(--disp);font-weight:600;font-size:12.5px;color:var(--text);margin-bottom:3px}
+.rec.warn .r-t{color:var(--amber)}
+.rec.crit .r-t{color:var(--red)}
+.rec .r-b{font-size:12px;color:var(--muted);line-height:1.6}
+
 .insights{display:flex;flex-direction:column;gap:7px}
 .ins{display:flex;gap:9px;font-size:12px;color:var(--muted);line-height:1.55}
 .ins::before{content:'▸';color:var(--teal-strong);flex:none}
@@ -313,6 +331,9 @@ footer.foot .mono{font-family:var(--mono);color:var(--text)}
   footer.foot{margin-top:16px;padding-top:10px;font-size:9.5px}
   .foot-grid{grid-template-columns:1.6fr 1.2fr;gap:6px 30px;max-width:none}
   nav.f-col,.f-col h2,.f-mark{display:none !important}
+  .col-cap,.privacy-chip{display:none !important}
+  .f-privacy{background:none;padding:0;color:#556}
+  .rec{background:none}
 }
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{transition:none !important;animation:none !important}
@@ -322,6 +343,10 @@ footer.foot .mono{font-family:var(--mono);color:var(--text)}
 .brand-row{display:flex;align-items:center;gap:11px}
 .logo-mark{width:38px;height:38px;flex:none}
 @media(max-width:640px){.logo-mark{width:30px;height:30px}}
+.privacy-chip{display:inline-flex;align-items:center;gap:6px;margin-top:8px;font-size:11px;font-weight:500;color:var(--teal-strong);background:var(--teal-soft);border-radius:20px;padding:4px 11px}
+.privacy-chip svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.f-privacy{display:flex;gap:8px;align-items:flex-start;color:var(--teal-strong);background:var(--teal-soft);border-radius:9px;padding:9px 12px;margin-top:2px;line-height:1.55;font-size:11.5px;font-weight:500}
+.f-privacy svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none;margin-top:2px}
 
 .gh-link{display:inline-flex;align-items:center;gap:5px;color:var(--muted);font-family:var(--mono)}
 .gh-link:hover{color:var(--teal-strong);text-decoration:none}
@@ -347,6 +372,7 @@ footer.foot .mono{font-family:var(--mono);color:var(--text)}
   <div class="brand">
     <div class="brand-row"><svg class="logo-mark" viewBox="0 0 64 64" aria-hidden="true"><rect x="13" y="8" width="42" height="10" rx="4" fill="#16233B"/><rect x="3" y="20" width="6" height="7.5" rx="1.8" fill="var(--faint)"/><rect x="3" y="31" width="6" height="7.5" rx="1.8" fill="var(--faint)"/><rect x="8" y="12" width="48" height="34" rx="8" fill="var(--teal-strong)"/><circle cx="23.0" cy="28.0" r="8.3" fill="#16233B"/><polygon points="26.90,28.07 30.46,27.22 29.50,31.75 26.59,29.52" fill="#263349"/><polygon points="24.89,31.41 27.41,34.07 23.00,35.50 23.48,31.87" fill="#263349"/><polygon points="20.99,31.34 19.95,34.85 16.50,31.75 19.89,30.35" fill="#263349"/><polygon points="19.10,27.93 15.54,28.78 16.50,24.25 19.41,26.48" fill="#263349"/><polygon points="21.11,24.59 18.59,21.93 23.00,20.50 22.52,24.13" fill="#263349"/><polygon points="25.01,24.66 26.05,21.15 29.50,24.25 26.11,25.65" fill="#263349"/><circle cx="23.0" cy="28.0" r="3.1" fill="var(--amber-border)"/><circle cx="21.85" cy="26.85" r="1.05" fill="#FFFFFF"/><circle cx="41.0" cy="28.0" r="8.3" fill="#16233B"/><polygon points="44.47,29.77 48.05,30.57 45.19,34.22 43.56,30.94" fill="#263349"/><polygon points="41.20,31.89 42.30,35.39 37.71,34.74 39.73,31.69" fill="#263349"/><polygon points="37.73,30.12 35.25,32.82 33.52,28.52 37.17,28.74" fill="#263349"/><polygon points="37.53,26.23 33.95,25.43 36.81,21.78 38.44,25.06" fill="#263349"/><polygon points="40.80,24.11 39.70,20.61 44.29,21.26 42.27,24.31" fill="#263349"/><polygon points="44.27,25.88 46.75,23.18 48.48,27.48 44.83,27.26" fill="#263349"/><circle cx="41.0" cy="28.0" r="3.1" fill="var(--amber-border)"/><circle cx="39.85" cy="26.85" r="1.05" fill="#FFFFFF"/><rect x="15" y="45" width="34" height="5.4" rx="2.7" fill="#16233B"/><rect x="17.60" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/><rect x="22.85" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/><rect x="28.10" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/><rect x="33.35" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/><rect x="41.10" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/><rect x="46.35" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/></svg><h1>GPUscale<span class="tld">.net</span></h1><a class="ver-chip" href="https://github.com/mahmoudyassine/gpu-scale-tool/releases" target="_blank" rel="noopener" title="Release notes" id="verChip">v4.7</a></div>
     <div class="sub">LLM capacity &amp; dimensioning studio: model, precision, workload and hardware in; memory fit, latency, throughput and resilient topology out.</div>
+    <div class="privacy-chip"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="9.5" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></svg>100% local: nothing you enter is saved or uploaded</div>
   </div>
   <div class="top-right">
     <div class="scenario">
@@ -374,6 +400,7 @@ footer.foot .mono{font-family:var(--mono);color:var(--text)}
 
 <!-- ======================= CONTROL RAIL ======================= -->
 <aside class="rail">
+  <div class="col-cap">Inputs · work top to bottom, results update live</div>
 
   <section class="station">
     <div class="st-title"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 3 8l9 5 9-5-9-5z"/><path d="M3 12.5l9 5 9-5"/><path d="M3 17l9 5 9-5"/></svg>Model</div>
@@ -477,9 +504,11 @@ footer.foot .mono{font-family:var(--mono);color:var(--text)}
         <option value="n1">N+1 · one standby worker</option>
         <option value="nn">N+N · in-site mirror (2N)</option>
         <option value="dr">DR · remote standby site (2N, active/passive)</option>
+        <option value="aa">Active/Active · two live sites (2N)</option>
+        <option value="aan1">Active/Active + N+1 per site (2N+2)</option>
         <option value="nndr">N+N + DR · active/active twin sites (4N)</option>
       </select>
-      <div class="f-help" id="hResil">Performance is sized on the N load-bearing workers; redundancy adds procurement, not throughput. N+1 survives one node failure. N+N duplicates the system in-site. DR mirrors it to a standby site. N+N + DR, a popular enterprise pattern, runs N+N in each of two active/active sites, surviving a full site loss while both normally share traffic.</div>
+      <div class="f-help" id="hResil">Performance is sized on the N load-bearing workers; redundancy adds procurement, not throughput. N+1 survives one node failure. N+N duplicates the system in-site. DR mirrors it to a standby site (active/passive). Active/Active runs two live sites behind global load balancing, each able to carry the full load; add N+1 per site to also absorb node failures after a site loss. N+N + DR runs N+N in each of two active/active sites (4N), the heaviest pattern.</div>
     </div>
     <div class="meta-card" id="gpuMeta"></div>
   </section>
@@ -503,6 +532,7 @@ footer.foot .mono{font-family:var(--mono);color:var(--text)}
 
 <!-- ======================= READOUT ======================= -->
 <main class="readout">
+  <div class="col-cap">Results · computed from the inputs on the left</div>
 
   <div class="print-config" id="printConfig"></div>
 
@@ -581,6 +611,11 @@ footer.foot .mono{font-family:var(--mono);color:var(--text)}
     <div class="insights" id="insights"></div>
   </section>
 
+  <section class="panel">
+    <div class="p-head"><span class="p-title"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3.5" width="14" height="17" rx="2"/><path d="M9 3.5V6h6V3.5"/><path d="M8.5 11l2 2 4-4.5M8.5 17h7"/></svg>Recommendations</span><span class="p-note" id="recBottleneck"></span></div>
+    <div class="recs" id="recs"></div>
+  </section>
+
 </main>
 </div>
 
@@ -593,7 +628,7 @@ footer.foot .mono{font-family:var(--mono);color:var(--text)}
     </div>
     <nav class="f-col" aria-label="Project links">
       <h2>Project</h2>
-      <a class="gh-link" href="https://github.com/mahmoudyassine/gpu-scale-tool" target="_blank" rel="noopener"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>Source on GitHub</a>
+      <a class="gh-link" href="https://github.com/mahmoudyassine/gpu-scale-tool" target="_blank" rel="noopener"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>github.com/mahmoudyassine/gpu-scale-tool</a>
       <a href="https://github.com/mahmoudyassine/gpu-scale-tool/releases" target="_blank" rel="noopener">Releases &amp; changelog</a>
       <a href="https://github.com/mahmoudyassine/gpu-scale-tool/issues" target="_blank" rel="noopener">Report an issue</a>
       <a href="dist/gpuscale_standalone.html" download="gpuscale_standalone.html">Portable single-file build</a>
@@ -603,7 +638,7 @@ footer.foot .mono{font-family:var(--mono);color:var(--text)}
       <span class="f-fact">Version <span class="mono" id="appVer">—</span></span>
       <span class="f-fact">Engine <span class="mono" id="engVer">—</span> · library <span class="mono" id="libVer">—</span></span>
       <span class="f-fact">Scripting API at <span class="mono">window.GPUscale</span></span>
-      <span class="f-fact">Static and dependency-free: runs entirely in your browser; nothing is uploaded.</span>
+      <span class="f-privacy"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="9.5" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></svg>Private by design: everything runs in your browser. Nothing you enter is saved, uploaded or tracked. No accounts, no analytics, no cookies.</span>
     </div>
   </div>
 </footer>
@@ -808,15 +843,17 @@ if(!MODELS.length || !GPUS.length || !QUANTS.length || !CASES.length){
   document.body.innerHTML = '<div style="font-family:system-ui,sans-serif;max-width:560px;margin:80px auto;padding:0 20px;line-height:1.65;color:#1A2536"><h2 style="margin-bottom:10px">Data files not loaded</h2><p>GPUscale.net could not find its library. Keep <code>index.html</code> together with the <code>data/</code> and <code>assets/</code> folders: the four files <code>data/models.js</code>, <code>data/gpus.js</code>, <code>data/quants.js</code> and <code>data/usecases.js</code> must sit next to this page.</p><p>If you need one portable file instead, use <code>dist/gpuscale_standalone.html</code> or rebuild it with <code>python3 tools/build_single_file.py</code>.</p></div>';
   throw new Error('GPUscale.net data missing');
 }
-const STUDIO_VERSION = '4.7.0', ENGINE_VERSION = 23;
+const STUDIO_VERSION = '4.8.0', ENGINE_VERSION = 23;
 const KV_QUANTS = [{name:'BF16',bytes:2},{name:'FP16',bytes:2},{name:'FP8',bytes:1},{name:'INT8',bytes:1},{name:'INT4',bytes:0.5}];
 const REASON_TOK = {'None':0,'Light reasoning':2000,'Heavy reasoning':8000,'Custom':2000};
 const RESIL = {
-  n:   {code:0, label:'N',      long:'N · capacity only',                        extraW:n=>0},
-  n1:  {code:1, label:'N+1',    long:'N+1 · one standby worker',                 extraW:n=>1},
-  nn:  {code:2, label:'N+N',    long:'N+N · in-site mirror (2N)',                extraW:n=>n},
-  dr:  {code:3, label:'DR',     long:'DR · remote standby site (active/passive)',extraW:n=>n},
-  nndr:{code:4, label:'N+N+DR', long:'N+N + DR · active/active twin sites (4N)', extraW:n=>3*n},
+  n:   {code:0, label:'N',       long:'N · capacity only',                             extraW:n=>0},
+  n1:  {code:1, label:'N+1',     long:'N+1 · one standby worker',                      extraW:n=>1},
+  nn:  {code:2, label:'N+N',     long:'N+N · in-site mirror (2N)',                     extraW:n=>n},
+  dr:  {code:3, label:'DR',      long:'DR · remote standby site (active/passive)',     extraW:n=>n},
+  aa:  {code:5, label:'A/A',     long:'Active/Active · two live sites (2N)',           extraW:n=>n},
+  aan1:{code:6, label:'A/A N+1', long:'Active/Active · N+1 in each of two sites (2N+2)',extraW:n=>n+2},
+  nndr:{code:4, label:'N+N+DR',  long:'N+N + DR · active/active twin sites (4N)',      extraW:n=>3*n},
 };
 
 /* ================= ENGINE (pure · v23: workbook v22 + per-replica weight/activation accounting) ================= */
@@ -1188,7 +1225,7 @@ function renderTopology(s,d){
   }
 
   function frame(y0, title, items, chip, iconName){
-    const maxDraw=8;
+    const maxDraw=16;
     let list=items;
     if(items.length>maxDraw){
       const specials=items.filter(it=>it.mode!=='active');
@@ -1236,6 +1273,16 @@ function renderTopology(s,d){
     links.push({y:y+frameGap/2, lab:'async replication', both:false});
     y+=frameGap;
     const fb=frame(y,`DR site · standby · N=${N}`,dup('drs'),gpuChip(N,' · standby'),'globe'); parts.push(fb.svg); y+=fb.h;
+  } else if(r==='aa'){
+    const fa=frame(y,`Site A · active · N=${N}`,act('A-'),gpuChip(N),'building'); parts.push(fa.svg); y+=fa.h;
+    links.push({y:y+frameGap/2, lab:'active / active · geo load balancing', both:true});
+    y+=frameGap;
+    const fb=frame(y,`Site B · active · N=${N}`,act('B-'),gpuChip(N),'building'); parts.push(fb.svg); y+=fb.h;
+  } else if(r==='aan1'){
+    const fa=frame(y,`Site A · active · N+1`,[...act('A-'),{mode:'standby'}],gpuChip(N+1),'building'); parts.push(fa.svg); y+=fa.h;
+    links.push({y:y+frameGap/2, lab:'active / active · geo load balancing', both:true});
+    y+=frameGap;
+    const fb=frame(y,`Site B · active · N+1`,[...act('B-'),{mode:'standby'}],gpuChip(N+1),'building'); parts.push(fb.svg); y+=fb.h;
   } else { /* nndr: active/active twin sites, each N+N */
     const fa=frame(y,`Site A · active · N+N`,[...act('A-'),...dup('mirror')],gpuChip(2*N),'building'); parts.push(fa.svg); y+=fa.h;
     links.push({y:y+frameGap/2, lab:'active / active · geo-replication', both:true});
@@ -1254,6 +1301,7 @@ function renderTopology(s,d){
 
   const legend=[['box',P.segkv,`active worker · GPU bars show memory fill (${utilTxt} of ${fmt(cap)} GB each)`]];
   if(r==='n1') legend.push(['dashed',P.amber,'standby worker (N+1)']);
+  if(r==='aan1') legend.push(['dashed',P.amber,'standby worker (one per site)']);
   if(r==='nn'||r==='nndr') legend.push(['dashed',P.teal,'mirror workers (N+N)']);
   if(r==='dr') legend.push(['dashed',P.violet,'DR standby site']);
   $('topoLegend').innerHTML=legend.map(([k,c,t])=>
@@ -1266,11 +1314,70 @@ function renderTopology(s,d){
     : r==='n1'? 'One idle standby absorbs a single node failure with no capacity loss after failover.'
     : r==='nn'? 'A full second system in the same site: survives node and system-level failures; can also cover maintenance windows.'
     : r==='dr'? 'A standby remote site behind asynchronous replication: survives full site loss; the standby idles during normal operation.'
+    : r==='aa'? 'Two active sites share traffic behind global load balancing. Each site alone can carry the full load, so losing a site degrades nothing; in normal operation each runs at roughly half load.'
+    : r==='aan1'? 'Two active sites, each with its own local standby: survives the loss of an entire site plus a node failure in the surviving site. A pragmatic middle ground between plain active/active and N+N+DR.'
     : 'Two active/active sites, each carrying N+N: traffic is shared across sites in normal operation, and the deployment survives any worker failure or the loss of an entire site without dropping below N. The most resilient, and most procurement-heavy, enterprise pattern.';
   $('topoSum').innerHTML=
     `Load: <b>N = ${N} worker${N>1?'s':''} · ${s.gpus} GPUs</b> (${s.perW}/worker): performance and fit are computed on these. `+
     `Procured for ${info.long}: <b>${procW} workers · ${procG} GPUs · ≈ ${fmt(kW)} kW</b> GPU TDP. ${resLine}`;
   return {procW, procG, kW};
+}
+
+/* ================= RECOMMENDATIONS ================= */
+function buildRecs(s,d,m,g,prelaunch){
+  const recs=[]; const util=d.avail>0? d.total/d.avail : 1;
+  const push=(lv,t,b)=>recs.push({lv,t,b});
+  let bottleneck='none';
+  if(!d.fits) bottleneck='VRAM capacity';
+  else if(d.slo.ttft.on&&!d.slo.ttft.pass) bottleneck='prefill compute (TTFT)';
+  else if(d.slo.tps.on&&!d.slo.tps.pass) bottleneck='decode bandwidth';
+  else if(d.queued>0) bottleneck='admission (batch × replicas)';
+  else if(util>0.92) bottleneck='VRAM headroom';
+
+  if(!d.fits){
+    const overBy=d.total-d.avail, addW=Math.max(1,Math.ceil(overBy/(s.perW*s.gpuVram)));
+    let opts=[`add ≈${addW} worker${addW>1?'s':''}`];
+    if(s.bytesW>1) opts.push(`FP8 weights (saves ${fmt(d.weightsAll/2)} GB)`);
+    if(s.bytesK>1) opts.push(`FP8 KV cache (saves ${fmt(d.kvTotal/2)} GB)`);
+    opts.push('trim resident context or batch');
+    push('crit','Configuration does not fit',`Needs ${fmt(d.total)} GB against ${fmt(d.avail)} GB of serving VRAM, over by ${fmt(overBy)} GB. Options: ${opts.join(', ')}.`);
+  }
+  if(d.effSeq>m.ctx)
+    push('crit','Context exceeds the model',`Resident + reasoning is ${fmtTok(d.effSeq)} but ${m.name} tops out at ${fmtTok(m.ctx)}. Reduce resident tokens${s.extend&&s.reasonTok?', disable KV extension,':''} or pick a longer-context model.`);
+  if(s.tp>s.perW)
+    push('crit','Tensor parallel crosses node boundaries',`TP${s.tp} with ${s.perW} GPU per worker forces TP traffic over the network. Lower TP to ${s.perW} or less, raise GPUs per worker, or model the penalty with interconnect efficiency 0.6 to 0.7.`);
+  if(d.fits&&d.slo.ttft.on&&!d.slo.ttft.pass){
+    const tp2=Math.min(s.tp*2,s.gpus), t2=d.ttft*s.tp/tp2;
+    push('warn','TTFT misses its target',`Prefill takes ${fmt(d.ttft)} ms against a ${fmt(s.sloTtft)} ms target. TP ${s.tp} to ${tp2} lands ≈${fmt(t2)} ms${tp2>s.perW?' (but crosses nodes)':''}; prefix caching, chunked prefill or a prefill-optimized part (Rubin CPX) attack the same problem without more GPUs.`);
+  }
+  if(d.fits&&d.slo.tps.on&&!d.slo.tps.pass){
+    const halfB=Math.max(1,Math.floor(d.batchPerRep/2));
+    const t2=d.bwEff/(s.active*s.bytesW+halfB*d.effSeq*d.kvTok);
+    push('warn','Per-user speed misses its target',`${fmt(d.tps)} tok/s against a ${fmt(s.sloTps)} tok/s target. Halving batch per replica to ${halfB} gives ≈${fmt(t2)} tok/s at lower aggregate; FP8 KV, a higher-bandwidth GPU, or speculative decoding (1.5 to 3x) are the structural fixes.`);
+  }
+  if(d.queued>0){
+    const rpw=Math.max(1,Math.floor(s.perW/Math.max(s.tp,1)));
+    const needW=Math.ceil(s.concurrent/(s.batch*rpw));
+    const capB=d.maxBatchMem>s.batch? ` Memory would allow batch up to ${fmt(Math.min(d.maxBatchMem,512))} per replica.`:'';
+    push('warn','Calls queue at peak',`${d.queued} of ${s.concurrent} concurrent calls wait; only ${d.active} are admitted.${capB} Admitting everyone at batch ${s.batch} needs ≈${needW} workers (currently ${s.workers}).`);
+  }
+  if(d.fits&&util>0.92)
+    push('warn','Headroom is thin',`${(util*100).toFixed(0)}% of serving VRAM is committed. Growth, longer contexts or a library update can tip this over; one more worker or FP8 KV restores margin.`);
+  if(d.kvTotal>d.weightsAll)
+    push('warn','KV-dominated deployment',`Cache (${fmt(d.kvTotal)} GB) outweighs weights (${fmt(d.weightsAll)} GB). FP8 or INT4 KV, compressed-KV models (MLA), or shorter resident sequences pay off most here.`);
+  if(s.resil==='n'&&s.workers>1)
+    push('warn','No redundancy configured',`A single worker failure removes ${fmt(100/s.workers)}% of capacity with nothing to absorb it. N+1 costs one worker (${s.perW} GPUs, ${fmt(s.perW*g.watts/1000)} kW) and removes that cliff.`);
+  if(prelaunch)
+    push('warn','Pre-launch GPU selected',`${g.name} is announced but not shipping; specs are estimates. Re-validate against datasheets before committing a proposal.`);
+  if(/Unified/i.test(g.mem))
+    push('warn','Unified-memory hardware',`Capacity is generous but ${fmt(g.bw)} TB/s of bandwidth caps decode speed. Fine for development or single-user work, not for concurrent serving.`);
+  if(d.fits&&util<0.35&&d.queued===0&&s.gpus>1)
+    push('ok','Likely over-provisioned',`Only ${(util*100).toFixed(0)}% of serving VRAM is used and every call is admitted. Fewer workers, a smaller TP, or a cheaper part could carry this load; alternatively raise batch and serve more traffic on the same metal.`);
+  if(!recs.some(r=>r.lv!=='ok'))
+    push('ok','Balanced configuration',`Fits with ${fmt(d.headroom)} GB headroom (${(util*100).toFixed(0)}% used), all enabled SLOs pass, and every call is admitted at peak. No action needed.`);
+  const rank={crit:0,warn:1,ok:2};
+  recs.sort((a,b)=>rank[a.lv]-rank[b.lv]);
+  return {bottleneck, recs:recs.slice(0,7)};
 }
 
 /* ================= RENDER ================= */
@@ -1381,6 +1488,10 @@ function render(){
   if(ins.length===0) ins.push(['ok',`Balanced configuration: ${(d.total/d.avail*100).toFixed(0)}% memory utilization, ${fmt(d.tps)} tok/s per user at batch ${fmt(d.batchPerRep)}, ${fmt(d.headroom)} GB headroom for growth.`]);
   ins.push(['ok',`Marginal cost of one more admitted call: ${fmt(d.kvDelta)} GB of KV. Speculative decoding (EAGLE-3 / MTP) would add 1.5–3× on top of the decode figures.`]);
   $('insights').innerHTML=ins.slice(0,5).map(([c,t])=>`<div class="ins ${c==='ok'?'':c}">${t}</div>`).join('');
+
+  const rb=buildRecs(s,d,m,g,prelaunch);
+  $('recBottleneck').textContent = rb.bottleneck==='none'? 'no active bottleneck' : 'primary bottleneck: '+rb.bottleneck;
+  $('recs').innerHTML = rb.recs.map(r=>`<div class="rec ${r.lv}"><div class="r-t">${r.t}</div><div class="r-b">${r.b}</div></div>`).join('');
 
   const dur = +$('ccDur').value>0? +$('ccDur').value : d.latency;
   const cc = Math.ceil((+$('ccSessions').value||0)*(+$('ccTurns').value||0)*((+$('ccShare').value||0)/100)*(+$('ccCalls').value||0)*dur/3600*(+$('ccBurst').value||1));
@@ -1527,7 +1638,7 @@ function buildXls(){
     ['mbu','Decode MBU', s.mbu, 'Typical 0.5–0.75'],
     ['ic','Interconnect efficiency', s.ic, 'NVLink ≈ 0.85 · cross-node 0.6–0.7'],
     ['ovh','Framework overhead (ms)', s.ovh, 'Added to every call'],
-    ['resil','Resilience (0=N,1=N+1,2=N+N,3=DR,4=N+N+DR)', RESIL[s.resil].code, 'Adds procurement, not throughput'],
+    ['resil','Resilience (0=N,1=N+1,2=N+N,3=DR,4=N+N+DR,5=A/A,6=A/A N+1)', RESIL[s.resil].code, 'Adds procurement, not throughput'],
     ['sloTtft','SLO: TTFT ≤ (ms, 0=off)', s.sloTtft, ''],
     ['sloTps','SLO: TPS ≥ (tok/s, 0=off)', s.sloTps, ''],
     ['sloP95','SLO: P95 ≤ (s, 0=off)', s.sloP95, ''],
@@ -1563,7 +1674,7 @@ function buildXls(){
   res('sloT','SLO check: TTFT','', ()=>`IF(${I('sloTtft')}=0,"—",IF(${R('ttft')}<=${I('sloTtft')},"PASS","FAIL"))`, true);
   res('sloS','SLO check: TPS','', ()=>`IF(${I('sloTps')}=0,"—",IF(${R('tps')}>=${I('sloTps')},"PASS","FAIL"))`, true);
   res('sloP','SLO check: P95','', ()=>`IF(${I('sloP95')}=0,"—",IF(${R('p95')}<=${I('sloP95')},"PASS","FAIL"))`, true);
-  res('procW','Procured workers (with resilience)','', ()=>`${I('workers')}+IF(${I('resil')}=1,1,IF(${I('resil')}=4,3*${I('workers')},IF(${I('resil')}>=2,${I('workers')},0)))`);
+  res('procW','Procured workers (with resilience)','', ()=>`${I('workers')}+IF(${I('resil')}=1,1,IF(${I('resil')}=4,3*${I('workers')},IF(${I('resil')}=6,${I('workers')}+2,IF(OR(${I('resil')}=2,${I('resil')}=3,${I('resil')}=5),${I('workers')},0))))`);
   res('procG','Procured GPUs','', ()=>`${R('procW')}*${I('perW')}`);
   res('power','GPU power (TDP)','kW', ()=>`${R('procG')}*${I('watts')}/1000`);
 

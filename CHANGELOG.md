@@ -1,5 +1,22 @@
 # Changelog
 
+## Studio 4.8 (2026-07-18)
+
+- Recommendations panel: names the primary bottleneck (VRAM, prefill, decode
+  bandwidth, admission or headroom) and lists concrete numbered fixes for the
+  selected configuration, ranked by severity.
+- Two new resilience modes: Active/Active (two live sites, 2N) and
+  Active/Active with N+1 in each site (2N+2), with topology diagrams,
+  procurement roll-ups and XLS support.
+- Topology frames now draw up to 16 workers per site before truncating.
+- Desktop layout: the input rail pins to the viewport and scrolls
+  independently of the results canvas; columns are captioned (Inputs /
+  Results) and input stations are numbered to guide filling order.
+- Privacy made explicit: a header chip and a highlighted footer callout state
+  that nothing entered is saved, uploaded or tracked.
+- Footer shows the full repository URL.
+
+
 ## Studio 4.7 (2026-07-18) · engine v23 · library v24
 
 Correctness release, verified by a multi-agent adversarial review.

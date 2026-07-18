@@ -79,7 +79,16 @@ header.top{display:flex;align-items:center;justify-content:space-between;gap:16p
 /* ============ LAYOUT ============ */
 .console{display:grid;grid-template-columns:368px minmax(0,1fr);gap:20px;align-items:start}
 @media(max-width:1020px){.console{grid-template-columns:1fr}}
-.rail{display:flex;flex-direction:column;gap:14px}
+.rail{display:flex;flex-direction:column;gap:14px;counter-reset:station}
+.col-cap{font-family:var(--disp);font-size:10.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);padding:0 2px}
+.station .st-title::before{counter-increment:station;content:counter(station);font-family:var(--mono);font-size:10px;font-weight:600;color:var(--teal-strong);background:var(--teal-soft);border-radius:6px;padding:2.5px 7px;line-height:1;flex:none}
+/* desktop: pin the input rail and let it scroll independently of the results canvas */
+@media(min-width:1021px){
+  .rail{position:sticky;top:12px;max-height:calc(100vh - 24px);overflow-y:auto;overscroll-behavior:contain;padding:2px 6px 2px 2px;scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+  .rail::-webkit-scrollbar{width:8px}
+  .rail::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px}
+  .rail::-webkit-scrollbar-track{background:transparent}
+}
 .station{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:15px 16px 16px;box-shadow:var(--shadow)}
 .st-title{font-family:var(--disp);font-weight:600;font-size:14.5px;color:var(--text);margin-bottom:13px;padding-bottom:9px;border-bottom:1px solid var(--line-soft)}
 
@@ -234,6 +243,15 @@ details.drawer .drawer-body{margin-top:10px}
 .topo-sum b{color:var(--text);font-weight:600;font-family:var(--mono);font-size:11.5px}
 .topo-legend{display:flex;flex-wrap:wrap;gap:12px 18px;margin-top:11px}
 
+.recs{display:flex;flex-direction:column;gap:9px}
+.rec{border:1px solid var(--line-soft);border-left:3px solid var(--teal-strong);border-radius:9px;padding:10px 13px;background:var(--panel-2)}
+.rec.warn{border-left-color:var(--amber-border)}
+.rec.crit{border-left-color:var(--red)}
+.rec .r-t{font-family:var(--disp);font-weight:600;font-size:12.5px;color:var(--text);margin-bottom:3px}
+.rec.warn .r-t{color:var(--amber)}
+.rec.crit .r-t{color:var(--red)}
+.rec .r-b{font-size:12px;color:var(--muted);line-height:1.6}
+
 .insights{display:flex;flex-direction:column;gap:7px}
 .ins{display:flex;gap:9px;font-size:12px;color:var(--muted);line-height:1.55}
 .ins::before{content:'▸';color:var(--teal-strong);flex:none}
@@ -298,6 +316,9 @@ footer.foot .mono{font-family:var(--mono);color:var(--text)}
   footer.foot{margin-top:16px;padding-top:10px;font-size:9.5px}
   .foot-grid{grid-template-columns:1.6fr 1.2fr;gap:6px 30px;max-width:none}
   nav.f-col,.f-col h2,.f-mark{display:none !important}
+  .col-cap,.privacy-chip{display:none !important}
+  .f-privacy{background:none;padding:0;color:#556}
+  .rec{background:none}
 }
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{transition:none !important;animation:none !important}
@@ -307,6 +328,10 @@ footer.foot .mono{font-family:var(--mono);color:var(--text)}
 .brand-row{display:flex;align-items:center;gap:11px}
 .logo-mark{width:38px;height:38px;flex:none}
 @media(max-width:640px){.logo-mark{width:30px;height:30px}}
+.privacy-chip{display:inline-flex;align-items:center;gap:6px;margin-top:8px;font-size:11px;font-weight:500;color:var(--teal-strong);background:var(--teal-soft);border-radius:20px;padding:4px 11px}
+.privacy-chip svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.f-privacy{display:flex;gap:8px;align-items:flex-start;color:var(--teal-strong);background:var(--teal-soft);border-radius:9px;padding:9px 12px;margin-top:2px;line-height:1.55;font-size:11.5px;font-weight:500}
+.f-privacy svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none;margin-top:2px}
 
 .gh-link{display:inline-flex;align-items:center;gap:5px;color:var(--muted);font-family:var(--mono)}
 .gh-link:hover{color:var(--teal-strong);text-decoration:none}

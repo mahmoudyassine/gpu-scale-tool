@@ -6,15 +6,17 @@ if(!MODELS.length || !GPUS.length || !QUANTS.length || !CASES.length){
   document.body.innerHTML = '<div style="font-family:system-ui,sans-serif;max-width:560px;margin:80px auto;padding:0 20px;line-height:1.65;color:#1A2536"><h2 style="margin-bottom:10px">Data files not loaded</h2><p>GPUscale.net could not find its library. Keep <code>index.html</code> together with the <code>data/</code> and <code>assets/</code> folders: the four files <code>data/models.js</code>, <code>data/gpus.js</code>, <code>data/quants.js</code> and <code>data/usecases.js</code> must sit next to this page.</p><p>If you need one portable file instead, use <code>dist/gpuscale_standalone.html</code> or rebuild it with <code>python3 tools/build_single_file.py</code>.</p></div>';
   throw new Error('GPUscale.net data missing');
 }
-const STUDIO_VERSION = '4.7.0', ENGINE_VERSION = 23;
+const STUDIO_VERSION = '4.8.0', ENGINE_VERSION = 23;
 const KV_QUANTS = [{name:'BF16',bytes:2},{name:'FP16',bytes:2},{name:'FP8',bytes:1},{name:'INT8',bytes:1},{name:'INT4',bytes:0.5}];
 const REASON_TOK = {'None':0,'Light reasoning':2000,'Heavy reasoning':8000,'Custom':2000};
 const RESIL = {
-  n:   {code:0, label:'N',      long:'N · capacity only',                        extraW:n=>0},
-  n1:  {code:1, label:'N+1',    long:'N+1 · one standby worker',                 extraW:n=>1},
-  nn:  {code:2, label:'N+N',    long:'N+N · in-site mirror (2N)',                extraW:n=>n},
-  dr:  {code:3, label:'DR',     long:'DR · remote standby site (active/passive)',extraW:n=>n},
-  nndr:{code:4, label:'N+N+DR', long:'N+N + DR · active/active twin sites (4N)', extraW:n=>3*n},
+  n:   {code:0, label:'N',       long:'N · capacity only',                             extraW:n=>0},
+  n1:  {code:1, label:'N+1',     long:'N+1 · one standby worker',                      extraW:n=>1},
+  nn:  {code:2, label:'N+N',     long:'N+N · in-site mirror (2N)',                     extraW:n=>n},
+  dr:  {code:3, label:'DR',      long:'DR · remote standby site (active/passive)',     extraW:n=>n},
+  aa:  {code:5, label:'A/A',     long:'Active/Active · two live sites (2N)',           extraW:n=>n},
+  aan1:{code:6, label:'A/A N+1', long:'Active/Active · N+1 in each of two sites (2N+2)',extraW:n=>n+2},
+  nndr:{code:4, label:'N+N+DR',  long:'N+N + DR · active/active twin sites (4N)',      extraW:n=>3*n},
 };
 
 /* ================= ENGINE (pure · v23: workbook v22 + per-replica weight/activation accounting) ================= */
@@ -386,7 +388,7 @@ function renderTopology(s,d){
   }
 
   function frame(y0, title, items, chip, iconName){
-    const maxDraw=8;
+    const maxDraw=16;
     let list=items;
     if(items.length>maxDraw){
       const specials=items.filter(it=>it.mode!=='active');
@@ -434,6 +436,16 @@ function renderTopology(s,d){
     links.push({y:y+frameGap/2, lab:'async replication', both:false});
     y+=frameGap;
     const fb=frame(y,`DR site · standby · N=${N}`,dup('drs'),gpuChip(N,' · standby'),'globe'); parts.push(fb.svg); y+=fb.h;
+  } else if(r==='aa'){
+    const fa=frame(y,`Site A · active · N=${N}`,act('A-'),gpuChip(N),'building'); parts.push(fa.svg); y+=fa.h;
+    links.push({y:y+frameGap/2, lab:'active / active · geo load balancing', both:true});
+    y+=frameGap;
+    const fb=frame(y,`Site B · active · N=${N}`,act('B-'),gpuChip(N),'building'); parts.push(fb.svg); y+=fb.h;
+  } else if(r==='aan1'){
+    const fa=frame(y,`Site A · active · N+1`,[...act('A-'),{mode:'standby'}],gpuChip(N+1),'building'); parts.push(fa.svg); y+=fa.h;
+    links.push({y:y+frameGap/2, lab:'active / active · geo load balancing', both:true});
+    y+=frameGap;
+    const fb=frame(y,`Site B · active · N+1`,[...act('B-'),{mode:'standby'}],gpuChip(N+1),'building'); parts.push(fb.svg); y+=fb.h;
   } else { /* nndr: active/active twin sites, each N+N */
     const fa=frame(y,`Site A · active · N+N`,[...act('A-'),...dup('mirror')],gpuChip(2*N),'building'); parts.push(fa.svg); y+=fa.h;
     links.push({y:y+frameGap/2, lab:'active / active · geo-replication', both:true});
@@ -452,6 +464,7 @@ function renderTopology(s,d){
 
   const legend=[['box',P.segkv,`active worker · GPU bars show memory fill (${utilTxt} of ${fmt(cap)} GB each)`]];
   if(r==='n1') legend.push(['dashed',P.amber,'standby worker (N+1)']);
+  if(r==='aan1') legend.push(['dashed',P.amber,'standby worker (one per site)']);
   if(r==='nn'||r==='nndr') legend.push(['dashed',P.teal,'mirror workers (N+N)']);
   if(r==='dr') legend.push(['dashed',P.violet,'DR standby site']);
   $('topoLegend').innerHTML=legend.map(([k,c,t])=>
@@ -464,11 +477,70 @@ function renderTopology(s,d){
     : r==='n1'? 'One idle standby absorbs a single node failure with no capacity loss after failover.'
     : r==='nn'? 'A full second system in the same site: survives node and system-level failures; can also cover maintenance windows.'
     : r==='dr'? 'A standby remote site behind asynchronous replication: survives full site loss; the standby idles during normal operation.'
+    : r==='aa'? 'Two active sites share traffic behind global load balancing. Each site alone can carry the full load, so losing a site degrades nothing; in normal operation each runs at roughly half load.'
+    : r==='aan1'? 'Two active sites, each with its own local standby: survives the loss of an entire site plus a node failure in the surviving site. A pragmatic middle ground between plain active/active and N+N+DR.'
     : 'Two active/active sites, each carrying N+N: traffic is shared across sites in normal operation, and the deployment survives any worker failure or the loss of an entire site without dropping below N. The most resilient, and most procurement-heavy, enterprise pattern.';
   $('topoSum').innerHTML=
     `Load: <b>N = ${N} worker${N>1?'s':''} · ${s.gpus} GPUs</b> (${s.perW}/worker): performance and fit are computed on these. `+
     `Procured for ${info.long}: <b>${procW} workers · ${procG} GPUs · ≈ ${fmt(kW)} kW</b> GPU TDP. ${resLine}`;
   return {procW, procG, kW};
+}
+
+/* ================= RECOMMENDATIONS ================= */
+function buildRecs(s,d,m,g,prelaunch){
+  const recs=[]; const util=d.avail>0? d.total/d.avail : 1;
+  const push=(lv,t,b)=>recs.push({lv,t,b});
+  let bottleneck='none';
+  if(!d.fits) bottleneck='VRAM capacity';
+  else if(d.slo.ttft.on&&!d.slo.ttft.pass) bottleneck='prefill compute (TTFT)';
+  else if(d.slo.tps.on&&!d.slo.tps.pass) bottleneck='decode bandwidth';
+  else if(d.queued>0) bottleneck='admission (batch × replicas)';
+  else if(util>0.92) bottleneck='VRAM headroom';
+
+  if(!d.fits){
+    const overBy=d.total-d.avail, addW=Math.max(1,Math.ceil(overBy/(s.perW*s.gpuVram)));
+    let opts=[`add ≈${addW} worker${addW>1?'s':''}`];
+    if(s.bytesW>1) opts.push(`FP8 weights (saves ${fmt(d.weightsAll/2)} GB)`);
+    if(s.bytesK>1) opts.push(`FP8 KV cache (saves ${fmt(d.kvTotal/2)} GB)`);
+    opts.push('trim resident context or batch');
+    push('crit','Configuration does not fit',`Needs ${fmt(d.total)} GB against ${fmt(d.avail)} GB of serving VRAM, over by ${fmt(overBy)} GB. Options: ${opts.join(', ')}.`);
+  }
+  if(d.effSeq>m.ctx)
+    push('crit','Context exceeds the model',`Resident + reasoning is ${fmtTok(d.effSeq)} but ${m.name} tops out at ${fmtTok(m.ctx)}. Reduce resident tokens${s.extend&&s.reasonTok?', disable KV extension,':''} or pick a longer-context model.`);
+  if(s.tp>s.perW)
+    push('crit','Tensor parallel crosses node boundaries',`TP${s.tp} with ${s.perW} GPU per worker forces TP traffic over the network. Lower TP to ${s.perW} or less, raise GPUs per worker, or model the penalty with interconnect efficiency 0.6 to 0.7.`);
+  if(d.fits&&d.slo.ttft.on&&!d.slo.ttft.pass){
+    const tp2=Math.min(s.tp*2,s.gpus), t2=d.ttft*s.tp/tp2;
+    push('warn','TTFT misses its target',`Prefill takes ${fmt(d.ttft)} ms against a ${fmt(s.sloTtft)} ms target. TP ${s.tp} to ${tp2} lands ≈${fmt(t2)} ms${tp2>s.perW?' (but crosses nodes)':''}; prefix caching, chunked prefill or a prefill-optimized part (Rubin CPX) attack the same problem without more GPUs.`);
+  }
+  if(d.fits&&d.slo.tps.on&&!d.slo.tps.pass){
+    const halfB=Math.max(1,Math.floor(d.batchPerRep/2));
+    const t2=d.bwEff/(s.active*s.bytesW+halfB*d.effSeq*d.kvTok);
+    push('warn','Per-user speed misses its target',`${fmt(d.tps)} tok/s against a ${fmt(s.sloTps)} tok/s target. Halving batch per replica to ${halfB} gives ≈${fmt(t2)} tok/s at lower aggregate; FP8 KV, a higher-bandwidth GPU, or speculative decoding (1.5 to 3x) are the structural fixes.`);
+  }
+  if(d.queued>0){
+    const rpw=Math.max(1,Math.floor(s.perW/Math.max(s.tp,1)));
+    const needW=Math.ceil(s.concurrent/(s.batch*rpw));
+    const capB=d.maxBatchMem>s.batch? ` Memory would allow batch up to ${fmt(Math.min(d.maxBatchMem,512))} per replica.`:'';
+    push('warn','Calls queue at peak',`${d.queued} of ${s.concurrent} concurrent calls wait; only ${d.active} are admitted.${capB} Admitting everyone at batch ${s.batch} needs ≈${needW} workers (currently ${s.workers}).`);
+  }
+  if(d.fits&&util>0.92)
+    push('warn','Headroom is thin',`${(util*100).toFixed(0)}% of serving VRAM is committed. Growth, longer contexts or a library update can tip this over; one more worker or FP8 KV restores margin.`);
+  if(d.kvTotal>d.weightsAll)
+    push('warn','KV-dominated deployment',`Cache (${fmt(d.kvTotal)} GB) outweighs weights (${fmt(d.weightsAll)} GB). FP8 or INT4 KV, compressed-KV models (MLA), or shorter resident sequences pay off most here.`);
+  if(s.resil==='n'&&s.workers>1)
+    push('warn','No redundancy configured',`A single worker failure removes ${fmt(100/s.workers)}% of capacity with nothing to absorb it. N+1 costs one worker (${s.perW} GPUs, ${fmt(s.perW*g.watts/1000)} kW) and removes that cliff.`);
+  if(prelaunch)
+    push('warn','Pre-launch GPU selected',`${g.name} is announced but not shipping; specs are estimates. Re-validate against datasheets before committing a proposal.`);
+  if(/Unified/i.test(g.mem))
+    push('warn','Unified-memory hardware',`Capacity is generous but ${fmt(g.bw)} TB/s of bandwidth caps decode speed. Fine for development or single-user work, not for concurrent serving.`);
+  if(d.fits&&util<0.35&&d.queued===0&&s.gpus>1)
+    push('ok','Likely over-provisioned',`Only ${(util*100).toFixed(0)}% of serving VRAM is used and every call is admitted. Fewer workers, a smaller TP, or a cheaper part could carry this load; alternatively raise batch and serve more traffic on the same metal.`);
+  if(!recs.some(r=>r.lv!=='ok'))
+    push('ok','Balanced configuration',`Fits with ${fmt(d.headroom)} GB headroom (${(util*100).toFixed(0)}% used), all enabled SLOs pass, and every call is admitted at peak. No action needed.`);
+  const rank={crit:0,warn:1,ok:2};
+  recs.sort((a,b)=>rank[a.lv]-rank[b.lv]);
+  return {bottleneck, recs:recs.slice(0,7)};
 }
 
 /* ================= RENDER ================= */
@@ -579,6 +651,10 @@ function render(){
   if(ins.length===0) ins.push(['ok',`Balanced configuration: ${(d.total/d.avail*100).toFixed(0)}% memory utilization, ${fmt(d.tps)} tok/s per user at batch ${fmt(d.batchPerRep)}, ${fmt(d.headroom)} GB headroom for growth.`]);
   ins.push(['ok',`Marginal cost of one more admitted call: ${fmt(d.kvDelta)} GB of KV. Speculative decoding (EAGLE-3 / MTP) would add 1.5–3× on top of the decode figures.`]);
   $('insights').innerHTML=ins.slice(0,5).map(([c,t])=>`<div class="ins ${c==='ok'?'':c}">${t}</div>`).join('');
+
+  const rb=buildRecs(s,d,m,g,prelaunch);
+  $('recBottleneck').textContent = rb.bottleneck==='none'? 'no active bottleneck' : 'primary bottleneck: '+rb.bottleneck;
+  $('recs').innerHTML = rb.recs.map(r=>`<div class="rec ${r.lv}"><div class="r-t">${r.t}</div><div class="r-b">${r.b}</div></div>`).join('');
 
   const dur = +$('ccDur').value>0? +$('ccDur').value : d.latency;
   const cc = Math.ceil((+$('ccSessions').value||0)*(+$('ccTurns').value||0)*((+$('ccShare').value||0)/100)*(+$('ccCalls').value||0)*dur/3600*(+$('ccBurst').value||1));
@@ -725,7 +801,7 @@ function buildXls(){
     ['mbu','Decode MBU', s.mbu, 'Typical 0.5–0.75'],
     ['ic','Interconnect efficiency', s.ic, 'NVLink ≈ 0.85 · cross-node 0.6–0.7'],
     ['ovh','Framework overhead (ms)', s.ovh, 'Added to every call'],
-    ['resil','Resilience (0=N,1=N+1,2=N+N,3=DR,4=N+N+DR)', RESIL[s.resil].code, 'Adds procurement, not throughput'],
+    ['resil','Resilience (0=N,1=N+1,2=N+N,3=DR,4=N+N+DR,5=A/A,6=A/A N+1)', RESIL[s.resil].code, 'Adds procurement, not throughput'],
     ['sloTtft','SLO: TTFT ≤ (ms, 0=off)', s.sloTtft, ''],
     ['sloTps','SLO: TPS ≥ (tok/s, 0=off)', s.sloTps, ''],
     ['sloP95','SLO: P95 ≤ (s, 0=off)', s.sloP95, ''],
@@ -761,7 +837,7 @@ function buildXls(){
   res('sloT','SLO check: TTFT','', ()=>`IF(${I('sloTtft')}=0,"—",IF(${R('ttft')}<=${I('sloTtft')},"PASS","FAIL"))`, true);
   res('sloS','SLO check: TPS','', ()=>`IF(${I('sloTps')}=0,"—",IF(${R('tps')}>=${I('sloTps')},"PASS","FAIL"))`, true);
   res('sloP','SLO check: P95','', ()=>`IF(${I('sloP95')}=0,"—",IF(${R('p95')}<=${I('sloP95')},"PASS","FAIL"))`, true);
-  res('procW','Procured workers (with resilience)','', ()=>`${I('workers')}+IF(${I('resil')}=1,1,IF(${I('resil')}=4,3*${I('workers')},IF(${I('resil')}>=2,${I('workers')},0)))`);
+  res('procW','Procured workers (with resilience)','', ()=>`${I('workers')}+IF(${I('resil')}=1,1,IF(${I('resil')}=4,3*${I('workers')},IF(${I('resil')}=6,${I('workers')}+2,IF(OR(${I('resil')}=2,${I('resil')}=3,${I('resil')}=5),${I('workers')},0))))`);
   res('procG','Procured GPUs','', ()=>`${R('procW')}*${I('perW')}`);
   res('power','GPU power (TDP)','kW', ()=>`${R('procG')}*${I('watts')}/1000`);
 

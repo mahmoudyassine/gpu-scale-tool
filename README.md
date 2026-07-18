@@ -23,7 +23,8 @@ no build step, nothing uploaded.
 - 🧮 **Memory fit**: weights, KV cache, activations and overhead per replica, against real fleet capacity
 - ⚡ **Performance**: time to first token, per-user tok/s, aggregate throughput, latency anatomy
 - 🎯 **SLO compliance**: set TTFT / TPS / P95 targets and see pass or fail as you tune
-- 🏗️ **Resilient topology**: N, N+1, N+N, DR and N+N+DR procurement with workers, GPUs and kW roll-ups
+- 🏗️ **Resilient topology**: N, N+1, N+N, DR, Active/Active and N+N+DR procurement with workers, GPUs and kW roll-ups
+- 🔒 **Private by design**: everything runs in your browser; nothing you enter is saved, uploaded or tracked
 - 📚 **Library**: 94 models (GQA, MoE, MLA, SSM hybrids, Arabic/GCC sovereign set) and 38 GPUs, one line each
 - 📤 **Exports**: JSON configs, an Excel template with live formulas, and a print-ready PDF report
 - 🌓 **Polished**: light and dark themes, mobile friendly, installable, keyboard accessible
