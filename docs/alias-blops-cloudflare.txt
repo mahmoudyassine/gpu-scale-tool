@@ -1,59 +1,50 @@
 ;; ============================================================
-;; gpuscale.blops.ai -> gpuscale.net alias (Cloudflare)
+;; gpuscale.blops.ai · serving alias for GPUscale.net (Cloudflare)
 ;; ============================================================
 ;;
-;; PART 1 · DNS record (importable at Cloudflare -> blops.ai zone ->
-;; DNS -> Records -> Import and Export -> Import DNS records).
-;; You already have this record; skip if present. It must stay
-;; Proxied (orange cloud): the import dialog has a "Proxy imported
-;; DNS records" toggle, leave it ON.
-
-$ORIGIN blops.ai.
-$TTL 300
-gpuscale    IN  CNAME   gpuscale.net.
-
-;; ============================================================
-;; PART 2 · Redirect rule. The DNS import screen CANNOT create
-;; rules, which is why the alias still shows GitHub's 404: the
-;; proxied CNAME makes Cloudflare answer for the hostname, but
-;; without a rule it just forwards to GitHub, which does not know
-;; the name. Create the rule in the dashboard (Rules -> Create
-;; rule -> Redirect Rule) or run the script below once.
+;; Requirement: gpuscale.net is blocked on some networks, so the
+;; alias must SERVE the site itself. A 301 redirect does not work:
+;; it would send the browser to the blocked domain. Two options,
+;; both free; option A is recommended.
 ;;
-;; Token: Cloudflare -> My Profile -> API Tokens -> Create custom
-;; token -> Zone: blops.ai -> permission "Zone . Dynamic Redirect .
-;; Edit" (plus "Zone . Zone . Read" for the zone lookup). Revoke it
-;; after running.
-;;
-;; CAUTION: the PUT sets the zone's dynamic-redirect rules to
-;; exactly this list. If blops.ai already has redirect rules you
-;; want to keep, do not run this as-is.
 ;; ------------------------------------------------------------
-
-export CF_API_TOKEN="paste-your-token-here"
-
-ZONE_ID=$(curl -s -H "Authorization: Bearer $CF_API_TOKEN" \
-  "https://api.cloudflare.com/client/v4/zones?name=blops.ai" \
-  | python3 -c "import sys,json;print(json.load(sys.stdin)['result'][0]['id'])")
-
-curl -s -X PUT \
-  "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/rulesets/phases/http_request_dynamic_redirect/entrypoint" \
-  -H "Authorization: Bearer $CF_API_TOKEN" \
-  -H "Content-Type: application/json" \
-  --data '{
-    "rules": [{
-      "description": "gpuscale alias to gpuscale.net",
-      "expression": "(http.host eq \"gpuscale.blops.ai\")",
-      "action": "redirect",
-      "action_parameters": {
-        "from_value": {
-          "status_code": 301,
-          "target_url": { "expression": "concat(\"https://gpuscale.net\", http.request.uri.path)" },
-          "preserve_query_string": true
-        }
-      }
-    }]
-  }'
-
-;; Verify (success = HTTP/2 301 with location: https://gpuscale.net/):
-;;   curl -sI https://gpuscale.blops.ai/ | head -5
+;; OPTION A (recommended) · Cloudflare Pages mirror, no code
+;; ------------------------------------------------------------
+;; 1. Cloudflare dashboard -> Workers & Pages -> Create -> Pages
+;;    -> Connect to Git -> authorize GitHub -> select
+;;    mahmoudyassine/gpu-scale-tool.
+;; 2. Build settings: framework None, build command empty,
+;;    output directory / (root). Deploy.
+;; 3. Pages project -> Custom domains -> Set up a domain ->
+;;    gpuscale.blops.ai. Delete the old CNAME
+;;    gpuscale -> gpuscale.net first (it conflicts); Cloudflare
+;;    creates the correct record to the Pages project itself.
+;; 4. Every git push to main now updates gpuscale.net (GitHub
+;;    Pages) and gpuscale.blops.ai (Cloudflare Pages) in parallel.
+;;    The browser only ever talks to Cloudflare on *.blops.ai.
+;;
+;; ------------------------------------------------------------
+;; OPTION B · Worker proxy (keeps the existing proxied CNAME)
+;; ------------------------------------------------------------
+;; Workers & Pages -> Create -> Worker -> paste, deploy:
+;;
+;;   export default {
+;;     async fetch(req) {
+;;       const url = new URL(req.url);
+;;       return fetch("https://gpuscale.net" + url.pathname + url.search);
+;;     }
+;;   };
+;;
+;; Then blops.ai zone -> Workers Routes -> add route
+;; gpuscale.blops.ai/* -> that Worker. The edge fetches
+;; gpuscale.net from Cloudflare's network, so local blocks on the
+;; visitor's network do not apply. Requires the CNAME to stay
+;; Proxied (orange cloud):
+;;
+;; $ORIGIN blops.ai.
+;; $TTL 300
+;; gpuscale    IN  CNAME   gpuscale.net.
+;;
+;; Note: canonical and Open Graph tags keep pointing at
+;; https://gpuscale.net/, which is intended: search engines treat
+;; gpuscale.net as primary while the alias serves the same content.
