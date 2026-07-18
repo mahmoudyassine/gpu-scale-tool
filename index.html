@@ -165,8 +165,8 @@
     <div id="m_inWorkers"></div>
     <div id="m_inPerW"></div>
     <div id="m_inTp"></div>
-    <button class="btn primary apply" id="btnAuto" type="button" title="Pick the smallest TP that fits one copy of the model on this GPU, then enough workers to admit the peak concurrency at the current batch"><svg viewBox="0 0 24 24"><path d="M13 2 4.5 14H11l-1 8 8.5-12H12l1-8z"/></svg>Auto-size TP &amp; workers</button>
-    <div class="f-help" id="hAuto" style="display:block;margin-bottom:12px">Not sure what to pick? This sets Tensor parallel to the smallest slice count that fits one copy of the selected model, then adds workers until the peak concurrent calls are admitted at the current batch. Adjust freely afterwards.</div>
+    <button class="btn primary apply" id="btnAuto" type="button" title="Solve TP, workers and batch together from the model, GPU, workload and SLO targets"><svg viewBox="0 0 24 24"><path d="M13 2 4.5 14H11l-1 8 8.5-12H12l1-8z"/></svg>Auto-size TP · workers · batch</button>
+    <div class="f-help" id="hAuto" style="display:block;margin-bottom:12px">Not sure what to pick? This solves the hardware split from what you already set: the smallest Tensor parallel that fits one copy of the model (widened if the TTFT target demands it), then the fewest workers and the batch that admit the peak concurrent calls. Workloads without SLO targets are treated as offline: minimal hardware, largest fitting batch, queueing allowed. Adjust freely afterwards.</div>
     <div class="field">
       <div class="f-head"><label for="selResil">Resilience model</label><button class="info" data-help="hResil" aria-expanded="false" type="button">i</button></div>
       <select id="selResil">

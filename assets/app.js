@@ -6,7 +6,7 @@ if(!MODELS.length || !GPUS.length || !QUANTS.length || !CASES.length){
   document.body.innerHTML = '<div style="font-family:system-ui,sans-serif;max-width:560px;margin:80px auto;padding:0 20px;line-height:1.65;color:#1A2536"><h2 style="margin-bottom:10px">Data files not loaded</h2><p>GPUscale.net could not find its library. Keep <code>index.html</code> together with the <code>data/</code> and <code>assets/</code> folders: the four files <code>data/models.js</code>, <code>data/gpus.js</code>, <code>data/quants.js</code> and <code>data/usecases.js</code> must sit next to this page.</p><p>If you need one portable file instead, use <code>dist/gpuscale_standalone.html</code> or rebuild it with <code>python3 tools/build_single_file.py</code>.</p></div>';
   throw new Error('GPUscale.net data missing');
 }
-const STUDIO_VERSION = '4.9.0', ENGINE_VERSION = 23;
+const STUDIO_VERSION = '4.9.1', ENGINE_VERSION = 23;
 const KV_QUANTS = [{name:'BF16',bytes:2},{name:'FP16',bytes:2},{name:'FP8',bytes:1},{name:'INT8',bytes:1},{name:'INT4',bytes:0.5}];
 const REASON_TOK = {'None':0,'Light reasoning':2000,'Heavy reasoning':8000,'Custom':2000};
 const RESIL = {
@@ -515,8 +515,12 @@ function buildRecs(s,d,m,g,prelaunch){
   }
   if(d.effSeq>m.ctx)
     push('crit','Context exceeds the model',`Resident + reasoning is ${fmtTok(d.effSeq)} but ${m.name} tops out at ${fmtTok(m.ctx)}. Reduce resident tokens${s.extend&&s.reasonTok?', disable KV extension,':''} or pick a longer-context model.`);
-  if(s.tp>s.perW)
-    push('crit','Tensor parallel crosses node boundaries',`TP${s.tp} with ${s.perW} GPU per worker forces TP traffic over the network. Lower TP to ${s.perW} or less, raise GPUs per worker, or model the penalty with interconnect efficiency 0.6 to 0.7.`);
+  if(s.tp>s.perW){
+    if(s.ic>0.75)
+      push('crit','Tensor parallel crosses node boundaries',`TP${s.tp} with ${s.perW} GPU per worker forces TP traffic over the network. Lower TP to ${s.perW} or less, raise GPUs per worker, or model the penalty with interconnect efficiency 0.6 to 0.7.`);
+    else
+      push('ok','TP crosses nodes (penalty modeled)',`TP${s.tp} spans ${Math.ceil(s.tp/s.perW)} workers and interconnect efficiency ${s.ic} models the cross-node cost on decode. Prefill is still estimated optimistically; production systems usually run TP${s.perW} inside the node with pipeline parallelism across nodes, or rack-scale NVLink parts.`);
+  }
   if(d.fits&&d.slo.ttft.on&&!d.slo.ttft.pass){
     const tp2=Math.min(s.tp*2,s.gpus), t2=d.ttft*s.tp/tp2;
     push('warn','TTFT misses its target',`Prefill takes ${fmt(d.ttft)} ms against a ${fmt(s.sloTtft)} ms target. TP ${s.tp} to ${tp2} lands ≈${fmt(t2)} ms${tp2>s.perW?' (but crosses nodes)':''}; prefix caching, chunked prefill or a prefill-optimized part (Rubin CPX) attack the same problem without more GPUs.`);
@@ -527,10 +531,12 @@ function buildRecs(s,d,m,g,prelaunch){
     push('warn','Per-user speed misses its target',`${fmt(d.tps)} tok/s against a ${fmt(s.sloTps)} tok/s target. Halving batch per replica to ${halfB} gives ≈${fmt(t2)} tok/s at lower aggregate; FP8 KV, a higher-bandwidth GPU, or speculative decoding (1.5 to 3x) are the structural fixes.`);
   }
   if(d.queued>0&&d.fits){
-    const rpw=Math.max(1,Math.floor(s.perW/Math.max(s.tp,1)));
-    const needW=Math.ceil(s.concurrent/(s.batch*rpw));
-    const capB=d.maxBatchMem>s.batch? ` Memory would allow batch up to ${fmt(Math.min(d.maxBatchMem,512))} per replica.`:'';
-    push('warn','Calls queue at peak',`${d.queued} of ${s.concurrent} concurrent calls wait; only ${d.active} are admitted.${capB} Admitting everyone at batch ${s.batch} needs ≈${needW} workers (currently ${s.workers}).`);
+    const batchNeeded=Math.ceil(s.concurrent/d.replicas);
+    const canBatch=batchNeeded<=Math.min(d.maxBatchMem||0,512);
+    const needW=Math.ceil(Math.max(1,Math.ceil(s.concurrent/s.batch))*s.tp/s.perW);
+    push('warn','Calls queue at peak',`${d.queued} of ${s.concurrent} concurrent calls wait; only ${d.active} are admitted. ${canBatch
+      ? `Raising max batch per replica from ${s.batch} to ${batchNeeded} admits everyone (memory allows up to ${fmt(Math.min(d.maxBatchMem,512))}).`
+      : `At batch ${s.batch}, admitting everyone needs ≈${needW} workers (currently ${s.workers}); or raise the batch and accept slower per-user speed.`}`);
   }
   if(d.fits&&util>0.92)
     push('warn','Headroom is thin',`${(util*100).toFixed(0)}% of serving VRAM is committed. Growth, longer contexts or a library update can tip this over; one more worker or FP8 KV restores margin.`);
@@ -655,8 +661,11 @@ function render(){
   const ins=[];
   if(!d.fits) ins.push(['bad',`Memory is the binding constraint: ${(d.total/d.avail*100).toFixed(0)}% of serving VRAM would be needed${d.replicas>1?`, dominated by ${d.replicas} replica copies of the weights (${fmt(d.weightsAll)} GB)`:''}. The Recommendations panel below lists the viable fixes.`]);
   if(d.effSeq>m.ctx) ins.push(['bad',`Resident sequence + reasoning (${fmtTok(d.effSeq)}) exceeds ${m.name}'s max context (${fmtTok(m.ctx)}): an unservable configuration. Trim resident tokens or pick a longer-context model.`]);
-  if(s.tp>s.perW) ins.push(['bad',`TP${s.tp} spans workers (${s.perW} GPU/worker): tensor-parallel traffic leaves the NVLink domain. Either raise GPUs per worker, lower TP, or set interconnect efficiency to 0.6–0.7 to model the cross-node penalty.`]);
-  if(d.queued>0&&d.fits) ins.push(['warn',`${d.queued} of ${s.concurrent} calls queue at peak (only ${d.active} admitted). Memory allows up to ${d.maxBatchMem} per replica: ${d.maxBatchMem>s.batch? 'raise max batch toward that':'add workers or trim context to admit more'}.`]);
+  if(s.tp>s.perW) ins.push(s.ic>0.75
+    ? ['bad',`TP${s.tp} spans workers (${s.perW} GPU/worker): tensor-parallel traffic leaves the NVLink domain. Either raise GPUs per worker, lower TP, or set interconnect efficiency to 0.6–0.7 to model the cross-node penalty.`]
+    : ['warn',`TP${s.tp} spans workers; the cross-node penalty is modeled via interconnect efficiency ${s.ic}. Prefill (TTFT) is still estimated optimistically across nodes; real systems typically use TP${s.perW} inside the node plus pipeline parallelism across nodes.`]);
+  if(d.queued>0&&d.fits){ const bn=Math.ceil(s.concurrent/d.replicas);
+    ins.push(['warn',`${d.queued} of ${s.concurrent} calls queue at peak (only ${d.active} admitted). ${bn<=Math.min(d.maxBatchMem||0,512)? `Raise max batch per replica to ${bn} to admit everyone.`:'Add workers or trim context to admit more.'}`]); }
   if(d.kvTotal>d.weightsAll) ins.push(['warn',`KV-dominated deployment: cache (${fmt(d.kvTotal)} GB) outweighs weights (${fmt(d.weightsAll)} GB). FP8/INT8 KV, compressed-KV models, or shorter resident sequences pay off most here.`]);
   if(d.slo.ttft.on&&!d.slo.ttft.pass) ins.push(['bad',`Prefill misses the TTFT target. Options: prefix caching for repeated prompts, chunked prefill, TP ${s.tp}→${Math.min(s.tp*2,s.gpus)}, or a higher-TFLOPS part; disaggregated prefill (Dynamo / Rubin CPX) exists for exactly this.`]);
   if(/MHA/.test(m.arch||'')) ins.push(['warn',`${m.name.split(' ')[0]} uses full multi-head attention: KV is ${fmt(d.kvTok*1e3)} MB per token, an order beyond GQA peers. Budget context tightly.`]);
@@ -913,18 +922,44 @@ function autoSize(){
   const s=readState();
   const weights=s.params*s.bytesW;
   const actGB=Math.min(s.resident+(s.extend?s.reasonTok:0),8192)*s.hidden*12*s.bytesW/1e9;
-  const need=weights+actGB;
-  const tp=[1,2,4,8,16,32,64].find(t=>need<=0.8*t*s.gpuVram);
+  let tp=[1,2,4,8,16,32,64].find(t=>weights+actGB<=0.8*t*s.gpuVram);
   if(!tp){ toast(`No TP up to 64 fits one copy of ${s.model.name} on ${s.gpu.name}: quantize the weights or pick a higher-VRAM GPU`, true); return; }
+  // widen TP while a TTFT target is missed (prefill scales with TP)
+  if(s.sloTtft>0){ let t=tp; while(t<64 && 2*s.resident*s.active/(s.gpuTflops*t*s.mfu)>s.sloTtft) t*=2; tp=Math.min(64,t); }
   const crossed=tp>s.perW;
-  const repNeeded=Math.max(1,Math.ceil(s.concurrent/s.batch));
-  const workers=Math.min(64,Math.max(Math.ceil(repNeeded*tp/s.perW),Math.ceil(tp/s.perW)));
+  const ic=crossed? Math.min(s.ic,0.7) : s.ic;
+  const interactive=(s.sloTtft>0||s.sloTps>0||s.sloP95>0);
+  const eva=(workers,batch)=>compute({...s, tp, ic, workers, gpus:workers*s.perW, batch});
+  let workers, batch, d;
+  if(interactive){
+    // fewest workers that admit the peak concurrency at a batch of at most 64, then grow until it fits
+    workers=Math.min(64,Math.max(1,Math.ceil(Math.max(1,Math.ceil(s.concurrent/64))*tp/s.perW)));
+    for(;;){
+      const replicas=Math.max(1,Math.floor(workers*s.perW/tp));
+      batch=Math.min(64,Math.max(1,Math.ceil(s.concurrent/replicas)));
+      d=eva(workers,batch);
+      if(d.fits||workers>=64) break;
+      workers++;
+    }
+  } else {
+    // offline: queueing is fine, so keep hardware minimal and pick the largest batch that fits
+    workers=Math.max(1,Math.ceil(tp/s.perW));
+    outer: for(;;){
+      for(const b of [256,128,64,32,16,8,4,2,1]){
+        batch=b; d=eva(workers,b);
+        if(d.fits) break outer;
+      }
+      if(workers>=64) break;
+      workers++;
+    }
+  }
   $('inTp').value=tp; refreshCtl('inTp');
   $('inWorkers').value=workers; refreshCtl('inWorkers');
+  $('inBatch').value=batch; refreshCtl('inBatch');
   if(crossed&&+$('inIc').value>0.7){ $('inIc').value=0.7; refreshCtl('inIc'); }
   render();
-  const d2=compute(readState());
-  toast(`Auto-sized: TP${tp} ${crossed?'(crosses nodes: interconnect set to 0.7)':'(inside the NVLink island)'} · ${d2.replicas} replica${d2.replicas>1?'s':''} on ${workers} workers · ${d2.active} of ${s.concurrent} calls admitted${d2.fits?'':' · still over VRAM, see Recommendations'}`);
+  const df=compute(readState());
+  toast(`Auto-sized: TP${tp} ${crossed?'(crosses nodes: interconnect set to 0.7)':'(inside the NVLink island)'} · ${df.replicas} replica${df.replicas>1?'s':''} on ${workers} workers · batch ${batch} · ${df.active} of ${s.concurrent} admitted${df.fits?'':' · still over VRAM, see Recommendations'}`);
 }
 $('btnAuto').addEventListener('click',autoSize);
 $('btnReset').addEventListener('click',()=>location.reload());

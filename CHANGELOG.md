@@ -1,5 +1,26 @@
 # Changelog
 
+## Studio 4.9.1 (2026-07-18)
+
+Auto-size now solves TP, workers and batch together and stays consistent
+with its own advice. Found by exercising the previous version against a real
+export.
+
+- Batch is part of the solution: interactive workloads (any SLO target set)
+  get the fewest workers that admit the peak concurrency at batch 64 or less,
+  then grow until the configuration fits; workloads with no SLO targets are
+  treated as offline: minimal hardware, largest fitting batch, queueing
+  allowed. The same document-generation scenario that previously suggested
+  64 workers now lands on 16 with every call admitted.
+- A TTFT target widens TP (prefill scales with TP) before workers are sized.
+- When TP crosses nodes with the interconnect penalty already modeled
+  (efficiency 0.75 or less), the critical warning becomes an informational
+  note instead of contradicting the auto-sizer.
+- Queueing advice fixed: the worker count was wrong whenever TP spanned
+  workers; the panel now first offers the batch value that admits everyone
+  when memory allows it.
+
+
 ## Studio 4.9 (2026-07-18)
 
 - Auto-size button in the Hardware station: picks the smallest Tensor
