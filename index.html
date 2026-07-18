@@ -173,15 +173,25 @@
     <div class="field">
       <div class="f-head"><label for="selResil">Resilience model</label><button class="info" data-help="hResil" aria-expanded="false" type="button">i</button></div>
       <select id="selResil">
-        <option value="n">N · capacity only, no redundancy</option>
-        <option value="n1">N+1 · one standby worker</option>
-        <option value="nn">N+N · in-site mirror (2N)</option>
-        <option value="dr">DR · remote standby site (2N, active/passive)</option>
-        <option value="aa">Active/Active · two live sites (2N)</option>
-        <option value="aan1">Active/Active + N+1 per site (2N+2)</option>
-        <option value="nndr">N+N + DR · active/active twin sites (4N)</option>
+        <optgroup label="No redundancy">
+          <option value="n">N · lose capacity if anything fails</option>
+        </optgroup>
+        <optgroup label="Survives a server failure">
+          <option value="n1">N+1 · one idle spare server</option>
+          <option value="n2">N+2 · two idle spare servers</option>
+          <option value="nn">N+N · idle mirror in the same site (2N)</option>
+        </optgroup>
+        <optgroup label="Survives a site loss">
+          <option value="drh">DR half · half-size standby site (1.5N, degraded failover)</option>
+          <option value="dr">DR · full standby site (2N)</option>
+          <option value="aa">Active/Active · both sites serve (2N)</option>
+        </optgroup>
+        <optgroup label="Survives server + site failures">
+          <option value="aan1">Active/Active + spare per site (2N+2)</option>
+          <option value="nndr">N+N + DR · twin mirrored sites (4N)</option>
+        </optgroup>
       </select>
-      <div class="f-help" id="hResil">Performance is sized on the N load-bearing workers; redundancy adds procurement, not throughput. N+1 survives one node failure. N+N duplicates the system in-site. DR mirrors it to a standby site (active/passive). Active/Active runs two live sites behind global load balancing, each able to carry the full load; add N+1 per site to also absorb node failures after a site loss. N+N + DR runs N+N in each of two active/active sites (4N), the heaviest pattern.</div>
+      <div class="f-help" id="hResil">Pick what the deployment must survive. The sizing rule: every figure in the results is what you can guarantee even during the covered failure, so throughput and concurrency never grow with resilience. The extra hardware either idles until a failure (spares, mirrors, DR standby) or serves day-to-day as burst headroom (Active/Active). The economics strip under the topology shows guaranteed vs normal-day capacity, idle hardware and the cost multiplier for the chosen model.</div>
     </div>
     <button class="btn primary apply" id="btnAuto" type="button" title="Solve TP, workers and batch from everything chosen above"><svg viewBox="0 0 24 24"><path d="M13 2 4.5 14H11l-1 8 8.5-12H12l1-8z"/></svg>Auto-size TP · workers · batch</button>
     <div class="f-help" id="hAuto" style="display:block;margin-bottom:10px">Uses everything above: model, precision, workload, SLO targets, GPU and node size. Picks the smallest Tensor parallel that fits one copy of the model (widened if the TTFT target demands it), then the fewest workers and the batch that admit the peak concurrent calls. No SLO targets means offline: minimal hardware, largest fitting batch, queueing allowed.</div>
@@ -254,6 +264,8 @@
     <div class="p-head"><span class="p-title"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="2.4"/><circle cx="5" cy="19" r="2.4"/><circle cx="19" cy="19" r="2.4"/><path d="M12 7.4v3.6M12 11 6.6 17.1M12 11l5.4 6.1"/></svg>Deployment topology · workers &amp; GPU utilization</span><span class="p-note" id="topoNote"></span></div>
     <div id="topo"></div>
     <div class="topo-legend" id="topoLegend"></div>
+    <div class="resil-stats" id="resilStats"></div>
+    <div class="resil-why">Resilience buys survival, not speed: the guaranteed figures are what remains during the failure you chose to cover. Idle spares add nothing day-to-day; active/active sites add burst headroom you should not plan sustained load on.</div>
     <div class="topo-sum" id="topoSum"></div>
   </section>
 

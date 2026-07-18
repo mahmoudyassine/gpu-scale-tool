@@ -1,5 +1,23 @@
 # Changelog
 
+## Studio 4.11 (2026-07-18)
+
+Answers the question every user asks about resilience: why does doubling the
+hardware not double the throughput?
+
+- New resilience economics strip under the topology: guaranteed capacity at
+  peak (held even through the covered failure), normal-day capacity (burst
+  headroom when both sites serve), idle hardware, and cost versus bare N,
+  with a standing one-line explanation of the sizing rule.
+- The resilience selector is grouped by outcome: no redundancy, survives a
+  server failure, survives a site loss, survives both, with plain-language
+  option labels.
+- Two practical patterns added: N+2 (two idle spares) and half-size DR
+  (1.5N, the cost-conscious pattern that runs degraded at about half
+  capacity during a site loss), both drawn in the topology and mirrored in
+  the XLS export.
+
+
 ## Studio 4.10 (2026-07-18)
 
 Usability release driven by user testing with real exports.

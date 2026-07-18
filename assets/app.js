@@ -6,17 +6,19 @@ if(!MODELS.length || !GPUS.length || !QUANTS.length || !CASES.length){
   document.body.innerHTML = '<div style="font-family:system-ui,sans-serif;max-width:560px;margin:80px auto;padding:0 20px;line-height:1.65;color:#1A2536"><h2 style="margin-bottom:10px">Data files not loaded</h2><p>GPUscale.net could not find its library. Keep <code>index.html</code> together with the <code>data/</code> and <code>assets/</code> folders: the four files <code>data/models.js</code>, <code>data/gpus.js</code>, <code>data/quants.js</code> and <code>data/usecases.js</code> must sit next to this page.</p><p>If you need one portable file instead, use <code>dist/gpuscale_standalone.html</code> or rebuild it with <code>python3 tools/build_single_file.py</code>.</p></div>';
   throw new Error('GPUscale.net data missing');
 }
-const STUDIO_VERSION = '4.10.0', ENGINE_VERSION = 23;
+const STUDIO_VERSION = '4.11.0', ENGINE_VERSION = 23;
 const KV_QUANTS = [{name:'BF16',bytes:2},{name:'FP16',bytes:2},{name:'FP8',bytes:1},{name:'INT8',bytes:1},{name:'INT4',bytes:0.5}];
 const REASON_TOK = {'None':0,'Light reasoning':2000,'Heavy reasoning':8000,'Custom':2000};
 const RESIL = {
-  n:   {code:0, label:'N',       long:'N · capacity only',                             extraW:n=>0},
-  n1:  {code:1, label:'N+1',     long:'N+1 · one standby worker',                      extraW:n=>1},
-  nn:  {code:2, label:'N+N',     long:'N+N · in-site mirror (2N)',                     extraW:n=>n},
-  dr:  {code:3, label:'DR',      long:'DR · remote standby site (active/passive)',     extraW:n=>n},
-  aa:  {code:5, label:'A/A',     long:'Active/Active · two live sites (2N)',           extraW:n=>n},
-  aan1:{code:6, label:'A/A N+1', long:'Active/Active · N+1 in each of two sites (2N+2)',extraW:n=>n+2},
-  nndr:{code:4, label:'N+N+DR',  long:'N+N + DR · active/active twin sites (4N)',      extraW:n=>3*n},
+  n:   {code:0, label:'N',       long:'N · capacity only',                              extraW:n=>0,              live:n=>n},
+  n1:  {code:1, label:'N+1',     long:'N+1 · one standby worker',                       extraW:n=>1,              live:n=>n},
+  n2:  {code:7, label:'N+2',     long:'N+2 · two standby workers',                      extraW:n=>2,              live:n=>n},
+  nn:  {code:2, label:'N+N',     long:'N+N · in-site mirror (2N)',                      extraW:n=>n,              live:n=>n},
+  dr:  {code:3, label:'DR',      long:'DR · full standby site (active/passive)',        extraW:n=>n,              live:n=>n},
+  drh: {code:8, label:'DR ½',    long:'DR · half-size standby site (1.5N)',             extraW:n=>Math.ceil(n/2), live:n=>n, degraded:true},
+  aa:  {code:5, label:'A/A',     long:'Active/Active · two live sites (2N)',            extraW:n=>n,              live:n=>2*n},
+  aan1:{code:6, label:'A/A N+1', long:'Active/Active · N+1 in each of two sites (2N+2)',extraW:n=>n+2,            live:n=>2*n},
+  nndr:{code:4, label:'N+N+DR',  long:'N+N + DR · active/active twin sites (4N)',       extraW:n=>3*n,            live:n=>2*n},
 };
 
 /* ================= ENGINE (pure · v23: workbook v22 + per-replica weight/activation accounting) ================= */
@@ -426,6 +428,14 @@ function renderTopology(s,d){
     const f=frame(y,`Production site · N=${N}`,act('WK-'),gpuChip(N),'building'); parts.push(f.svg); y+=f.h;
   } else if(r==='n1'){
     const f=frame(y,`Production site · N+1`,[...act('WK-'),{mode:'standby'}],gpuChip(N+1),'building'); parts.push(f.svg); y+=f.h;
+  } else if(r==='n2'){
+    const f=frame(y,`Production site · N+2`,[...act('WK-'),{mode:'standby'},{mode:'standby'}],gpuChip(N+2),'building'); parts.push(f.svg); y+=f.h;
+  } else if(r==='drh'){
+    const half=Math.ceil(N/2);
+    const fa=frame(y,`Primary site · active · N=${N}`,act('WK-'),gpuChip(N),'building'); parts.push(fa.svg); y+=fa.h;
+    links.push({y:y+frameGap/2, lab:'async replication', both:false});
+    y+=frameGap;
+    const fb=frame(y,`DR site · half-size standby · ${half} worker${half>1?'s':''}`,Array.from({length:half},()=>({mode:'drs'})),gpuChip(half,' · standby'),'globe'); parts.push(fb.svg); y+=fb.h;
   } else if(r==='nn'){
     const fa=frame(y,`System A · active · N=${N}`,act('WK-'),gpuChip(N),'building'); parts.push(fa.svg); y+=fa.h;
     links.push({y:y+frameGap/2, lab:'in-site failover', both:true});
@@ -464,9 +474,10 @@ function renderTopology(s,d){
 
   const legend=[['box',P.segkv,`active worker · GPU bars show memory fill (${utilTxt} of ${fmt(cap)} GB each)`]];
   if(r==='n1') legend.push(['dashed',P.amber,'standby worker (N+1)']);
+  if(r==='n2') legend.push(['dashed',P.amber,'standby workers (N+2)']);
   if(r==='aan1') legend.push(['dashed',P.amber,'standby worker (one per site)']);
   if(r==='nn'||r==='nndr') legend.push(['dashed',P.teal,'mirror workers (N+N)']);
-  if(r==='dr') legend.push(['dashed',P.violet,'DR standby site']);
+  if(r==='dr'||r==='drh') legend.push(['dashed',P.violet,'DR standby site']);
   $('topoLegend').innerHTML=legend.map(([k,c,t])=>
     `<span class="cl-item"><span class="sw box${k==='dashed'?' dashed':''}" style="${k==='dashed'?'color:'+c:'background:'+c}"></span>${t}</span>`).join('');
 
@@ -475,14 +486,24 @@ function renderTopology(s,d){
   $('topoNote').textContent=`${info.label} · ${d.replicas} replica${d.replicas>1?'s':''} × TP${s.tp} · ${utilTxt}/GPU`;
   const resLine = r==='n'? 'No redundancy: a worker failure removes its replicas from service.'
     : r==='n1'? 'One idle standby absorbs a single node failure with no capacity loss after failover.'
+    : r==='n2'? 'Two idle standbys absorb two node failures (or one failure during a maintenance window): the usual step up from N+1 for larger fleets.'
     : r==='nn'? 'A full second system in the same site: survives node and system-level failures; can also cover maintenance windows.'
     : r==='dr'? 'A standby remote site behind asynchronous replication: survives full site loss; the standby idles during normal operation.'
+    : r==='drh'? 'A half-size standby site: the cost-conscious DR pattern. Survives a site loss but runs degraded at roughly half capacity until the primary returns; guaranteed capacity during a site loss is about half the normal figure.'
     : r==='aa'? 'Two active sites share traffic behind global load balancing. Each site alone can carry the full load, so losing a site degrades nothing; in normal operation each runs at roughly half load.'
     : r==='aan1'? 'Two active sites, each with its own local standby: survives the loss of an entire site plus a node failure in the surviving site. A pragmatic middle ground between plain active/active and N+N+DR.'
     : 'Two active/active sites, each carrying N+N: traffic is shared across sites in normal operation, and the deployment survives any worker failure or the loss of an entire site without dropping below N. The most resilient, and most procurement-heavy, enterprise pattern.';
   $('topoSum').innerHTML=
     `Load: <b>N = ${N} worker${N>1?'s':''} · ${s.gpus} GPUs</b> (${s.perW}/worker): performance and fit are computed on these. `+
     `Procured for ${info.long}: <b>${procW} workers · ${procG} GPUs · ≈ ${fmt(kW)} kW</b> GPU TDP. ${resLine}`;
+
+  const liveW=(info.live||(n=>n))(N), idleW=procW-liveW;
+  const burst=liveW>N? d.agg*liveW/N : null;
+  $('resilStats').innerHTML=
+    `<div class="rs"><div class="k">Guaranteed at peak</div><div class="v">${fmt(d.agg)} tok/s · ${d.active} calls</div><div class="n">${info.degraded?'≈ half of this during a site loss':'held even through the covered failure'}</div></div>`+
+    `<div class="rs"><div class="k">Normal-day capacity</div><div class="v">${burst?`≈ ${fmt(burst)} tok/s`:`${fmt(d.agg)} tok/s`}</div><div class="n">${burst?'both sites serving: burst headroom, not a guarantee':'spare hardware idles until a failure'}</div></div>`+
+    `<div class="rs"><div class="k">Idle hardware</div><div class="v">${idleW>0?`${idleW} worker${idleW>1?'s':''}`:'none'}</div><div class="n">${idleW>0?'standing by in normal operation':'every worker serves traffic'}</div></div>`+
+    `<div class="rs"><div class="k">Cost vs bare N</div><div class="v">${fmt(procW/N)}×</div><div class="n">${procW} of ${N} load-bearing workers</div></div>`;
   return {procW, procG, kW};
 }
 
@@ -837,7 +858,7 @@ function buildXls(){
     ['mbu','Decode MBU', s.mbu, 'Typical 0.5–0.75'],
     ['ic','Interconnect efficiency', s.ic, 'NVLink ≈ 0.85 · cross-node 0.6–0.7'],
     ['ovh','Framework overhead (ms)', s.ovh, 'Added to every call'],
-    ['resil','Resilience (0=N,1=N+1,2=N+N,3=DR,4=N+N+DR,5=A/A,6=A/A N+1)', RESIL[s.resil].code, 'Adds procurement, not throughput'],
+    ['resil','Resilience (0=N,1=N+1,2=N+N,3=DR,4=N+N+DR,5=A/A,6=A/A N+1,7=N+2,8=DR half)', RESIL[s.resil].code, 'Adds procurement, not throughput'],
     ['sloTtft','SLO: TTFT ≤ (ms, 0=off)', s.sloTtft, ''],
     ['sloTps','SLO: TPS ≥ (tok/s, 0=off)', s.sloTps, ''],
     ['sloP95','SLO: P95 ≤ (s, 0=off)', s.sloP95, ''],
@@ -873,7 +894,7 @@ function buildXls(){
   res('sloT','SLO check: TTFT','', ()=>`IF(${I('sloTtft')}=0,"—",IF(${R('ttft')}<=${I('sloTtft')},"PASS","FAIL"))`, true);
   res('sloS','SLO check: TPS','', ()=>`IF(${I('sloTps')}=0,"—",IF(${R('tps')}>=${I('sloTps')},"PASS","FAIL"))`, true);
   res('sloP','SLO check: P95','', ()=>`IF(${I('sloP95')}=0,"—",IF(${R('p95')}<=${I('sloP95')},"PASS","FAIL"))`, true);
-  res('procW','Procured workers (with resilience)','', ()=>`${I('workers')}+IF(${I('resil')}=1,1,IF(${I('resil')}=4,3*${I('workers')},IF(${I('resil')}=6,${I('workers')}+2,IF(OR(${I('resil')}=2,${I('resil')}=3,${I('resil')}=5),${I('workers')},0))))`);
+  res('procW','Procured workers (with resilience)','', ()=>`${I('workers')}+IF(${I('resil')}=1,1,IF(${I('resil')}=7,2,IF(${I('resil')}=4,3*${I('workers')},IF(${I('resil')}=6,${I('workers')}+2,IF(${I('resil')}=8,CEILING(${I('workers')}/2,1),IF(OR(${I('resil')}=2,${I('resil')}=3,${I('resil')}=5),${I('workers')},0))))))`);
   res('procG','Procured GPUs','', ()=>`${R('procW')}*${I('perW')}`);
   res('power','GPU power (TDP)','kW', ()=>`${R('procG')}*${I('watts')}/1000`);
 
