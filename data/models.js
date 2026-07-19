@@ -1,7 +1,7 @@
 // GPUscale.net · model library (params B · active B · hidden · layers · effective KV heads × head dim · max ctx)
 // One entry per line. Field reference: docs/DATA.md
 window.GPUSCALE_DATA = window.GPUSCALE_DATA || {};
-window.GPUSCALE_DATA.meta = {"library":"v24","engine":23,"updated":"2026-07-18"};
+window.GPUSCALE_DATA.meta = {"library":"v25","engine":23,"updated":"2026-07-19"};
 window.GPUSCALE_DATA.models = [
 {"name":"Llama 3.1 8B","params":8.0,"active":8.0,"hidden":4096,"layers":32,"kvHeads":8,"headDim":128,"ctx":131072,"experts":null,"activeExperts":null,"arch":"Dense (GQA)","dev":"Meta","url":"https://ai.meta.com/blog/meta-llama-3-1/"},
 {"name":"Llama 3.1 70B","params":70.0,"active":70.0,"hidden":8192,"layers":80,"kvHeads":8,"headDim":128,"ctx":131072,"experts":null,"activeExperts":null,"arch":"Dense (GQA)","dev":"Meta","url":"https://ai.meta.com/blog/meta-llama-3-1/"},

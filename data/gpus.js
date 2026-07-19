@@ -37,7 +37,6 @@ window.GPUSCALE_DATA.gpus = [
 {"name":"AMD Instinct MI350X 288GB","vram":288.0,"bw":8.0,"tflops":2300.0,"mem":"HBM3E","arch":"CDNA 4","watts":1000,"cls":"Data Center","link":"Infinity Fabric","url":"https://www.amd.com/en/products/accelerators/instinct/mi350.html"},
 {"name":"AMD Instinct MI455X 432GB","vram":432.0,"bw":19.6,"tflops":5000.0,"mem":"HBM4","arch":"CDNA 5","watts":2000,"cls":"Data Center (H2 2026)","link":"IF + UALink","url":"https://www.amd.com/en/products/accelerators/instinct.html"},
 {"name":"NVIDIA Rubin VR200 288GB","vram":288.0,"bw":20.5,"tflops":8300.0,"mem":"HBM4","arch":"Rubin","watts":1800,"cls":"Data Center (H2 2026)","link":"NVLink Gen6","url":"https://www.nvidia.com/en-us/data-center/vera-rubin/"},
-{"name":"NVIDIA Rubin CPX 128GB","vram":128.0,"bw":2.0,"tflops":5000.0,"mem":"GDDR7","arch":"Rubin (prefill)","watts":880,"cls":"Data Center (late 2026, prefill)","link":"PCIe / CX-9","url":"https://www.nvidia.com/en-us/data-center/vera-rubin/"},
 {"name":"NVIDIA DGX Spark 128GB (GB10)","vram":128.0,"bw":0.273,"tflops":125.0,"mem":"Unified LPDDR5x","arch":"Grace Blackwell","watts":240,"cls":"Desktop","link":"NVLink-C2C","url":"https://www.nvidia.com/en-us/products/workstations/dgx-spark/"},
 {"name":"Apple M3 Ultra 512GB","vram":512.0,"bw":0.819,"tflops":28.0,"mem":"Unified LPDDR5","arch":"Apple M3","watts":270,"cls":"Apple Silicon","link":"—","url":"https://www.apple.com/mac-studio/"},
 ];

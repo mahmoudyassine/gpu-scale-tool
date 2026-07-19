@@ -6,7 +6,7 @@ if(!MODELS.length || !GPUS.length || !QUANTS.length || !CASES.length){
   document.body.innerHTML = '<div style="font-family:system-ui,sans-serif;max-width:560px;margin:80px auto;padding:0 20px;line-height:1.65;color:#1A2536"><h2 style="margin-bottom:10px">Data files not loaded</h2><p>GPUscale.net could not find its library. Keep <code>index.html</code> together with the <code>data/</code> and <code>assets/</code> folders: the four files <code>data/models.js</code>, <code>data/gpus.js</code>, <code>data/quants.js</code> and <code>data/usecases.js</code> must sit next to this page.</p><p>If you need one portable file instead, use <code>dist/gpuscale_standalone.html</code> or rebuild it with <code>python3 tools/build_single_file.py</code>.</p></div>';
   throw new Error('GPUscale.net data missing');
 }
-const STUDIO_VERSION = '4.11.1', ENGINE_VERSION = 23;
+const STUDIO_VERSION = '4.12.0', ENGINE_VERSION = 23;
 const KV_QUANTS = [{name:'BF16',bytes:2},{name:'FP16',bytes:2},{name:'FP8',bytes:1},{name:'INT8',bytes:1},{name:'INT4',bytes:0.5}];
 const REASON_TOK = {'None':0,'Light reasoning':2000,'Heavy reasoning':8000,'Custom':2000};
 const RESIL = {
@@ -132,12 +132,12 @@ const FIELDS = {
     band:[1,8],marks:[[1,'1'],[4,'4'],[8,'8'],[16,'16']],disp:v=>fmt(v),
     help:'Servers carrying the load: the N in N+1 / N+N / DR. Performance and fit are computed on these; the resilience model below adds standby units on top.',
     typ:'One HGX node handles most pilots · scale out for concurrency'},
-  inPerW:{mount:'m_inPerW',label:'GPUs per worker',unit:'devices',scale:'lin',min:1,max:16,snap:1,val:8,
-    band:[4,8],marks:[[4,'4'],[8,'8']],disp:v=>fmt(v),
-    help:'Accelerators inside one server. 8 is the HGX/DGX standard and the NVLink domain; TP beyond this count crosses nodes and pays an interconnect penalty.',
-    typ:'PCIe boxes 2–4 · HGX/DGX 8 · MI300X platform 8'},
-  inTp:{mount:'m_inTp',label:'Tensor parallel size',unit:'GPUs/replica',scale:'log',min:1,max:64,snap:1,val:8,
-    band:[1,8],marks:[[2,'2'],[4,'4'],[8,'8']],disp:v=>fmt(v),
+  inPerW:{mount:'m_inPerW',label:'GPUs per worker',unit:'devices',scale:'lin',min:1,max:72,snap:1,val:8,
+    band:[8,16],marks:[[8,'8'],[16,'16'],[72,'72 rack']],disp:v=>fmt(v),
+    help:'Accelerators in one scale-up (NVLink-class) domain. 8 is the HGX/DGX standard; 72 models a rack-scale system (GB200/GB300 NVL72, AMD Helios) where the whole rack is one island. TP beyond this count crosses nodes and pays an interconnect penalty.',
+    typ:'PCIe boxes 2–4 · HGX/DGX 8 · NVL72 / Helios rack 72'},
+  inTp:{mount:'m_inTp',label:'Tensor parallel size',unit:'GPUs/replica',scale:'log',min:1,max:72,snap:1,val:8,
+    band:[1,8],marks:[[2,'2'],[4,'4'],[8,'8'],[72,'72']],disp:v=>fmt(v),
     help:'The control that distributes the model: one copy of the weights is sliced across TP GPUs. GPUs beyond TP never add room for that copy; they form additional replicas, each loading the full model again, to serve more users. Raise TP until one copy fits. Keep TP ≤ GPUs per worker to stay inside NVLink; larger TP crosses nodes (set interconnect efficiency 0.6 to 0.7 to model it).',
     typ:'Fit-driven: smallest TP whose replica holds weights + cache'},
   inMfu:{mount:'m_inMfu',label:'Prefill MFU',unit:'',scale:'lin',min:0.1,max:0.9,snap:0.01,val:0.5,
@@ -548,7 +548,7 @@ function buildRecs(s,d,m,g,prelaunch){
   }
   if(d.fits&&d.slo.ttft.on&&!d.slo.ttft.pass){
     const tp2=Math.min(s.tp*2,s.gpus), t2=d.ttft*s.tp/tp2;
-    push('warn','TTFT misses its target',`Prefill takes ${fmt(d.ttft)} ms against a ${fmt(s.sloTtft)} ms target. TP ${s.tp} to ${tp2} lands ≈${fmt(t2)} ms${tp2>s.perW?' (but crosses nodes)':''}; prefix caching, chunked prefill or a prefill-optimized part (Rubin CPX) attack the same problem without more GPUs.`);
+    push('warn','TTFT misses its target',`Prefill takes ${fmt(d.ttft)} ms against a ${fmt(s.sloTtft)} ms target. TP ${s.tp} to ${tp2} lands ≈${fmt(t2)} ms${tp2>s.perW?' (but crosses nodes)':''}; prefix caching, chunked prefill or a disaggregated prefill pool attack the same problem without more GPUs.`);
   }
   if(d.fits&&d.slo.tps.on&&!d.slo.tps.pass){
     const halfB=Math.max(1,Math.floor(d.batchPerRep/2));
@@ -559,7 +559,7 @@ function buildRecs(s,d,m,g,prelaunch){
     const tpsMax=d.bwEff/(s.active*s.bytesW+d.effSeq*d.kvTok);
     const minLat=((d.ttft+s.ovh)/1000+d.genTok/tpsMax)*1.3;
     if(minLat>s.sloP95)
-      push('crit','P95 target is unachievable for this workload',`Each call generates ${fmt(d.genTok)} tokens (${fmt(s.reasonTok)} reasoning + ${fmt(s.visibleOut)} visible). Even alone on this hardware at batch 1, that takes ≈${fmt(minLat)} s at P95 against a ${fmt(s.sloP95)} s target. No amount of GPUs fixes this: cut reasoning or visible tokens, turn reasoning off for this use case, or relax the P95 target.`);
+      push('crit','P95 target is unachievable for this workload',`Each call generates ${fmtTok(d.genTok)} tokens (${fmtTok(s.reasonTok)} reasoning + ${fmtTok(s.visibleOut)} visible). Even alone on this hardware at batch 1, that takes ≈${fmt(minLat)} s at P95 against a ${fmt(s.sloP95)} s target. No amount of GPUs fixes this: cut reasoning or visible tokens, turn reasoning off for this use case, or relax the P95 target.`);
     else {
       const tpsNeeded=d.genTok/(s.sloP95/1.3-(d.ttft+s.ovh)/1000);
       const bNeeded=Math.max(1,Math.floor((d.bwEff/tpsNeeded-s.active*s.bytesW)/(d.effSeq*d.kvTok)));
@@ -582,6 +582,13 @@ function buildRecs(s,d,m,g,prelaunch){
     push('warn','No redundancy configured',`A single worker failure removes ${fmt(100/s.workers)}% of capacity with nothing to absorb it. N+1 costs one worker (${s.perW} GPUs, ${fmt(s.perW*g.watts/1000)} kW) and removes that cliff.`);
   if(prelaunch)
     push('warn','Pre-launch GPU selected',`${g.name} is announced but not shipping; specs are estimates. Re-validate against datasheets before committing a proposal.`);
+  const arch=g.arch||'';
+  if(s.wq.name==='NV FP4' && !/Blackwell|Rubin/i.test(arch))
+    push('warn','NVFP4 needs Blackwell-class hardware',`${g.name} (${arch}) has no native FP4 tensor path. NVFP4 weights would run through software dequantization: the memory savings hold, most of the speed benefit does not. Pick FP8 here, or a Blackwell/Rubin part for FP4.`);
+  if(s.wq.name==='FP8' && /Ampere|Apple|Gaudi 2/i.test(arch))
+    push('warn','FP8 is not native on this GPU',`${arch} predates hardware FP8 tensor cores. FP8 weights run via software paths (weight-only W8A16 at best): capacity math holds, the compute and bandwidth gains largely do not. Budget with BF16 speeds on ${g.name}, or choose a Hopper-class or newer part.`);
+  if(s.wq.name==='MXFP4' && !/Blackwell|Rubin/i.test(arch))
+    push('ok','MXFP4 runs in software here',`MXFP4 is native on Blackwell-class parts; on ${arch} it executes via software kernels (as GPT-OSS does on Hopper). Memory savings are real; expect less of the throughput gain.`);
   if(/Unified/i.test(g.mem))
     push('warn','Unified-memory hardware',`Capacity is generous but ${fmt(g.bw)} TB/s of bandwidth caps decode speed. Fine for development or single-user work, not for concurrent serving.`);
   if(d.fits&&util<0.35&&d.queued===0&&s.gpus>1)
@@ -706,7 +713,7 @@ function render(){
   if(d.queued>0&&d.fits){ const bn=Math.ceil(s.concurrent/d.replicas);
     ins.push(['warn',`${d.queued} of ${s.concurrent} calls queue at peak (only ${d.active} admitted). ${bn<=Math.min(d.maxBatchMem||0,512)? `Raise max batch per replica to ${bn} to admit everyone.`:'Add workers or trim context to admit more.'}`]); }
   if(d.kvTotal>d.weightsAll) ins.push(['warn',`KV-dominated deployment: cache (${fmt(d.kvTotal)} GB) outweighs weights (${fmt(d.weightsAll)} GB). FP8/INT8 KV, compressed-KV models, or shorter resident sequences pay off most here.`]);
-  if(d.slo.ttft.on&&!d.slo.ttft.pass) ins.push(['bad',`Prefill misses the TTFT target. Options: prefix caching for repeated prompts, chunked prefill, TP ${s.tp}→${Math.min(s.tp*2,s.gpus)}, or a higher-TFLOPS part; disaggregated prefill (Dynamo / Rubin CPX) exists for exactly this.`]);
+  if(d.slo.ttft.on&&!d.slo.ttft.pass) ins.push(['bad',`Prefill misses the TTFT target. Options: prefix caching for repeated prompts, chunked prefill, TP ${s.tp}→${Math.min(s.tp*2,s.gpus)}, or a higher-TFLOPS part; disaggregated prefill serving (NVIDIA Dynamo, Mooncake-style) exists for exactly this.`]);
   if(/MHA/.test(m.arch||'')) ins.push(['warn',`${m.name.split(' ')[0]} uses full multi-head attention: KV is ${fmt(d.kvTok*1e3)} MB per token, an order beyond GQA peers. Budget context tightly.`]);
   if(/Unified/i.test(g.mem)) ins.push(['warn','Unified-memory hardware: capacity is generous but bandwidth caps decode speed: fine for single-user or development, not for concurrent serving.']);
   if(prelaunch) ins.push(['warn','Selected GPU is announced but not shipping: specs are pre-launch estimates; re-validate against datasheets before committing a proposal.']);
@@ -854,7 +861,7 @@ function buildXls(){
     ['batch','Max batch / replica', s.batch, 'Admission cap per replica'],
     ['policy','KV policy (1=all,0=running)', s.policy==='all'?1:0, 'Residency policy'],
     ['workers','GPU workers N', s.workers, 'Load-bearing nodes'],
-    ['perW','GPUs per worker', s.perW, '8 = HGX/DGX standard'],
+    ['perW','GPUs per worker', s.perW, '8 = HGX/DGX · 72 = NVL72-class rack'],
     ['tp','Tensor parallel size', s.tp, 'GPUs per replica: drives TTFT'],
     ['vram','GPU VRAM (GB)', s.gpuVram, s.gpu.name],
     ['bwTB','GPU bandwidth (TB/s)', s.gpuBw, 'Decode ceiling'],
@@ -961,11 +968,11 @@ function autoSize(){
   const s=readState();
   const weights=s.params*s.bytesW;
   const actGB=Math.min(s.resident+(s.extend?s.reasonTok:0),8192)*s.hidden*12*s.bytesW/1e9;
-  let tp=[1,2,4,8,16,32,64].find(t=>weights+actGB<=0.8*t*s.gpuVram);
+  let tp=[1,2,4,8,16,32,64,72].find(t=>weights+actGB<=0.8*t*s.gpuVram);
   if(!tp){ toast(`No TP up to 64 fits one copy of ${s.model.name} on ${s.gpu.name}: quantize the weights or pick a higher-VRAM GPU`, true); return; }
   const tpFit=tp;
   // widen TP while a TTFT target is missed (prefill scales with TP)
-  if(s.sloTtft>0){ let t=tp; while(t<64 && 2*s.resident*s.active/(s.gpuTflops*t*s.mfu)>s.sloTtft) t*=2; tp=Math.min(64,t); }
+  if(s.sloTtft>0){ let t=tp; while(t<64 && 2*s.resident*s.active/(s.gpuTflops*t*s.mfu)>s.sloTtft) t*=2; tp=Math.min(72,t); }
   const widened=tp>tpFit;
   const crossed=tp>s.perW;
   const ic=crossed? Math.min(s.ic,0.7) : s.ic;

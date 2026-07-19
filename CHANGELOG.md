@@ -1,5 +1,25 @@
 # Changelog
 
+## Studio 4.12 (2026-07-19) · library v25
+
+Improvements fed back from the research behind the "Sizing the Modern GenAI
+Data Center" white paper.
+
+- Rack-scale NVLink islands are now modelable: GPUs per worker goes up to 72
+  and Tensor parallel up to 72, so GB200/GB300 NVL72 and AMD Helios racks can
+  be expressed as what they are, one 72-GPU scale-up domain. Auto-size uses
+  the wider island, and TP up to the rack no longer triggers cross-node
+  penalties.
+- Rubin CPX removed from the GPU library and from advice text: NVIDIA pulled
+  the prefill-specialized part from its roadmap in March 2026. Disaggregated
+  prefill guidance now points at serving software (Dynamo, Mooncake-style)
+  instead.
+- Quantization and hardware compatibility warnings: pairing NVFP4 with
+  non-Blackwell parts, FP8 with Ampere or Apple silicon, or MXFP4 with
+  pre-Blackwell hardware now produces a recommendation explaining that
+  memory savings hold while the speed benefit largely does not.
+
+
 ## Studio 4.11.1 (2026-07-18)
 
 Mobile pass.
