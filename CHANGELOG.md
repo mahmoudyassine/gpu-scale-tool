@@ -1,5 +1,25 @@
 # Changelog
 
+## Studio 4.13 (2026-07-19)
+
+Driven by user challenges to the resilience and auto-size numbers.
+
+- New resilience mode, Active/Active split: the N load-bearing workers spread
+  across two live sites at no extra procurement (1x), accepting half capacity
+  during a site loss. This is the pattern people mean when they say active
+  active should be half N plus half N. The existing Active/Active (2N) option
+  is now labeled for what it is: each site sized to carry the full load
+  alone, so a site loss degrades nothing. The site-loss selector group is
+  split into degraded-to-half and full-capacity variants.
+- Auto-size now justifies its memory utilization in the explanation card:
+  the fleet is the smallest whole-GPU configuration that admits the
+  contracted concurrency; the remainder is standard 30 to 50 percent growth
+  headroom plus integer rounding, and serving frameworks turn it into burst
+  admission at runtime.
+- The normal-day economics caption no longer claims spare hardware idles in
+  modes that have no spare.
+
+
 ## Studio 4.12 (2026-07-19) · library v25
 
 Improvements fed back from the research behind the "Sizing the Modern GenAI

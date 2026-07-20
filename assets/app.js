@@ -6,7 +6,7 @@ if(!MODELS.length || !GPUS.length || !QUANTS.length || !CASES.length){
   document.body.innerHTML = '<div style="font-family:system-ui,sans-serif;max-width:560px;margin:80px auto;padding:0 20px;line-height:1.65;color:#1A2536"><h2 style="margin-bottom:10px">Data files not loaded</h2><p>GPUscale.net could not find its library. Keep <code>index.html</code> together with the <code>data/</code> and <code>assets/</code> folders: the four files <code>data/models.js</code>, <code>data/gpus.js</code>, <code>data/quants.js</code> and <code>data/usecases.js</code> must sit next to this page.</p><p>If you need one portable file instead, use <code>dist/gpuscale_standalone.html</code> or rebuild it with <code>python3 tools/build_single_file.py</code>.</p></div>';
   throw new Error('GPUscale.net data missing');
 }
-const STUDIO_VERSION = '4.12.0', ENGINE_VERSION = 23;
+const STUDIO_VERSION = '4.13.0', ENGINE_VERSION = 23;
 const KV_QUANTS = [{name:'BF16',bytes:2},{name:'FP16',bytes:2},{name:'FP8',bytes:1},{name:'INT8',bytes:1},{name:'INT4',bytes:0.5}];
 const REASON_TOK = {'None':0,'Light reasoning':2000,'Heavy reasoning':8000,'Custom':2000};
 const RESIL = {
@@ -16,6 +16,7 @@ const RESIL = {
   nn:  {code:2, label:'N+N',     long:'N+N · in-site mirror (2N)',                      extraW:n=>n,              live:n=>n},
   dr:  {code:3, label:'DR',      long:'DR · full standby site (active/passive)',        extraW:n=>n,              live:n=>n},
   drh: {code:8, label:'DR ½',    long:'DR · half-size standby site (1.5N)',             extraW:n=>Math.ceil(n/2), live:n=>n, degraded:true},
+  aas: {code:9, label:'A/A ½+½', long:'Active/Active split · N across two sites (1x)',  extraW:n=>0,              live:n=>n, degraded:true},
   aa:  {code:5, label:'A/A',     long:'Active/Active · two live sites (2N)',            extraW:n=>n,              live:n=>2*n},
   aan1:{code:6, label:'A/A N+1', long:'Active/Active · N+1 in each of two sites (2N+2)',extraW:n=>n+2,            live:n=>2*n},
   nndr:{code:4, label:'N+N+DR',  long:'N+N + DR · active/active twin sites (4N)',       extraW:n=>3*n,            live:n=>2*n},
@@ -449,6 +450,15 @@ function renderTopology(s,d){
     links.push({y:y+frameGap/2, lab:'async replication', both:false});
     y+=frameGap;
     const fb=frame(y,`DR site · standby · N=${N}`,dup('drs'),gpuChip(N,' · standby'),'globe'); parts.push(fb.svg); y+=fb.h;
+  } else if(r==='aas'){
+    const nA=Math.max(1,Math.ceil(N/2)), nB=Math.max(0,N-nA);
+    const acts=(pre,cnt,off)=>Array.from({length:cnt},(_,i)=>({mode:'active',label:`${pre}${String(i+1+off).padStart(2,'0')}`}));
+    const fa=frame(y,`Site A · active · ${nA} of N=${N}`,acts('WK-',nA,0),gpuChip(nA),'building'); parts.push(fa.svg); y+=fa.h;
+    if(nB>0){
+      links.push({y:y+frameGap/2, lab:'active / active · geo load balancing', both:true});
+      y+=frameGap;
+      const fb=frame(y,`Site B · active · ${nB} of N=${N}`,acts('WK-',nB,nA),gpuChip(nB),'building'); parts.push(fb.svg); y+=fb.h;
+    }
   } else if(r==='aa'){
     const fa=frame(y,`Site A · active · N=${N}`,act('A-'),gpuChip(N),'building'); parts.push(fa.svg); y+=fa.h;
     links.push({y:y+frameGap/2, lab:'active / active · geo load balancing', both:true});
@@ -493,6 +503,7 @@ function renderTopology(s,d){
     : r==='nn'? 'A full second system in the same site: survives node and system-level failures; can also cover maintenance windows.'
     : r==='dr'? 'A standby remote site behind asynchronous replication: survives full site loss; the standby idles during normal operation.'
     : r==='drh'? 'A half-size standby site: the cost-conscious DR pattern. Survives a site loss but runs degraded at roughly half capacity until the primary returns; guaranteed capacity during a site loss is about half the normal figure.'
+    : r==='aas'? 'The N load-bearing workers are split across two live sites with no extra procurement: the cheapest geographic pattern. A site loss halves capacity until repair, and the SLA must say so. If the full number must survive a site loss, each site has to carry N alone: that is the Active/Active (2N) pattern.'
     : r==='aa'? 'Two active sites share traffic behind global load balancing. Each site alone can carry the full load, so losing a site degrades nothing; in normal operation each runs at roughly half load.'
     : r==='aan1'? 'Two active sites, each with its own local standby: survives the loss of an entire site plus a node failure in the surviving site. A pragmatic middle ground between plain active/active and N+N+DR.'
     : 'Two active/active sites, each carrying N+N: traffic is shared across sites in normal operation, and the deployment survives any worker failure or the loss of an entire site without dropping below N. The most resilient, and most procurement-heavy, enterprise pattern.';
@@ -504,7 +515,7 @@ function renderTopology(s,d){
   const burst=liveW>N? d.agg*liveW/N : null;
   $('resilStats').innerHTML=
     `<div class="rs"><div class="k">Guaranteed at peak</div><div class="v">${fmt(d.agg)} tok/s · ${d.active} calls</div><div class="n">${info.degraded?'≈ half of this during a site loss':'held even through the covered failure'}</div></div>`+
-    `<div class="rs"><div class="k">Normal-day capacity</div><div class="v">${burst?`≈ ${fmt(burst)} tok/s`:`${fmt(d.agg)} tok/s`}</div><div class="n">${burst?'both sites serving: burst headroom, not a guarantee':'spare hardware idles until a failure'}</div></div>`+
+    `<div class="rs"><div class="k">Normal-day capacity</div><div class="v">${burst?`≈ ${fmt(burst)} tok/s`:`${fmt(d.agg)} tok/s`}</div><div class="n">${burst?'both sites serving: burst headroom, not a guarantee': idleW>0?'spare hardware idles until a failure':'every worker serves; no reserve beyond N'}</div></div>`+
     `<div class="rs"><div class="k">Idle hardware</div><div class="v">${idleW>0?`${idleW} worker${idleW>1?'s':''}`:'none'}</div><div class="n">${idleW>0?'standing by in normal operation':'every worker serves traffic'}</div></div>`+
     `<div class="rs"><div class="k">Cost vs bare N</div><div class="v">${fmt(procW/N)}×</div><div class="n">${procW} of ${N} load-bearing workers</div></div>`;
   return {procW, procG, kW};
@@ -1013,7 +1024,11 @@ function autoSize(){
     ? `Trade-off: one copy spans ${Math.ceil(tp/s.perW)} workers, so decode pays a network penalty (interconnect set to 0.7) and real prefill will be slower than shown. ${qAlt?`To stay inside one worker instead, switch weights to ${qAlt.name} in the Precision station (${fmt(s.params*qAlt.bytes)} GB fits TP${s.perW}). `:''}`
     : `One copy stays inside a single worker's NVLink island: no network penalty. `;
   why+=`${workers} worker${workers>1?'s':''} give ${df.replicas} cop${df.replicas>1?'ies':'y'} serving ${df.active} of ${s.concurrent} calls at batch ${batch}. `;
-  why+= df.fits? (df.sloAll? 'Result: fits, and every SLO target passes.' : 'Result: memory fits, but an SLO target still fails. Hardware alone cannot fix that one: see Recommendations below.') : 'Result: still exceeds VRAM, see Recommendations.';
+  why+= df.fits? (df.sloAll? 'Result: fits, and every SLO target passes. ' : 'Result: memory fits, but an SLO target still fails. Hardware alone cannot fix that one: see Recommendations below. ') : 'Result: still exceeds VRAM, see Recommendations. ';
+  if(df.fits){
+    const u=df.total/df.avail*100;
+    why+=`Memory sits at ${u.toFixed(0)}% deliberately: this is the smallest whole-GPU fleet that ${interactive?'admits every call in the contract':'fits the model with the largest batch'}, and the remainder is growth headroom (30 to 50% spare is standard capacity practice), not waste. Serving frameworks still pre-allocate most of each GPU as KV pool at runtime, so the spare becomes burst admission.`;
+  }
   const ar=$('autoResult'); if(ar){ ar.textContent=why; ar.classList.add('show'); }
   toast(`Auto-sized: TP${tp} · ${df.replicas} replica${df.replicas>1?'s':''} on ${workers} workers · batch ${batch} · ${df.active} of ${s.concurrent} admitted${df.fits? (df.sloAll?'':' · an SLO still fails, see Recommendations') : ' · still over VRAM, see Recommendations'}`);
 }

@@ -181,10 +181,13 @@
           <option value="n2">N+2 · two idle spare servers</option>
           <option value="nn">N+N · idle mirror in the same site (2N)</option>
         </optgroup>
-        <optgroup label="Survives a site loss">
-          <option value="drh">DR half · half-size standby site (1.5N, degraded failover)</option>
+        <optgroup label="Survives a site loss, degraded to half">
+          <option value="aas">Active/Active split · N across two sites (1x, no extra cost)</option>
+          <option value="drh">DR half · half-size standby site (1.5N)</option>
+        </optgroup>
+        <optgroup label="Survives a site loss at full capacity">
           <option value="dr">DR · full standby site (2N)</option>
-          <option value="aa">Active/Active · both sites serve (2N)</option>
+          <option value="aa">Active/Active · each site carries the full load (2N)</option>
         </optgroup>
         <optgroup label="Survives server + site failures">
           <option value="aan1">Active/Active + spare per site (2N+2)</option>
