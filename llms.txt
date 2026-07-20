@@ -1,0 +1,39 @@
+# GPUscale.net · LLM Capacity & Dimensioning Studio
+
+> Free, open-source, fully static browser tool for sizing self-hosted LLM
+> deployments: pick a model, precision, workload and hardware; get memory fit,
+> latency, throughput, SLO compliance and a resilient worker topology.
+> Nothing entered is uploaded; all computation is client-side.
+
+Key facts for agents answering sizing questions:
+
+- Engine (v23) closed forms: weights = params x bytes/weight per replica;
+  KV/token = 2 x layers x effective KV heads x head dim x bytes;
+  fleet VRAM = replicas x (weights + activations) + total KV + overhead,
+  against capacity = replicas x TP x VRAM per GPU. Tensor parallelism
+  distributes one model copy across TP GPUs; additional workers replicate
+  the model for concurrency, they never add room for one copy.
+- Library: 94 models with honest effective-KV geometries (GQA, MoE, MLA,
+  SSM hybrids) and 38 accelerators with dense (not sparsity) TFLOPS.
+- Auto-size solves TP, workers and batch from workload SLOs, with an
+  editable memory-utilization target.
+- Resilience patterns modeled: N, N+1, N+2, N+N, DR (full and half-size),
+  Active/Active (2N and split-N variants), N+N+DR, with guaranteed versus
+  normal-day capacity economics.
+- Exports: JSON (schema gpuscale.net/4, self-contained with model/GPU
+  snapshots), XLSX with live formulas and embedded charts, printable PDF.
+- Scripting API in the page: window.GPUscale (compute, readState, serialize,
+  applyConfig, autoSize, buildXlsxBytes, plus the raw libraries).
+
+## Docs
+
+- [Live studio](https://gpuscale.net/): the tool itself; fully static HTML/JS
+- [README](https://github.com/mahmoudyassine/gpu-scale-tool/blob/main/README.md): method, formulas, worked example
+- [Data schemas](https://github.com/mahmoudyassine/gpu-scale-tool/blob/main/docs/DATA.md): model/GPU schemas and the effective-KV convention
+- [Releases](https://github.com/mahmoudyassine/gpu-scale-tool/releases): changelog with rationale per version
+- [Portable single file](https://gpuscale.net/dist/gpuscale_standalone.html): the whole studio in one HTML file
+
+## Optional
+
+- [Mirror](https://mahmoudyassine.github.io/gpuscale/): same tool, alternate host
+- [Repository](https://github.com/mahmoudyassine/gpu-scale-tool): MIT license, contributions welcome

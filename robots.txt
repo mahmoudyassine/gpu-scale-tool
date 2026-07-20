@@ -1,2 +1,28 @@
+# GPUscale.net · everyone is welcome, including AI crawlers and agents
 User-agent: *
 Allow: /
+
+User-agent: GPTBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+Sitemap: https://gpuscale.net/sitemap.xml
+
+# Machine-readable site guide for LLM agents: https://gpuscale.net/llms.txt
