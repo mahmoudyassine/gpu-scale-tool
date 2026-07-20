@@ -6,7 +6,11 @@ if(!MODELS.length || !GPUS.length || !QUANTS.length || !CASES.length){
   document.body.innerHTML = '<div style="font-family:system-ui,sans-serif;max-width:560px;margin:80px auto;padding:0 20px;line-height:1.65;color:#1A2536"><h2 style="margin-bottom:10px">Data files not loaded</h2><p>GPUscale.net could not find its library. Keep <code>index.html</code> together with the <code>data/</code> and <code>assets/</code> folders: the four files <code>data/models.js</code>, <code>data/gpus.js</code>, <code>data/quants.js</code> and <code>data/usecases.js</code> must sit next to this page.</p><p>If you need one portable file instead, use <code>dist/gpuscale_standalone.html</code> or rebuild it with <code>python3 tools/build_single_file.py</code>.</p></div>';
   throw new Error('GPUscale.net data missing');
 }
-const STUDIO_VERSION = '4.15.0', ENGINE_VERSION = 23;
+const STUDIO_VERSION = '4.16.0', ENGINE_VERSION = 23;
+const SCEN_ID = (()=>{ const L='abcdefghjkmnpqrstuvwxyz', D='0123456789';
+  const pick=s=>s[Math.floor(Math.random()*s.length)];
+  return 'Scenario_'+pick(L)+pick(L)+pick(D)+pick(D)+pick(D); })();
+function scenName(){ const v=($('scenarioName')&&$('scenarioName').value||'').trim(); return v||SCEN_ID; }
 const KV_QUANTS = [{name:'BF16',bytes:2},{name:'FP16',bytes:2},{name:'FP8',bytes:1},{name:'INT8',bytes:1},{name:'INT4',bytes:0.5}];
 const REASON_TOK = {'None':0,'Light reasoning':2000,'Heavy reasoning':8000,'Custom':2000};
 const RESIL = {
@@ -528,6 +532,27 @@ function renderTopology(s,d){
   return {procW, procG, kW};
 }
 
+/* ================= PLAIN-WORDS STORY ================= */
+let __storyText=[];
+function buildStory(s,d,m,g){
+  const P=[];
+  const minGpus=Math.ceil((d.weights+d.act)/s.gpuVram);
+  P.push(`One copy of <b>${m.name}</b> at <b>${s.wq.name}</b> weighs <b>${fmt(d.weights)} GB</b>: ${fmt(s.params)} billion parameters × ${s.bytesW} byte${s.bytesW===1?'':'s'} each. A single ${g.name} holds ${fmt(s.gpuVram)} GB, so one copy needs at least <b>${minGpus} GPU${minGpus>1?'s':''}</b>; here it is sliced across <b>TP${s.tp}</b>, a group with ${fmt(s.tp*s.gpuVram)} GB of memory.`);
+  if(d.replicas>1)
+    P.push(`Serving <b>${s.concurrent} concurrent calls</b> is what multiplies the fleet: at batch ${s.batch} per copy, admitting ${d.active} calls takes <b>${d.replicas} full copies</b> of the model. The serving fleet is ${d.replicas} × TP${s.tp} = <b>${d.servingGpus||s.gpus} GPUs</b> on ${s.workers} workers${d.queued>0?`, and ${d.queued} calls still queue at peak`:''}. The model itself only ever needed ${minGpus}; the other ${(d.servingGpus||s.gpus)-s.tp} GPUs are for your users.`);
+  else
+    P.push(`One copy serves everything: at batch ${s.batch} it admits ${d.active} of your ${s.concurrent} concurrent calls${d.queued>0?` while ${d.queued} queue at peak`:''}. Fleet = the single TP${s.tp} group${s.workers>1?` spread over ${s.workers} workers`:''}.`);
+  const kvSeq=d.effSeq*d.kvTok;
+  P.push(`${d.kvTotal>d.weightsAll?'The cache, not the weights, dominates here: each':'Each'} admitted conversation holds <b>${kvSeq<1? (kvSeq*1000).toFixed(0)+' MB':fmt(kvSeq)+' GB'}</b> of KV cache (${(d.kvTok*1e6).toFixed(1)} KB per token at ${s.kq.name} across ${fmtTok(d.effSeq)} tokens); all ${d.active} together add <b>${fmt(d.kvTotal)} GB</b>${d.kvTotal>d.weightsAll?', more than the weights themselves':`, next to ${fmt(d.weightsAll)} GB of weights`}.`);
+  P.push(`The envelope: prefill reads ${fmtTok(s.resident)} tokens and lands the first token in ≈<b>${fmt(d.ttft)} ms</b>; decode streams ≈<b>${fmt(d.tps)} tok/s</b> per user at batch ${fmt(d.batchPerRep)}. ${d.sloAll?'Every enabled SLO passes.':'At least one SLO target fails; see Recommendations.'}`);
+  const info=RESIL[s.resil], extraW=info.extraW(s.workers), procW=s.workers+extraW, procG=procW*s.perW;
+  P.push(`Resilience (<b>${info.long}</b>) ${extraW>0?`adds ${extraW} worker${extraW>1?'s':''} that carry no day-to-day load`:'adds nothing: a failure removes capacity'}; procurement totals <b>${procW} workers · ${procG} GPUs · ≈${fmt(procG*g.watts/1000)} kW</b> GPU TDP.`);
+  if(!d.fits)
+    P.push(`<b>It does not fit:</b> the fleet needs ${fmt(d.total)} GB against ${fmt(d.avail)} GB of serving memory. The Recommendations panel lists the levers in order of effect.`);
+  __storyText=P.map(p=>p.replace(/<[^>]+>/g,''));
+  return P.map(p=>`<p>${p}</p>`).join('');
+}
+
 /* ================= RECOMMENDATIONS ================= */
 function buildRecs(s,d,m,g,prelaunch){
   const recs=[]; const util=d.avail>0? d.total/d.avail : 1;
@@ -749,6 +774,7 @@ function render(){
   $('ccDerived').textContent=`→ ${cc} concurrent calls (call ≈ ${fmt(dur)} s${+$('ccDur').value>0?'':' · model-derived'})`;
   $('ccDerived').dataset.cc=cc;
 
+  $('story').innerHTML = buildStory(s,d,m,g);
   $('printInputs').innerHTML = '<div class="pi-title">Inputs · complete configuration</div><div class="pi-grid">'+[
     ['Model', m.name],['Total params', fmt(s.params)+' B'],['Active params', fmt(s.active)+' B'],
     ['Geometry', s.layers+'L · h'+s.hidden+' · KV '+s.kvHeads+'×'+s.headDim],['Max context', fmtTok(m.ctx)],
@@ -764,7 +790,7 @@ function render(){
     ['SLO targets', (s.sloTtft||'off')+' ms · '+(s.sloTps||'off')+' tok/s · '+(s.sloP95||'off')+' s'],
   ].map(([k,v])=>'<div class="pi-row"><span class="k">'+k+'</span><span class="v">'+v+'</span></div>').join('')+'</div>';
   $('printConfig').textContent =
-    `GPUscale.net · ${$('scenarioName').value||'Untitled scenario'} · ${m.name} · weights ${s.wq.name} / KV ${s.kq.name} · seq ${fmtTok(s.resident)} (+${fmtTok(s.reasonTok)} reasoning) · `+
+    `GPUscale.net · ${scenName()} · ${m.name} · weights ${s.wq.name} / KV ${s.kq.name} · seq ${fmtTok(s.resident)} (+${fmtTok(s.reasonTok)} reasoning) · `+
     `${s.concurrent} concurrent, batch ${s.batch}/replica · ${s.workers}× worker (${s.perW} GPU) ${g.name} · TP${s.tp} · ${RESIL[s.resil].long} → ${topoInfo.procW} workers procured · ${new Date().toLocaleDateString()}`;
 }
 
@@ -791,7 +817,7 @@ function serialize(){
   const s=readState(), d=compute(s);
   return {
     schema:'gpuscale.net/4', engine:ENGINE_VERSION, studio:STUDIO_VERSION,
-    name: $('scenarioName').value||'Untitled scenario',
+    name: scenName(), scenarioId: SCEN_ID,
     savedAt: new Date().toISOString(),
     config:{
       model: $('chkCustom').checked? {custom:true, params:s.params, active:s.active, hidden:s.hidden,
@@ -983,7 +1009,7 @@ function buildXls(){
   const cN=(v,st)=>`<Cell${st?` ss:StyleID="${st}"`:''}><Data ss:Type="Number">${v}</Data></Cell>`;
   const cF=(f,str)=>`<Cell ss:StyleID="sOut" ss:Formula="=${esc(f)}"><Data ss:Type="${str?'String':'Number'}">${str?'':0}</Data></Cell>`;
   const row=cells=>`<Row>${cells}</Row>`;
-  const name=$('scenarioName').value||'Untitled scenario';
+  const name=scenName();
   const inpRows=INP.map(x=>row(cS(x[1],'sLab')+(x[4]==='s'?cS(x[2],'sIn'):cN(x[2],'sIn'))+cS(x[3]||'','sNote'))).join('');
   const resRows=RES.map(x=>row(cS(x[1],'sLab')+cF(x[3](),x[4])+cS(x[2]||'','sNote'))).join('');
   const xml=`<?xml version="1.0"?>
@@ -1096,7 +1122,7 @@ function ledgerPngBytes(s,d){
 async function buildXlsxBytes(){
   const s=readState(), d=compute(s);
   const enc=new TextEncoder();
-  const name=$('scenarioName').value||'Untitled scenario';
+  const name=scenName();
 
   // ----- input rows (single source also used by the legacy SpreadsheetML export) -----
   const INP=xlsInputRows(s);
@@ -1193,6 +1219,8 @@ async function buildXlsxBytes(){
 
   // visuals sheet: labels + anchored images
   const visRows=[[`<c r="A1" s="5" t="inlineStr"><is><t>Visuals · exported from the studio at save time</t></is></c>`]];
+  __storyText.forEach((line,i)=>{ visRows.push([cell('A'+(visRows.length+1),4,line)]); });
+  visRows.push([]);
   const EMU=9525, colW=64, rowH=20; // px per default col/row approx
   let anchorRow=2; const anchors=[]; const media=[];
   images.forEach(([label,img],idx)=>{
@@ -1342,7 +1370,7 @@ function download(blobParts, type, filename){
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(()=>URL.revokeObjectURL(a.href),2000);
 }
-const slug=()=>(($('scenarioName').value||'scenario').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'scenario');
+const slug=()=>scenName().replace(/[^A-Za-z0-9_-]+/g,'-').replace(/^-|-$/g,'')||'scenario';
 $('btnExport').addEventListener('click',()=>{
   download([JSON.stringify(serialize(),null,2)],'application/json',`gpuscale-${slug()}-${new Date().toISOString().slice(0,10)}.json`);
   toast('Configuration exported');
@@ -1359,9 +1387,14 @@ $('btnXls').addEventListener('click',async()=>{
   }
 });
 $('btnPdf').addEventListener('click',()=>{ render(); window.print(); });
-let printThemeRestore=null;
-window.addEventListener('beforeprint',()=>{ if(document.documentElement.dataset.theme==='dark'){ printThemeRestore='dark'; setTheme('light'); } });
-window.addEventListener('afterprint',()=>{ if(printThemeRestore){ setTheme(printThemeRestore); printThemeRestore=null; } });
+let printThemeRestore=null, printTitleRestore=null;
+window.addEventListener('beforeprint',()=>{
+  printTitleRestore=document.title;
+  document.title='gpuscale-'+slug();
+  if(document.documentElement.dataset.theme==='dark'){ printThemeRestore='dark'; setTheme('light'); } });
+window.addEventListener('afterprint',()=>{
+  if(printTitleRestore){ document.title=printTitleRestore; printTitleRestore=null; }
+  if(printThemeRestore){ setTheme(printThemeRestore); printThemeRestore=null; } });
 $('btnImport').addEventListener('click',()=>$('fileImport').click());
 $('fileImport').addEventListener('change',e=>{
   const f=e.target.files[0]; if(!f) return;
@@ -1390,5 +1423,7 @@ window.SizingConsole = window.GPUscale;
   const av=document.getElementById('appVer'); if(av) av.textContent='Studio '+STUDIO_VERSION;
   const ev=document.getElementById('engVer'); if(ev) ev.textContent='v'+ENGINE_VERSION;
   const vc=document.getElementById('verChip'); if(vc) vc.textContent='v'+STUDIO_VERSION.replace(/\.0$/,'');
+  $('scenarioName').placeholder=SCEN_ID;
+  const sid=document.getElementById('storyId'); if(sid) sid.textContent=SCEN_ID;
   render();
 })();

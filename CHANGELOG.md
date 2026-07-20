@@ -1,5 +1,21 @@
 # Changelog
 
+## Studio 4.16 (2026-07-20)
+
+- New "In plain words" panel at the top of the results: a generated narrative
+  that walks the arithmetic in sentences. What one copy of the model weighs
+  at the chosen quantization and how many GPUs that alone needs, how the
+  concurrency multiplies the fleet into replicas, what the KV cache adds per
+  conversation, the latency envelope, and what resilience procures. It
+  adapts to fit failures, queueing and cache-dominated deployments, prints
+  in the PDF, and its text is embedded in the Excel export.
+- Every session now generates a unique scenario ID (Scenario_ab123 style,
+  new on each refresh). It appears as the scenario-name placeholder and in
+  the plain-words panel, travels inside JSON exports, and stamps every
+  artifact filename: JSON, Excel workbook, and the suggested PDF filename.
+  Typing your own scenario name overrides it everywhere.
+
+
 ## Studio 4.15 (2026-07-20)
 
 Export and import, rebuilt for completeness and longevity.
