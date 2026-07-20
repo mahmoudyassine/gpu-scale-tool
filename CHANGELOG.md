@@ -1,5 +1,27 @@
 # Changelog
 
+## Studio 4.15 (2026-07-20)
+
+Export and import, rebuilt for completeness and longevity.
+
+- JSON schema v4: exports now carry every input including the Little's-law
+  estimator fields, plus full snapshots of the selected model geometry, GPU
+  specs and quantization bytes. Imports are version-proof: a model that has
+  left the library is rebuilt from its saved geometry as a custom model, a
+  missing GPU or quant keeps the current selection with an explanatory note,
+  and v1/v2/v3 files continue to load.
+- Excel export is now a real .xlsx workbook, built dependency-free in the
+  browser: an Inputs sheet, a Results sheet holding live formulas alongside
+  the studio-computed values, a Chart data sheet with both plotted curves,
+  and a Visuals sheet with embedded images of the memory ledger, both charts
+  and the topology schematic. Falls back to the classic formula template if
+  image rendering is unavailable.
+- The PDF report now begins with a complete three-column inputs table (model
+  and geometry, precisions, workload, hardware, tuning, SLO targets) so a
+  printed report is fully reproducible, alongside the existing outputs,
+  charts and topology.
+
+
 ## Studio 4.14 (2026-07-19)
 
 - Auto-size memory target is now editable (50 to 95%, default 80): it sets
