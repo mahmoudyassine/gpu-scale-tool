@@ -525,6 +525,8 @@ footer.foot .mono{font-family:var(--mono);color:var(--text)}
         </optgroup>
         <optgroup label="Survives a site loss, degraded to half">
           <option value="aas">Active/Active split · N across two sites (1x, no extra cost)</option>
+          <option value="aas1">Active/Active split + one spare (N+1)</option>
+          <option value="aass">Active/Active split + spare per site (N+2)</option>
           <option value="drh">DR half · half-size standby site (1.5N)</option>
         </optgroup>
         <optgroup label="Survives a site loss at full capacity">
@@ -538,6 +540,8 @@ footer.foot .mono{font-family:var(--mono);color:var(--text)}
       </select>
       <div class="f-help" id="hResil">Pick what the deployment must survive. The sizing rule: every figure in the results is what you can guarantee even during the covered failure, so throughput and concurrency never grow with resilience. The extra hardware either idles until a failure (spares, mirrors, DR standby) or serves day-to-day as burst headroom (Active/Active). The economics strip under the topology shows guaranteed vs normal-day capacity, idle hardware and the cost multiplier for the chosen model.</div>
     </div>
+    <div class="field"><div class="f-head"><label for="autoUtil">Auto-size memory target</label><button class="info" data-help="hAutoUtil" aria-expanded="false" type="button">i</button><span class="spacer"></span><span class="unit">%</span></div><input type="number" id="autoUtil" value="80" min="50" max="95" step="5"></div>
+    <div class="f-help" id="hAutoUtil">How full Auto-size may pack the serving GPUs. 80% leaves industry-standard growth headroom; 90 to 95% packs tighter at the cost of burst and growth margin (the thin-headroom warning starts at 92%). Manual sliders are never limited by this.</div>
     <button class="btn primary apply" id="btnAuto" type="button" title="Solve TP, workers and batch from everything chosen above"><svg viewBox="0 0 24 24"><path d="M13 2 4.5 14H11l-1 8 8.5-12H12l1-8z"/></svg>Auto-size TP · workers · batch</button>
     <div class="f-help" id="hAuto" style="display:block;margin-bottom:10px">Uses everything above: model, precision, workload, SLO targets, GPU and node size. Picks the smallest Tensor parallel that fits one copy of the model (widened if the TTFT target demands it), then the fewest workers and the batch that admit the peak concurrent calls. No SLO targets means offline: minimal hardware, largest fitting batch, queueing allowed.</div>
     <div class="auto-result" id="autoResult" aria-live="polite"></div>
@@ -877,7 +881,7 @@ if(!MODELS.length || !GPUS.length || !QUANTS.length || !CASES.length){
   document.body.innerHTML = '<div style="font-family:system-ui,sans-serif;max-width:560px;margin:80px auto;padding:0 20px;line-height:1.65;color:#1A2536"><h2 style="margin-bottom:10px">Data files not loaded</h2><p>GPUscale.net could not find its library. Keep <code>index.html</code> together with the <code>data/</code> and <code>assets/</code> folders: the four files <code>data/models.js</code>, <code>data/gpus.js</code>, <code>data/quants.js</code> and <code>data/usecases.js</code> must sit next to this page.</p><p>If you need one portable file instead, use <code>dist/gpuscale_standalone.html</code> or rebuild it with <code>python3 tools/build_single_file.py</code>.</p></div>';
   throw new Error('GPUscale.net data missing');
 }
-const STUDIO_VERSION = '4.13.0', ENGINE_VERSION = 23;
+const STUDIO_VERSION = '4.14.0', ENGINE_VERSION = 23;
 const KV_QUANTS = [{name:'BF16',bytes:2},{name:'FP16',bytes:2},{name:'FP8',bytes:1},{name:'INT8',bytes:1},{name:'INT4',bytes:0.5}];
 const REASON_TOK = {'None':0,'Light reasoning':2000,'Heavy reasoning':8000,'Custom':2000};
 const RESIL = {
@@ -888,6 +892,8 @@ const RESIL = {
   dr:  {code:3, label:'DR',      long:'DR · full standby site (active/passive)',        extraW:n=>n,              live:n=>n},
   drh: {code:8, label:'DR ½',    long:'DR · half-size standby site (1.5N)',             extraW:n=>Math.ceil(n/2), live:n=>n, degraded:true},
   aas: {code:9, label:'A/A ½+½', long:'Active/Active split · N across two sites (1x)',  extraW:n=>0,              live:n=>n, degraded:true},
+  aas1:{code:11,label:'A/A ½+½ +1',long:'Active/Active split · N across two sites + one spare (N+1)', extraW:n=>1, live:n=>n, degraded:true},
+  aass:{code:10,label:'A/A ½+½ +1/site',long:'Active/Active split · N across two sites + spare per site (N+2)', extraW:n=>2, live:n=>n, degraded:true},
   aa:  {code:5, label:'A/A',     long:'Active/Active · two live sites (2N)',            extraW:n=>n,              live:n=>2*n},
   aan1:{code:6, label:'A/A N+1', long:'Active/Active · N+1 in each of two sites (2N+2)',extraW:n=>n+2,            live:n=>2*n},
   nndr:{code:4, label:'N+N+DR',  long:'N+N + DR · active/active twin sites (4N)',       extraW:n=>3*n,            live:n=>2*n},
@@ -1321,14 +1327,17 @@ function renderTopology(s,d){
     links.push({y:y+frameGap/2, lab:'async replication', both:false});
     y+=frameGap;
     const fb=frame(y,`DR site · standby · N=${N}`,dup('drs'),gpuChip(N,' · standby'),'globe'); parts.push(fb.svg); y+=fb.h;
-  } else if(r==='aas'){
+  } else if(r==='aas'||r==='aas1'||r==='aass'){
     const nA=Math.max(1,Math.ceil(N/2)), nB=Math.max(0,N-nA);
     const acts=(pre,cnt,off)=>Array.from({length:cnt},(_,i)=>({mode:'active',label:`${pre}${String(i+1+off).padStart(2,'0')}`}));
-    const fa=frame(y,`Site A · active · ${nA} of N=${N}`,acts('WK-',nA,0),gpuChip(nA),'building'); parts.push(fa.svg); y+=fa.h;
-    if(nB>0){
+    const aSpare=(r==='aass'||r==='aas1')?1:0, bSpare=r==='aass'?1:0;
+    const aItems=[...acts('WK-',nA,0),...Array.from({length:aSpare},()=>({mode:'standby'}))];
+    const fa=frame(y,`Site A · active · ${nA} of N=${N}${aSpare?' + spare':''}`,aItems,gpuChip(nA+aSpare),'building'); parts.push(fa.svg); y+=fa.h;
+    if(nB>0||bSpare){
       links.push({y:y+frameGap/2, lab:'active / active · geo load balancing', both:true});
       y+=frameGap;
-      const fb=frame(y,`Site B · active · ${nB} of N=${N}`,acts('WK-',nB,nA),gpuChip(nB),'building'); parts.push(fb.svg); y+=fb.h;
+      const bItems=[...acts('WK-',nB,nA),...Array.from({length:bSpare},()=>({mode:'standby'}))];
+      const fb=frame(y,`Site B · active · ${nB} of N=${N}${bSpare?' + spare':''}`,bItems,gpuChip(nB+bSpare),'building'); parts.push(fb.svg); y+=fb.h;
     }
   } else if(r==='aa'){
     const fa=frame(y,`Site A · active · N=${N}`,act('A-'),gpuChip(N),'building'); parts.push(fa.svg); y+=fa.h;
@@ -1357,9 +1366,9 @@ function renderTopology(s,d){
   $('topo').innerHTML=`<svg viewBox="0 0 ${W} ${y+4}" style="aspect-ratio:${W}/${y+4};width:100%;height:auto" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Deployment topology with per-GPU memory utilization">${parts.join('')}${linkSvg}</svg>`;
 
   const legend=[['box',P.segkv,`active worker · GPU bars show memory fill (${utilTxt} of ${fmt(cap)} GB each)`]];
-  if(r==='n1') legend.push(['dashed',P.amber,'standby worker (N+1)']);
+  if(r==='n1'||r==='n2'||r==='aas1') legend.push(['dashed',P.amber,r==='n2'?'standby workers (N+2)':'standby worker (N+1)']);
   if(r==='n2') legend.push(['dashed',P.amber,'standby workers (N+2)']);
-  if(r==='aan1') legend.push(['dashed',P.amber,'standby worker (one per site)']);
+  if(r==='aan1'||r==='aass') legend.push(['dashed',P.amber,'standby worker (one per site)']);
   if(r==='nn'||r==='nndr') legend.push(['dashed',P.teal,'mirror workers (N+N)']);
   if(r==='dr'||r==='drh') legend.push(['dashed',P.violet,'DR standby site']);
   $('topoLegend').innerHTML=legend.map(([k,c,t])=>
@@ -1375,6 +1384,8 @@ function renderTopology(s,d){
     : r==='dr'? 'A standby remote site behind asynchronous replication: survives full site loss; the standby idles during normal operation.'
     : r==='drh'? 'A half-size standby site: the cost-conscious DR pattern. Survives a site loss but runs degraded at roughly half capacity until the primary returns; guaranteed capacity during a site loss is about half the normal figure.'
     : r==='aas'? 'The N load-bearing workers are split across two live sites with no extra procurement: the cheapest geographic pattern. A site loss halves capacity until repair, and the SLA must say so. If the full number must survive a site loss, each site has to carry N alone: that is the Active/Active (2N) pattern.'
+    : r==='aas1'? 'N split across two live sites plus one idle spare: a single server failure anywhere is absorbed at full capacity (traffic rebalances across sites), while a site loss still roughly halves capacity. The pragmatic budget middle between bare split and per-site spares.'
+    : r==='aass'? 'N split across two live sites with an idle spare in each: any single server failure is absorbed locally, and after a site loss the surviving half still has its own spare. A site loss still roughly halves capacity; state it in the SLA.'
     : r==='aa'? 'Two active sites share traffic behind global load balancing. Each site alone can carry the full load, so losing a site degrades nothing; in normal operation each runs at roughly half load.'
     : r==='aan1'? 'Two active sites, each with its own local standby: survives the loss of an entire site plus a node failure in the surviving site. A pragmatic middle ground between plain active/active and N+N+DR.'
     : 'Two active/active sites, each carrying N+N: traffic is shared across sites in normal operation, and the deployment survives any worker failure or the loss of an entire site without dropping below N. The most resilient, and most procurement-heavy, enterprise pattern.';
@@ -1653,7 +1664,7 @@ function serialize(){
       concurrentCalls:s.concurrent, maxBatchPerReplica:s.batch, kvPolicy:s.policy,
       gpu:s.gpu.name,
       hardware:{workers:s.workers, gpusPerWorker:s.perW, tensorParallel:s.tp, resilience:s.resil},
-      tuning:{prefillMFU:s.mfu, decodeMBU:s.mbu, interconnectEff:s.ic, frameworkOverheadMs:s.ovh},
+      tuning:{prefillMFU:s.mfu, decodeMBU:s.mbu, interconnectEff:s.ic, frameworkOverheadMs:s.ovh, autoSizeUtilPct:+($('autoUtil')&&$('autoUtil').value)||80},
       sloTargets:{ttftMs:s.sloTtft, tps:s.sloTps, p95s:s.sloP95},
       theme: document.documentElement.dataset.theme,
     },
@@ -1711,6 +1722,7 @@ function applyConfig(raw){
   if(t.decodeMBU!=null) $('inMbu').value=t.decodeMBU;
   if(t.interconnectEff!=null) $('inIc').value=t.interconnectEff;
   if(t.frameworkOverheadMs!=null) $('inOvh').value=t.frameworkOverheadMs;
+  if(t.autoSizeUtilPct!=null&&$('autoUtil')) $('autoUtil').value=t.autoSizeUtilPct;
   const sl=c.sloTargets||{};
   if(sl.ttftMs!=null) $('sloTtft').value=sl.ttftMs;
   if(sl.tps!=null) $('sloTps').value=sl.tps;
@@ -1789,7 +1801,7 @@ function buildXls(){
   res('sloT','SLO check: TTFT','', ()=>`IF(${I('sloTtft')}=0,"—",IF(${R('ttft')}<=${I('sloTtft')},"PASS","FAIL"))`, true);
   res('sloS','SLO check: TPS','', ()=>`IF(${I('sloTps')}=0,"—",IF(${R('tps')}>=${I('sloTps')},"PASS","FAIL"))`, true);
   res('sloP','SLO check: P95','', ()=>`IF(${I('sloP95')}=0,"—",IF(${R('p95')}<=${I('sloP95')},"PASS","FAIL"))`, true);
-  res('procW','Procured workers (with resilience)','', ()=>`${I('workers')}+IF(${I('resil')}=1,1,IF(${I('resil')}=7,2,IF(${I('resil')}=4,3*${I('workers')},IF(${I('resil')}=6,${I('workers')}+2,IF(${I('resil')}=8,CEILING(${I('workers')}/2,1),IF(OR(${I('resil')}=2,${I('resil')}=3,${I('resil')}=5),${I('workers')},0))))))`);
+  res('procW','Procured workers (with resilience)','', ()=>`${I('workers')}+IF(OR(${I('resil')}=1,${I('resil')}=11),1,IF(OR(${I('resil')}=7,${I('resil')}=10),2,IF(${I('resil')}=4,3*${I('workers')},IF(${I('resil')}=6,${I('workers')}+2,IF(${I('resil')}=8,CEILING(${I('workers')}/2,1),IF(OR(${I('resil')}=2,${I('resil')}=3,${I('resil')}=5),${I('workers')},0))))))`);
   res('procG','Procured GPUs','', ()=>`${R('procW')}*${I('perW')}`);
   res('power','GPU power (TDP)','kW', ()=>`${R('procG')}*${I('watts')}/1000`);
 
@@ -1850,7 +1862,8 @@ function autoSize(){
   const s=readState();
   const weights=s.params*s.bytesW;
   const actGB=Math.min(s.resident+(s.extend?s.reasonTok:0),8192)*s.hidden*12*s.bytesW/1e9;
-  let tp=[1,2,4,8,16,32,64,72].find(t=>weights+actGB<=0.8*t*s.gpuVram);
+  const packPct=Math.min(95,Math.max(50,+($('autoUtil')&&$('autoUtil').value)||80)), pack=packPct/100;
+  let tp=[1,2,4,8,16,32,64,72].find(t=>weights+actGB<=pack*t*s.gpuVram);
   if(!tp){ toast(`No TP up to 64 fits one copy of ${s.model.name} on ${s.gpu.name}: quantize the weights or pick a higher-VRAM GPU`, true); return; }
   const tpFit=tp;
   // widen TP while a TTFT target is missed (prefill scales with TP)
@@ -1868,7 +1881,7 @@ function autoSize(){
       const replicas=Math.max(1,Math.floor(workers*s.perW/tp));
       batch=Math.min(64,Math.max(1,Math.ceil(s.concurrent/replicas)));
       d=eva(workers,batch);
-      if(d.fits||workers>=64) break;
+      if(d.total<=pack*d.avail||workers>=64) break;
       workers++;
     }
   } else {
@@ -1877,7 +1890,7 @@ function autoSize(){
     outer: for(;;){
       for(const b of [256,128,64,32,16,8,4,2,1]){
         batch=b; d=eva(workers,b);
-        if(d.fits) break outer;
+        if(d.total<=pack*d.avail) break outer;
       }
       if(workers>=64) break;
       workers++;
@@ -1898,7 +1911,7 @@ function autoSize(){
   why+= df.fits? (df.sloAll? 'Result: fits, and every SLO target passes. ' : 'Result: memory fits, but an SLO target still fails. Hardware alone cannot fix that one: see Recommendations below. ') : 'Result: still exceeds VRAM, see Recommendations. ';
   if(df.fits){
     const u=df.total/df.avail*100;
-    why+=`Memory sits at ${u.toFixed(0)}% deliberately: this is the smallest whole-GPU fleet that ${interactive?'admits every call in the contract':'fits the model with the largest batch'}, and the remainder is growth headroom (30 to 50% spare is standard capacity practice), not waste. Serving frameworks still pre-allocate most of each GPU as KV pool at runtime, so the spare becomes burst admission.`;
+    why+=`Memory sits at ${u.toFixed(0)}% against your ${packPct}% target: the smallest whole-GPU fleet that ${interactive?'admits every call in the contract':'fits the model with the largest batch'} within it. The gap below the target is the rounding cost of whole GPUs and power-of-two TP; the gap above it would be your growth and burst margin. Raise the target to pack tighter, lower it for more headroom.`;
   }
   const ar=$('autoResult'); if(ar){ ar.textContent=why; ar.classList.add('show'); }
   toast(`Auto-sized: TP${tp} · ${df.replicas} replica${df.replicas>1?'s':''} on ${workers} workers · batch ${batch} · ${df.active} of ${s.concurrent} admitted${df.fits? (df.sloAll?'':' · an SLO still fails, see Recommendations') : ' · still over VRAM, see Recommendations'}`);

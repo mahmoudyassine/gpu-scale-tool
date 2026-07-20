@@ -1,5 +1,19 @@
 # Changelog
 
+## Studio 4.14 (2026-07-19)
+
+- Auto-size memory target is now editable (50 to 95%, default 80): it sets
+  how full Auto-size may pack the serving GPUs, driving both the TP choice
+  and the worker count. Raise it to pack tighter, lower it for more headroom;
+  the explanation card reports achieved utilization against the target, and
+  the value round-trips through JSON export.
+- Two spare-equipped variants of the Active/Active split pattern: with one
+  spare overall (N+1) and with a spare in each site (N+2). Both absorb a
+  server failure at full capacity while keeping the split economics, still
+  halving during a site loss; drawn in the topology with per-site standby
+  cards and mirrored in the XLS export.
+
+
 ## Studio 4.13 (2026-07-19)
 
 Driven by user challenges to the resilience and auto-size numbers.

@@ -183,6 +183,8 @@
         </optgroup>
         <optgroup label="Survives a site loss, degraded to half">
           <option value="aas">Active/Active split · N across two sites (1x, no extra cost)</option>
+          <option value="aas1">Active/Active split + one spare (N+1)</option>
+          <option value="aass">Active/Active split + spare per site (N+2)</option>
           <option value="drh">DR half · half-size standby site (1.5N)</option>
         </optgroup>
         <optgroup label="Survives a site loss at full capacity">
@@ -196,6 +198,8 @@
       </select>
       <div class="f-help" id="hResil">Pick what the deployment must survive. The sizing rule: every figure in the results is what you can guarantee even during the covered failure, so throughput and concurrency never grow with resilience. The extra hardware either idles until a failure (spares, mirrors, DR standby) or serves day-to-day as burst headroom (Active/Active). The economics strip under the topology shows guaranteed vs normal-day capacity, idle hardware and the cost multiplier for the chosen model.</div>
     </div>
+    <div class="field"><div class="f-head"><label for="autoUtil">Auto-size memory target</label><button class="info" data-help="hAutoUtil" aria-expanded="false" type="button">i</button><span class="spacer"></span><span class="unit">%</span></div><input type="number" id="autoUtil" value="80" min="50" max="95" step="5"></div>
+    <div class="f-help" id="hAutoUtil">How full Auto-size may pack the serving GPUs. 80% leaves industry-standard growth headroom; 90 to 95% packs tighter at the cost of burst and growth margin (the thin-headroom warning starts at 92%). Manual sliders are never limited by this.</div>
     <button class="btn primary apply" id="btnAuto" type="button" title="Solve TP, workers and batch from everything chosen above"><svg viewBox="0 0 24 24"><path d="M13 2 4.5 14H11l-1 8 8.5-12H12l1-8z"/></svg>Auto-size TP · workers · batch</button>
     <div class="f-help" id="hAuto" style="display:block;margin-bottom:10px">Uses everything above: model, precision, workload, SLO targets, GPU and node size. Picks the smallest Tensor parallel that fits one copy of the model (widened if the TTFT target demands it), then the fewest workers and the batch that admit the peak concurrent calls. No SLO targets means offline: minimal hardware, largest fitting batch, queueing allowed.</div>
     <div class="auto-result" id="autoResult" aria-live="polite"></div>
