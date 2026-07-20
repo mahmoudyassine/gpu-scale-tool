@@ -136,6 +136,13 @@ Cloudflare → DNS → Import, keep the records unproxied (grey cloud) until the
 GitHub certificate is issued, then set the custom domain in GitHub and enable
 Enforce HTTPS.
 
+## 🤖 Claude Code skill
+
+The `skill/` directory packages this engine as a [Claude Code](https://claude.com/claude-code)
+skill: copy it to `~/.claude/skills/gpu-sizing/` and Claude answers GPU sizing
+questions by running the real engine CLI (same math, same libraries) instead
+of estimating. `node skill/sizing.mjs --help` works standalone too.
+
 ## 🤝 Contributing
 
 Model and GPU library updates are one-line edits (see above). Please keep the
