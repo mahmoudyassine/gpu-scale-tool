@@ -160,8 +160,20 @@ html[data-theme="dark"]{--pool0:#2DD4BF;--pool1:#8B9CE8;--pool2:#FFC53D;--pool3:
 .fm-legend .lg-li{display:inline-flex;align-items:center;gap:6px;font-size:10.5px;color:var(--muted)}
 .fm-legend .sw{width:10px;height:10px;border-radius:3px;flex:none}
 .fm-legend .sw.dashed{background:transparent;border:1.5px dashed var(--faint)}
-.fleet-map{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start}
-.fm-node{border:1px solid var(--line);border-radius:9px;background:var(--panel-2);padding:7px 8px 8px;min-width:0}
+.fleet-map{display:flex;flex-direction:column;gap:0;margin-bottom:12px}
+.fm-site{background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:11px 13px 13px}
+.fm-site-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.fm-site-head .t{font-family:var(--disp);font-size:12px;font-weight:600;color:var(--text)}
+.fm-site-head .schip{font-family:var(--mono);font-size:9.5px;color:var(--faint)}
+.fm-nodes{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start}
+.fm-link{display:flex;align-items:center;gap:8px;justify-content:center;padding:7px 0;font-size:10.5px;font-weight:500;color:var(--muted)}
+.fm-link svg{width:13px;height:13px;stroke:var(--faint);fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.fm-nlab .pct{font-weight:600;color:var(--teal-strong)}
+.fm-nlab .pct.idle{color:var(--faint);font-weight:500}
+.fm-nlab .sp{flex:1}
+.fm-gpu .fill{position:absolute;left:1px;right:1px;bottom:1px;border-radius:3px}
+.fm-node.fm-more{display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;color:var(--faint);border-style:dashed;min-height:64px;padding:8px 12px}
+.fm-node{border:1px solid var(--line);border-radius:9px;background:var(--panel);padding:7px 8px 8px;min-width:0}
 .fm-node.standby{border-style:dashed;opacity:.75}
 .fm-node.support .fm-nlab .role{color:var(--amber)}
 .fm-node.fm-active{border-color:var(--teal-strong);box-shadow:0 0 0 1px var(--teal-strong)}

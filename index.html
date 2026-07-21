@@ -271,11 +271,6 @@
     <div class="p-head"><span class="p-title"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/></svg>Project fleet · all use cases</span><span class="p-note" id="projNote"></span></div>
     <div class="proj-strip" id="projStrip"></div>
     <div class="uc-results" id="ucResults"></div>
-    <div class="fm-head"><span class="fm-title">Fleet map · model placement across GPUs and nodes</span><span class="fm-totals mono" id="fmTotals"></span></div>
-    <div class="fm-legend" id="fmLegend"></div>
-    <div class="fleet-map" id="fleetMap" aria-hidden="true"></div>
-    <div class="sr-only" id="fleetList"></div>
-    <div class="fm-note" id="fmNote"></div>
   </section>
 
   <div class="col-cap uc-detail-cap" id="ucDetailCap" style="display:none"></div>
@@ -315,9 +310,12 @@
   </section>
 
   <section class="panel topo-box">
-    <div class="p-head"><span class="p-title"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="2.4"/><circle cx="5" cy="19" r="2.4"/><circle cx="19" cy="19" r="2.4"/><path d="M12 7.4v3.6M12 11 6.6 17.1M12 11l5.4 6.1"/></svg>Deployment topology · workers &amp; GPU utilization</span><span class="p-note" id="topoNote"></span></div>
-    <div id="topo"></div>
-    <div class="topo-legend" id="topoLegend"></div>
+    <div class="p-head"><span class="p-title"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="2.4"/><circle cx="5" cy="19" r="2.4"/><circle cx="19" cy="19" r="2.4"/><path d="M12 7.4v3.6M12 11 6.6 17.1M12 11l5.4 6.1"/></svg>Deployment topology &amp; fleet map · every model on every GPU</span><span class="p-note" id="topoNote"></span></div>
+    <div class="fm-head"><span class="fm-title"></span><span class="fm-totals mono" id="fmTotals"></span></div>
+    <div class="fm-legend" id="fmLegend"></div>
+    <div class="fleet-map" id="fleetMap" aria-hidden="true"></div>
+    <div class="sr-only" id="fleetList"></div>
+    <div class="fm-note" id="fmNote"></div>
     <div class="resil-stats" id="resilStats"></div>
     <div class="resil-why">Resilience buys survival, not speed: the guaranteed figures are what remains during the failure you chose to cover. Idle spares add nothing day-to-day; active/active sites add burst headroom you should not plan sustained load on.</div>
     <div class="topo-sum" id="topoSum"></div>

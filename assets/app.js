@@ -22,20 +22,25 @@ function setUxMode(m){
 }
 const KV_QUANTS = [{name:'BF16',bytes:2},{name:'FP16',bytes:2},{name:'FP8',bytes:1},{name:'INT8',bytes:1},{name:'INT4',bytes:0.5}];
 const REASON_TOK = {'None':0,'Light reasoning':2000,'Heavy reasoning':8000,'Custom':2000};
+/* extraW = mult(n) + add. mult scales per pool (mirrors and DR sites must hold
+   every pool's own model copies); add is a fixed count of idle spare nodes,
+   procured ONCE per project: hardware is uniform, so one spare covers a node
+   failure in any pool. */
 const RESIL = {
-  n:   {code:0, label:'N',       long:'N · capacity only',                              extraW:n=>0,              live:n=>n},
-  n1:  {code:1, label:'N+1',     long:'N+1 · one standby worker',                       extraW:n=>1,              live:n=>n},
-  n2:  {code:7, label:'N+2',     long:'N+2 · two standby workers',                      extraW:n=>2,              live:n=>n},
-  nn:  {code:2, label:'N+N',     long:'N+N · in-site mirror (2N)',                      extraW:n=>n,              live:n=>n},
-  dr:  {code:3, label:'DR',      long:'DR · full standby site (active/passive)',        extraW:n=>n,              live:n=>n},
-  drh: {code:8, label:'DR ½',    long:'DR · half-size standby site (1.5N)',             extraW:n=>Math.ceil(n/2), live:n=>n, degraded:true},
-  aas: {code:9, label:'A/A ½+½', long:'Active/Active split · N across two sites (1x)',  extraW:n=>0,              live:n=>n, degraded:true},
-  aas1:{code:11,label:'A/A ½+½ +1',long:'Active/Active split · N across two sites + one spare (N+1)', extraW:n=>1, live:n=>n, degraded:true},
-  aass:{code:10,label:'A/A ½+½ +1/site',long:'Active/Active split · N across two sites + spare per site (N+2)', extraW:n=>2, live:n=>n, degraded:true},
-  aa:  {code:5, label:'A/A',     long:'Active/Active · two live sites (2N)',            extraW:n=>n,              live:n=>2*n},
-  aan1:{code:6, label:'A/A N+1', long:'Active/Active · N+1 in each of two sites (2N+2)',extraW:n=>n+2,            live:n=>2*n},
-  nndr:{code:4, label:'N+N+DR',  long:'N+N + DR · active/active twin sites (4N)',       extraW:n=>3*n,            live:n=>2*n},
+  n:   {code:0, label:'N',       long:'N · capacity only',                              mult:n=>0,              add:0, live:n=>n},
+  n1:  {code:1, label:'N+1',     long:'N+1 · one standby worker',                       mult:n=>0,              add:1, live:n=>n},
+  n2:  {code:7, label:'N+2',     long:'N+2 · two standby workers',                      mult:n=>0,              add:2, live:n=>n},
+  nn:  {code:2, label:'N+N',     long:'N+N · in-site mirror (2N)',                      mult:n=>n,              add:0, live:n=>n},
+  dr:  {code:3, label:'DR',      long:'DR · full standby site (active/passive)',        mult:n=>n,              add:0, live:n=>n},
+  drh: {code:8, label:'DR ½',    long:'DR · half-size standby site (1.5N)',             mult:n=>Math.ceil(n/2), add:0, live:n=>n, degraded:true},
+  aas: {code:9, label:'A/A ½+½', long:'Active/Active split · N across two sites (1x)',  mult:n=>0,              add:0, live:n=>n, degraded:true},
+  aas1:{code:11,label:'A/A ½+½ +1',long:'Active/Active split · N across two sites + one spare (N+1)', mult:n=>0, add:1, live:n=>n, degraded:true},
+  aass:{code:10,label:'A/A ½+½ +1/site',long:'Active/Active split · N across two sites + spare per site (N+2)', mult:n=>0, add:2, live:n=>n, degraded:true},
+  aa:  {code:5, label:'A/A',     long:'Active/Active · two live sites (2N)',            mult:n=>n,              add:0, live:n=>2*n},
+  aan1:{code:6, label:'A/A N+1', long:'Active/Active · N+1 in each of two sites (2N+2)',mult:n=>n,              add:2, live:n=>2*n},
+  nndr:{code:4, label:'N+N+DR',  long:'N+N + DR · active/active twin sites (4N)',       mult:n=>3*n,            add:0, live:n=>2*n},
 };
+Object.values(RESIL).forEach(r=>{ r.extraW = n => r.mult(n)+r.add; });
 
 /* ================= ENGINE (pure · v23: workbook v22 + per-replica weight/activation accounting) ================= */
 /*ENGINE-START*/
@@ -370,177 +375,6 @@ function renderCtxChart(s,d){
 }
 
 /* ================= TOPOLOGY · server cards with per-GPU utilization ================= */
-function renderTopology(s,d){
-  const P=pal();
-  const perGpu=d.total/(d.servingGpus||s.gpus), cap=s.gpuVram, fillPct=Math.min(1,perGpu/cap), hot=perGpu>cap;
-  const utilTxt=(perGpu/cap*100).toFixed(0)+'%';
-  const cell={w:20,h:34,g:4};
-  const cols=Math.min(s.perW,8), rows=Math.ceil(s.perW/8);
-  const cardW=20+cols*cell.w+(cols-1)*cell.g;
-  const cardH=25+rows*cell.h+(rows-1)*cell.g+24;
-  // narrow containers get a narrow canvas so cards stack and text stays legible when scaled
-  const boxW=($('topo')&&$('topo').clientWidth)||1000;
-  const W = boxW&&boxW<640 ? Math.max(320,Math.min(480,boxW)) : 1000;
-  const gapCard=12, framePad=14, frameGap=40;
-  const innerW=W-24-framePad*2;
-  const perRow=Math.max(1,Math.floor((innerW+gapCard)/(cardW+gapCard)));
-  const MODE={active:{col:P.line,tag:null},
-              standby:{col:P.amber,tag:'STANDBY'},
-              mirror:{col:P.teal,tag:'MIRROR'},
-              drs:{col:P.violet,tag:'DR'}};
-
-  function workerCard(x,y,label,mode){
-    const M=MODE[mode], dashed=mode!=='active';
-    let g=`<g>`;
-    g+=`<rect x="${x}" y="${y}" width="${cardW}" height="${cardH}" rx="8" fill="${P.bg}" stroke="${dashed?M.col:P.line}" stroke-width="1.3"${dashed?' stroke-dasharray="5 4"':''}/>`;
-    g+=`<text x="${x+10}" y="${y+15}" fill="${dashed?M.col:P.muted}" font-size="9.5" font-weight="600" font-family="IBM Plex Mono,monospace">${dashed?M.tag:label}</text>`;
-    g+=`<text x="${x+cardW-10}" y="${y+15}" fill="${dashed?P.faint:(hot?P.red:P.teal)}" font-size="9.5" font-weight="600" text-anchor="end" font-family="IBM Plex Mono,monospace">${dashed?'idle':utilTxt}</text>`;
-    for(let i=0;i<s.perW;i++){
-      const cx=x+10+(i%8)*(cell.w+cell.g), cy=y+25+Math.floor(i/8)*(cell.h+cell.g);
-      g+=`<rect x="${cx}" y="${cy}" width="${cell.w}" height="${cell.h}" rx="3" fill="${dashed?'none':P.inset}" stroke="${dashed?M.col:P.lineSoft}" stroke-width="1"${dashed?' stroke-dasharray="3 2.5"':''}/>`;
-      if(!dashed){
-        const fh=Math.max(2,(cell.h-2)*fillPct);
-        g+=`<rect x="${cx+1}" y="${cy+cell.h-1-fh}" width="${cell.w-2}" height="${fh}" rx="2" fill="${hot?P.red:P.segkv}"/>`;
-      }
-    }
-    const cap8=`${s.perW}× GPU · `+(dashed? (mode==='standby'?'standby':mode==='mirror'?'mirror':'DR standby') : `${fmt(perGpu*s.perW)}/${fmt(cap*s.perW)} GB`);
-    g+=`<text x="${x+cardW/2}" y="${y+cardH-8}" fill="${P.faint}" font-size="8.5" text-anchor="middle" font-family="IBM Plex Mono,monospace">${cap8}</text>`;
-    return g+'</g>';
-  }
-
-  function frame(y0, title, items, chip, iconName){
-    const maxDraw=16;
-    let list=items;
-    if(items.length>maxDraw){
-      const specials=items.filter(it=>it.mode!=='active');
-      const actives=items.filter(it=>it.mode==='active');
-      const room=Math.max(actives.length?1:0, maxDraw-1-specials.length);
-      const shown=[...actives.slice(0,room),...specials].slice(0,maxDraw-1);
-      list=[...shown,{mode:'more',n:items.length-shown.length}];
-    }
-    const rowsN=Math.ceil(list.length/perRow);
-    const fh=32+framePad+rowsN*(cardH+gapCard)-gapCard+framePad;
-    let g=`<g>`;
-    g+=`<rect x="12" y="${y0}" width="${W-24}" height="${fh}" rx="12" fill="${P.panel2}" stroke="${P.line}" stroke-width="1"/>`;
-    if(iconName) g+=svgIco(iconName, 12+framePad, y0+8, 15, P.muted);
-    g+=`<text x="${12+framePad+(iconName?22:0)}" y="${y0+21}" fill="${P.text}" font-size="12" font-weight="600" font-family="Archivo,Inter,sans-serif">${title}</text>`;
-    const chipX=W-12-framePad;
-    g+=svgIco('zap', chipX-chip.length*5.55-18, y0+11, 12, P.faint);
-    g+=`<text x="${chipX}" y="${y0+21}" fill="${P.faint}" font-size="9.5" text-anchor="end" font-family="IBM Plex Mono,monospace">${chip}</text>`;
-    list.forEach((it,k)=>{
-      const x=12+framePad+(k%perRow)*(cardW+gapCard);
-      const y=y0+32+framePad+Math.floor(k/perRow)*(cardH+gapCard);
-      if(it.mode==='more'){
-        g+=`<rect x="${x}" y="${y}" width="${cardW}" height="${cardH}" rx="8" fill="none" stroke="${P.lineSoft}" stroke-width="1.3" stroke-dasharray="4 4"/>`;
-        g+=`<text x="${x+cardW/2}" y="${y+cardH/2+4}" fill="${P.faint}" font-size="11" text-anchor="middle" font-family="IBM Plex Mono,monospace">+${it.n} more</text>`;
-      } else g+=workerCard(x,y,it.label,it.mode);
-    });
-    return {svg:g+'</g>', h:fh};
-  }
-
-  const N=s.workers, r=s.resil;
-  const act=(pre)=>Array.from({length:N},(_,i)=>({mode:'active',label:`${pre}${String(i+1).padStart(2,'0')}`}));
-  const dup=(mode)=>Array.from({length:N},()=>({mode}));
-  let y=4, parts=[], links=[];
-  const gpuChip=(n,extra)=>`${n} worker${n>1?'s':''} · ${n*s.perW} GPU · ${fmt(n*s.perW*s.gpu.watts/1000)} kW${extra||''}`;
-  if(r==='n'){
-    const f=frame(y,`Production site · N=${N}`,act('WK-'),gpuChip(N),'building'); parts.push(f.svg); y+=f.h;
-  } else if(r==='n1'){
-    const f=frame(y,`Production site · N+1`,[...act('WK-'),{mode:'standby'}],gpuChip(N+1),'building'); parts.push(f.svg); y+=f.h;
-  } else if(r==='n2'){
-    const f=frame(y,`Production site · N+2`,[...act('WK-'),{mode:'standby'},{mode:'standby'}],gpuChip(N+2),'building'); parts.push(f.svg); y+=f.h;
-  } else if(r==='drh'){
-    const half=Math.ceil(N/2);
-    const fa=frame(y,`Primary site · active · N=${N}`,act('WK-'),gpuChip(N),'building'); parts.push(fa.svg); y+=fa.h;
-    links.push({y:y+frameGap/2, lab:'async replication', both:false});
-    y+=frameGap;
-    const fb=frame(y,`DR site · half-size standby · ${half} worker${half>1?'s':''}`,Array.from({length:half},()=>({mode:'drs'})),gpuChip(half,' · standby'),'globe'); parts.push(fb.svg); y+=fb.h;
-  } else if(r==='nn'){
-    const fa=frame(y,`System A · active · N=${N}`,act('WK-'),gpuChip(N),'building'); parts.push(fa.svg); y+=fa.h;
-    links.push({y:y+frameGap/2, lab:'in-site failover', both:true});
-    y+=frameGap;
-    const fb=frame(y,`System B · mirror · N=${N}`,dup('mirror'),gpuChip(N,' · idle'),'shield'); parts.push(fb.svg); y+=fb.h;
-  } else if(r==='dr'){
-    const fa=frame(y,`Primary site · active · N=${N}`,act('WK-'),gpuChip(N),'building'); parts.push(fa.svg); y+=fa.h;
-    links.push({y:y+frameGap/2, lab:'async replication', both:false});
-    y+=frameGap;
-    const fb=frame(y,`DR site · standby · N=${N}`,dup('drs'),gpuChip(N,' · standby'),'globe'); parts.push(fb.svg); y+=fb.h;
-  } else if(r==='aas'||r==='aas1'||r==='aass'){
-    const nA=Math.max(1,Math.ceil(N/2)), nB=Math.max(0,N-nA);
-    const acts=(pre,cnt,off)=>Array.from({length:cnt},(_,i)=>({mode:'active',label:`${pre}${String(i+1+off).padStart(2,'0')}`}));
-    const aSpare=(r==='aass'||r==='aas1')?1:0, bSpare=r==='aass'?1:0;
-    const aItems=[...acts('WK-',nA,0),...Array.from({length:aSpare},()=>({mode:'standby'}))];
-    const fa=frame(y,`Site A · active · ${nA} of N=${N}${aSpare?' + spare':''}`,aItems,gpuChip(nA+aSpare),'building'); parts.push(fa.svg); y+=fa.h;
-    if(nB>0||bSpare){
-      links.push({y:y+frameGap/2, lab:'active / active · geo load balancing', both:true});
-      y+=frameGap;
-      const bItems=[...acts('WK-',nB,nA),...Array.from({length:bSpare},()=>({mode:'standby'}))];
-      const fb=frame(y,`Site B · active · ${nB} of N=${N}${bSpare?' + spare':''}`,bItems,gpuChip(nB+bSpare),'building'); parts.push(fb.svg); y+=fb.h;
-    }
-  } else if(r==='aa'){
-    const fa=frame(y,`Site A · active · N=${N}`,act('A-'),gpuChip(N),'building'); parts.push(fa.svg); y+=fa.h;
-    links.push({y:y+frameGap/2, lab:'active / active · geo load balancing', both:true});
-    y+=frameGap;
-    const fb=frame(y,`Site B · active · N=${N}`,act('B-'),gpuChip(N),'building'); parts.push(fb.svg); y+=fb.h;
-  } else if(r==='aan1'){
-    const fa=frame(y,`Site A · active · N+1`,[...act('A-'),{mode:'standby'}],gpuChip(N+1),'building'); parts.push(fa.svg); y+=fa.h;
-    links.push({y:y+frameGap/2, lab:'active / active · geo load balancing', both:true});
-    y+=frameGap;
-    const fb=frame(y,`Site B · active · N+1`,[...act('B-'),{mode:'standby'}],gpuChip(N+1),'building'); parts.push(fb.svg); y+=fb.h;
-  } else { /* nndr: active/active twin sites, each N+N */
-    const fa=frame(y,`Site A · active · N+N`,[...act('A-'),...dup('mirror')],gpuChip(2*N),'building'); parts.push(fa.svg); y+=fa.h;
-    links.push({y:y+frameGap/2, lab:'active / active · geo-replication', both:true});
-    y+=frameGap;
-    const fb=frame(y,`Site B · active · N+N`,[...act('B-'),...dup('mirror')],gpuChip(2*N),'building'); parts.push(fb.svg); y+=fb.h;
-  }
-  let linkSvg='';
-  links.forEach(L=>{
-    linkSvg+=`<line x1="${W/2}" y1="${L.y-13}" x2="${W/2}" y2="${L.y+13}" stroke="${P.faint}" stroke-width="1.5" stroke-dasharray="4 3"/>`;
-    linkSvg+=`<path d="M ${W/2-4.5} ${L.y+7} L ${W/2} ${L.y+13} L ${W/2+4.5} ${L.y+7}" fill="none" stroke="${P.faint}" stroke-width="1.5"/>`;
-    if(L.both) linkSvg+=`<path d="M ${W/2-4.5} ${L.y-7} L ${W/2} ${L.y-13} L ${W/2+4.5} ${L.y-7}" fill="none" stroke="${P.faint}" stroke-width="1.5"/>`;
-    linkSvg+=svgIco('sync', W/2+13, L.y-6, 12, P.muted);
-    linkSvg+=`<text x="${W/2+30}" y="${L.y+3.5}" fill="${P.muted}" font-size="9.5" font-weight="500" font-family="Inter,sans-serif">${L.lab}</text>`;
-  });
-  $('topo').innerHTML=`<svg viewBox="0 0 ${W} ${y+4}" style="aspect-ratio:${W}/${y+4};width:100%;height:auto" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Deployment topology with per-GPU memory utilization">${parts.join('')}${linkSvg}</svg>`;
-
-  const legend=[['box',P.segkv,`active worker · GPU bars show memory fill (${utilTxt} of ${fmt(cap)} GB each)`]];
-  if(r==='n1'||r==='n2'||r==='aas1') legend.push(['dashed',P.amber,r==='n2'?'standby workers (N+2)':'standby worker (N+1)']);
-  if(r==='n2') legend.push(['dashed',P.amber,'standby workers (N+2)']);
-  if(r==='aan1'||r==='aass') legend.push(['dashed',P.amber,'standby worker (one per site)']);
-  if(r==='nn'||r==='nndr') legend.push(['dashed',P.teal,'mirror workers (N+N)']);
-  if(r==='dr'||r==='drh') legend.push(['dashed',P.violet,'DR standby site']);
-  $('topoLegend').innerHTML=legend.map(([k,c,t])=>
-    `<span class="cl-item"><span class="sw box${k==='dashed'?' dashed':''}" style="${k==='dashed'?'color:'+c:'background:'+c}"></span>${t}</span>`).join('');
-
-  const info=RESIL[r], extraW=info.extraW(N), procW=N+extraW, procG=procW*s.perW;
-  const kW=procG*s.gpu.watts/1000;
-  $('topoNote').textContent=`${info.label} · ${d.replicas} replica${d.replicas>1?'s':''} × TP${s.tp} · ${utilTxt}/GPU`;
-  const resLine = r==='n'? 'No redundancy: a worker failure removes its replicas from service.'
-    : r==='n1'? 'One idle standby absorbs a single node failure with no capacity loss after failover.'
-    : r==='n2'? 'Two idle standbys absorb two node failures (or one failure during a maintenance window): the usual step up from N+1 for larger fleets.'
-    : r==='nn'? 'A full second system in the same site: survives node and system-level failures; can also cover maintenance windows.'
-    : r==='dr'? 'A standby remote site behind asynchronous replication: survives full site loss; the standby idles during normal operation.'
-    : r==='drh'? 'A half-size standby site: the cost-conscious DR pattern. Survives a site loss but runs degraded at roughly half capacity until the primary returns; guaranteed capacity during a site loss is about half the normal figure.'
-    : r==='aas'? 'The N load-bearing workers are split across two live sites with no extra procurement: the cheapest geographic pattern. A site loss halves capacity until repair, and the SLA must say so. If the full number must survive a site loss, each site has to carry N alone: that is the Active/Active (2N) pattern.'
-    : r==='aas1'? 'N split across two live sites plus one idle spare: a single server failure anywhere is absorbed at full capacity (traffic rebalances across sites), while a site loss still roughly halves capacity. The pragmatic budget middle between bare split and per-site spares.'
-    : r==='aass'? 'N split across two live sites with an idle spare in each: any single server failure is absorbed locally, and after a site loss the surviving half still has its own spare. A site loss still roughly halves capacity; state it in the SLA.'
-    : r==='aa'? 'Two active sites share traffic behind global load balancing. Each site alone can carry the full load, so losing a site degrades nothing; in normal operation each runs at roughly half load.'
-    : r==='aan1'? 'Two active sites, each with its own local standby: survives the loss of an entire site plus a node failure in the surviving site. A pragmatic middle ground between plain active/active and N+N+DR.'
-    : 'Two active/active sites, each carrying N+N: traffic is shared across sites in normal operation, and the deployment survives any worker failure or the loss of an entire site without dropping below N. The most resilient, and most procurement-heavy, enterprise pattern.';
-  $('topoSum').innerHTML=
-    `Load: <b>N = ${N} worker${N>1?'s':''} · ${s.gpus} GPUs</b> (${s.perW}/worker): performance and fit are computed on these. `+
-    `Procured for ${info.long}: <b>${procW} workers · ${procG} GPUs · ≈ ${fmt(kW)} kW</b> GPU TDP. ${resLine}`;
-
-  const liveW=(info.live||(n=>n))(N), idleW=procW-liveW;
-  const burst=liveW>N? d.agg*liveW/N : null;
-  $('resilStats').innerHTML=
-    `<div class="rs"><div class="k">Guaranteed at peak</div><div class="v">${fmt(d.agg)} tok/s · ${d.active} calls</div><div class="n">${info.degraded?'≈ half of this during a site loss':'held even through the covered failure'}</div></div>`+
-    `<div class="rs"><div class="k">Normal-day capacity</div><div class="v">${burst?`≈ ${fmt(burst)} tok/s`:`${fmt(d.agg)} tok/s`}</div><div class="n">${burst?'both sites serving: burst headroom, not a guarantee': idleW>0?'spare hardware idles until a failure':'every worker serves; no reserve beyond N'}</div></div>`+
-    `<div class="rs"><div class="k">Idle hardware</div><div class="v">${idleW>0?`${idleW} worker${idleW>1?'s':''}`:'none'}</div><div class="n">${idleW>0?'standing by in normal operation':'every worker serves traffic'}</div></div>`+
-    `<div class="rs"><div class="k">Cost vs bare N</div><div class="v">${fmt(procW/N)}×</div><div class="n">${procW} of ${N} load-bearing workers</div></div>`;
-  return {procW, procG, kW};
-}
-
 /* ================= PLAIN-WORDS STORY ================= */
 let __storyText=[];
 function buildStory(s,d,m,g){
@@ -554,8 +388,15 @@ function buildStory(s,d,m,g){
   const kvSeq=d.effSeq*d.kvTok;
   P.push(`${d.kvTotal>d.weightsAll?'The cache, not the weights, dominates here: each':'Each'} admitted conversation holds <b>${kvSeq<1? (kvSeq*1000).toFixed(0)+' MB':fmt(kvSeq)+' GB'}</b> of KV cache (${(d.kvTok*1e6).toFixed(1)} KB per token at ${s.kq.name} across ${fmtTok(d.effSeq)} tokens); all ${d.active} together add <b>${fmt(d.kvTotal)} GB</b>${d.kvTotal>d.weightsAll?', more than the weights themselves':`, next to ${fmt(d.weightsAll)} GB of weights`}.`);
   P.push(`The envelope: prefill reads ${fmtTok(s.resident)} tokens and lands the first token in ≈<b>${fmt(d.ttft)} ms</b>; decode streams ≈<b>${fmt(d.tps)} tok/s</b> per user at batch ${fmt(d.batchPerRep)}. ${d.sloAll?'Every enabled SLO passes.':'At least one SLO target fails; see Recommendations.'}`);
-  const info=RESIL[s.resil], extraW=info.extraW(s.workers), procW=s.workers+extraW, procG=procW*s.perW;
-  P.push(`Resilience (<b>${info.long}</b>) ${extraW>0?`adds ${extraW} worker${extraW>1?'s':''} that carry no day-to-day load`:'adds nothing: a failure removes capacity'}; procurement totals <b>${procW} workers · ${procG} GPUs · ≈${fmt(procG*g.watts/1000)} kW</b> GPU TDP.`);
+  const info=RESIL[s.resil];
+  if(window.__prj && UC.length>1){
+    const F=window.__prj.fleet, nPools=window.__prj.pools.length;
+    const mult=info.mult(s.workers);
+    P.push(`Resilience (<b>${info.long}</b>) ${mult>0||info.add? 'adds '+[mult>0?`${mult} idle worker${mult>1?'s':''} for this pool`:'', info.add?`${info.add} spare node${info.add>1?'s':''} shared across all ${nPools} pools (hardware is uniform, so one spare covers any pool)`:''].filter(Boolean).join(' plus ') : 'adds nothing: a failure removes capacity'}; project procurement totals <b>${F.procW} nodes · ${F.procG} GPUs · ≈${fmt(F.kW)} kW</b> GPU TDP.`);
+  } else {
+    const extraW=info.extraW(s.workers), procW=s.workers+extraW, procG=procW*s.perW;
+    P.push(`Resilience (<b>${info.long}</b>) ${extraW>0?`adds ${extraW} worker${extraW>1?'s':''} that carry no day-to-day load`:'adds nothing: a failure removes capacity'}; procurement totals <b>${procW} workers · ${procG} GPUs · ≈${fmt(procG*g.watts/1000)} kW</b> GPU TDP.`);
+  }
   if(!d.fits)
     P.push(`<b>It does not fit:</b> the fleet needs ${fmt(d.total)} GB against ${fmt(d.avail)} GB of serving memory. The Recommendations panel lists the levers in order of effect.`);
   __storyText=P.map(p=>p.replace(/<[^>]+>/g,''));
@@ -658,9 +499,9 @@ function render(){
   // multi-usecase: every detail section below the project panel describes the
   // ACTIVE card's pool (combined load), not the card alone; the per-card SLO
   // envelopes live in the project panel's use-case cards.
-  window.__prj = UC.length>1 || UC.some(u=>(u.supports||[]).length)? computeProject() : null;
+  window.__prj = computeProject();
   let s, d;
-  if(window.__prj && UC.length>1){
+  if(UC.length>1){
     const p = window.__prj.pools.find(p2=>p2.members.includes(activeUc));
     s = p.state; d = p.d;
   } else { s = readState(); d = compute(s); }
@@ -763,16 +604,16 @@ function render(){
   $('wfLegend').innerHTML=segs.map(([n,ms,c])=>`<span class="lg-li"><span class="lg-sw wf-seg ${c}" style="width:10px;height:10px"></span><span class="k">${n}</span><span class="v">${ms>=1000? fmt(ms/1000)+' s': fmt(ms)+' ms'}</span></span>`).join('');
   $('wfTotal').textContent=`mean ${fmt(d.latency)} s · p95 ${fmt(d.p95)} s`;
 
-  const topoInfo=renderTopology(s,d);
+  renderFleet(window.__prj);
+  const topoInfo={procW:window.__prj.fleet.procW};
   window.__lastLat=d.latency;
   const nd=$('nrmDerived');
   if(nd){ const users=Math.max(1,+$('nrmUsers').value||1);
     nd.textContent=`→ ${fmt(s.concurrent)} concurrent calls from ${fmt(users)} people (6 interactions/h · 1.5× burst · ${fmt(Math.min(120,Math.max(5,d.latency)))} s/call)`; }
   const mb=$('miniBar');
-  if(mb){ const F=window.__prj&&window.__prj.fleet;
-    const fits=F? F.fits : d.fits, sloOk=F? F.sloAll : d.sloAll;
-    const gpus=F? F.procG : topoInfo.procW*s.perW;
-    const kw=F? F.kW : topoInfo.procW*s.perW*g.watts/1000;
+  if(mb){ const F=window.__prj.fleet;
+    const fits=F.fits, sloOk=F.sloAll;
+    const gpus=F.procG, kw=F.kW;
     mb.className='mini-bar '+(fits? (sloOk?'':'warn'):'bad');
     $('mbLamp').title=fits? (sloOk?'Fits, SLOs met':'An SLO fails'):'Exceeds VRAM';
     $('mbText').textContent=`${gpus} GPUs · ≈${fmt(kw)} kW · ${fits? (sloOk?'fits · SLOs met':'SLO fails'):'over VRAM'}`; }
@@ -1134,7 +975,7 @@ function fleetTotals(pools, sup, hw){
   const supG=sup.gpus||0;
   const supExtraG=Math.max(0, supG-spare);
   const supNodes=Math.ceil(supExtraG/hw.perW);
-  const resilW=pools.reduce((t,p)=>t+info.extraW(p.state.workers),0);
+  const resilW=pools.reduce((t,p)=>t+info.mult(p.state.workers),0)+info.add;
   const procW=servW+resilW+supNodes;
   const procG=procW*hw.perW;
   return {servW, servG, spare, supG, supExtraG, supNodes, resilW, procW, procG,
@@ -1148,39 +989,106 @@ function fleetTotals(pools, sup, hw){
 
 /* ================= PROJECT RESULTS (fleet map + per-usecase cards) ================= */
 const KIND_LABEL={embed:'Embeddings',rerank:'Reranker',asr:'ASR',tts:'TTS',ocr:'OCR',guard:'Guard'};
-function fleetNodes(prj){
+function buildFleetSites(prj){
   const {pools, sup, hw}=prj;
-  const nodes=[]; let nn=0;
+  const r=hw.resil, info=RESIL[r]||RESIL.n;
+  const N=pools.reduce((x,p)=>x+p.state.workers,0);
+  let nn=0, sp=0, idl=0;
   const supBins=sup.layout.slice();
-  pools.forEach((p,pi)=>{
-    const st=p.state, reps=p.d.replicas;
-    for(let w=0; w<st.workers; w++){
-      const node={label:'ND-'+String(++nn).padStart(2,'0'), cls:'serve', pool:pi, poolName:st.model.name, gpus:[], active:p.members.includes(activeUc)};
+  // serving nodes for pool pi, worker indices [w0, w0+count)
+  function serveNodes(p, pi, w0, count, copy){
+    const st=p.state, reps=p.d.replicas, out=[];
+    for(let w=w0; w<w0+count; w++){
+      const node={label:(copy?'B-':'ND-')+String(++nn).padStart(2,'0'), cls:'serve', pool:pi,
+        poolName:st.model.name, util:Math.min(1,p.d.total/p.d.avail),
+        gpus:[], active:p.members.includes(activeUc)};
       for(let k=0;k<st.perW;k++){
-        const gi=w*st.perW+k;
-        const rep=Math.floor(gi/st.tp);
-        if(rep<reps) node.gpus.push({type:'pool', pool:pi, rep, tip:`${node.label} · GPU ${k+1} · ${st.model.name} · replica ${rep+1} of ${reps} (TP${st.tp} shard)`});
-        else if(supBins.length){ const bin=supBins.shift(); node.gpus.push({type:'sup', bin, tip:`${node.label} · GPU ${k+1} · supporting models on spare GPU`}); }
+        const gi=w*st.perW+k, rep=Math.floor(gi/st.tp);
+        if(rep<reps) node.gpus.push({type:'pool', pool:pi, rep, util:node.util,
+          tip:`${node.label} · GPU ${k+1} · ${st.model.name} · replica ${rep+1} of ${reps} (TP${st.tp} shard) · ${(node.util*100).toFixed(0)}% memory`});
+        else if(supBins.length){ const bin=supBins.shift();
+          node.gpus.push({type:'sup', bin, tip:`${node.label} · GPU ${k+1} · supporting models on spare GPU`}); }
         else node.gpus.push({type:'spare', tip:`${node.label} · GPU ${k+1} · unassigned headroom`});
       }
-      nodes.push(node);
+      out.push(node);
     }
-  });
-  while(supBins.length){
-    const node={label:'SP-'+String(nodes.filter(n2=>n2.cls==='support').length+1).padStart(2,'0'), cls:'support', gpus:[]};
-    for(let k=0;k<hw.perW&&supBins.length;k++) node.gpus.push({type:'sup', bin:supBins.shift(), tip:`${node.label} · GPU ${k+1} · supporting models`});
-    nodes.push(node);
+    return out;
   }
-  const info=RESIL[hw.resil];
-  pools.forEach((p,pi)=>{ const ex=info.extraW(p.state.workers);
-    for(let w=0;w<ex;w++){ const node={label:'RS-'+String(nodes.filter(n2=>n2.cls==='standby').length+1).padStart(2,'0'), cls:'standby', pool:pi, gpus:[]};
-      for(let k=0;k<p.state.perW;k++) node.gpus.push({type:'resil', pool:pi, tip:`${node.label} · GPU ${k+1} · ${info.long}`});
-      nodes.push(node); } });
-  return nodes;
+  function idleNodes(pi, count, mode, tag){
+    const out=[];
+    for(let w=0; w<count; w++){
+      const node={label:tag+String(++idl).padStart(2,'0'), cls:mode, pool:pi, gpus:[]};
+      const tip = pi==null
+        ? `${node.label} · shared spare: idle node that covers a failure in any pool (hardware is uniform)`
+        : `${node.label} · ${mode==='mirror'?'mirror of':'DR standby for'} the ${pools[pi].state.model.name} pool`;
+      for(let k=0;k<hw.perW;k++) node.gpus.push({type:'idle', mode, pool:pi, tip:tip+` · GPU ${k+1}`});
+      out.push(node);
+    }
+    return out;
+  }
+  function supNodes(){
+    const out=[];
+    while(supBins.length){
+      const node={label:'SP-'+String(++sp).padStart(2,'0'), cls:'support', gpus:[]};
+      for(let k=0;k<hw.perW&&supBins.length;k++)
+        node.gpus.push({type:'sup', bin:supBins.shift(), tip:`${node.label} · GPU ${k+1} · supporting models`});
+      out.push(node);
+    }
+    return out;
+  }
+  const allServe=(copy)=>pools.flatMap((p,pi)=>serveNodes(p,pi,0,p.state.workers,copy));
+  const shared=(k)=>idleNodes(null,k,'standby','SP-');
+  const sites=[];
+  const site=(title,icon,nodes)=>{ sites.push({title, icon, nodes}); };
+  if(r==='n'||r==='n1'||r==='n2'){
+    site(`Production site · N=${N}${info.add?'+'+info.add:''}`,'building',
+      [...allServe(), ...supNodes(), ...shared(info.add)]);
+  } else if(r==='nn'){
+    site(`System A · active · N=${N}`,'building',[...allServe(), ...supNodes()]);
+    sites[sites.length-1].link='in-site failover';
+    site(`System B · mirror · N=${N}`,'shield',
+      pools.flatMap((p,pi)=>idleNodes(pi,p.state.workers,'mirror','MR-')));
+  } else if(r==='dr'||r==='drh'){
+    site(`Primary site · active · N=${N}`,'building',[...allServe(), ...supNodes()]);
+    sites[sites.length-1].link='async replication';
+    const cnt=p=> r==='dr'? p.state.workers : Math.ceil(p.state.workers/2);
+    const drNodes=pools.flatMap((p,pi)=>idleNodes(pi,cnt(p),'drs','DR-'));
+    site(r==='dr'? `DR site · standby · N=${N}` : `DR site · half-size standby · ${drNodes.length} worker${drNodes.length>1?'s':''}`,'globe',drNodes);
+  } else if(r==='aas'||r==='aas1'||r==='aass'){
+    const aServe=[], bServe=[];
+    pools.forEach((p,pi)=>{ const w=p.state.workers, nA=Math.max(1,Math.ceil(w/2));
+      aServe.push(...serveNodes(p,pi,0,nA));
+      if(w-nA>0) bServe.push(...serveNodes(p,pi,nA,w-nA)); });
+    const aSpare=(r==='aas1'||r==='aass')?1:0, bSpare=r==='aass'?1:0;
+    site(`Site A · active · ${aServe.length} of N=${N}${aSpare?' + spare':''}`,'building',
+      [...aServe, ...supNodes(), ...shared(aSpare)]);
+    if(bServe.length||bSpare){
+      sites[sites.length-1].link='active / active · geo load balancing';
+      site(`Site B · active · ${bServe.length} of N=${N}${bSpare?' + spare':''}`,'building',
+        [...bServe, ...shared(bSpare)]);
+    }
+  } else if(r==='aa'||r==='aan1'){
+    const spareEach=r==='aan1'?1:0;
+    site(`Site A · active · N=${N}${spareEach?'+1':''}`,'building',
+      [...allServe(), ...supNodes(), ...shared(spareEach)]);
+    sites[sites.length-1].link='active / active · geo load balancing';
+    site(`Site B · active · N=${N}${spareEach?'+1':''}`,'building',
+      [...allServe(true), ...shared(spareEach)]);
+  } else { /* nndr */
+    site(`Site A · active · N+N`,'building',
+      [...allServe(), ...supNodes(), ...pools.flatMap((p,pi)=>idleNodes(pi,p.state.workers,'mirror','MR-'))]);
+    sites[sites.length-1].link='active / active · geo-replication';
+    site(`Site B · active · N+N`,'building',
+      [...allServe(true), ...pools.flatMap((p,pi)=>idleNodes(pi,p.state.workers,'mirror','MR-'))]);
+  }
+  sites.forEach(s2=>{ s2.workers=s2.nodes.length;
+    s2.gpus=s2.nodes.reduce((x,n2)=>x+n2.gpus.length,0);
+    s2.kW=s2.gpus*hw.g.watts/1000; });
+  return {sites, info, N};
 }
 function renderProject(){
   const panel=$('projPanel'), cap=$('ucDetailCap');
-  const multi = UC.length>1 || UC.some(u=>(u.supports||[]).length);
+  const multi = UC.length>1;
   if(!panel) return null;
   if(!multi){ panel.style.display='none'; if(cap) cap.style.display='none'; return null; }
   const prj=window.__prj||computeProject();
@@ -1214,39 +1122,103 @@ function renderProject(){
       ${(x.uc.supports||[]).length?`<div class="u-row"><span>Supporting</span><span class="v">${x.uc.supports.map(sp=>KIND_LABEL[sp.kind]||sp.kind).join(', ')}</span></div>`:''}
     </div>`; }));
   $('ucResults').innerHTML=cards;
-  // ---- fleet map ----
-  const nodes=fleetNodes(prj);
-  const info=RESIL[hw.resil]||RESIL.n;
+  return prj;
+}
+/* One visualization for topology AND placement: site frames from the resilience
+   pattern, every GPU drawn with its pool's memory fill, support slices as
+   mosaics, idle nodes dashed. Economics computed at project level. */
+function renderFleet(prj){
+  const box=$('fleetMap'); if(!box) return;
+  const {pools, sup, fleet, hw}=prj;
+  const {sites, info, N}=buildFleetSites(prj);
   const partMax=(hw.g.part&&hw.g.part.max)||1;
+  const short=n=>n.length>26? n.slice(0,24)+'…':n;
+  const MAXN=18;
   const gpuHtml=g2=>{
-    if(g2.type==='pool') return `<div class="fm-gpu assigned" title="${esc(g2.tip)}" style="background:var(--pool${g2.pool%6});opacity:${g2.rep%2?0.78:1}"></div>`;
-    if(g2.type==='resil') return `<div class="fm-gpu spare" title="${esc(g2.tip)}" style="border-color:var(--pool${g2.pool%6})"></div>`;
+    if(g2.type==='pool'){ const h=Math.max(6, Math.round(g2.util*100));
+      return `<div class="fm-gpu assigned" title="${esc(g2.tip)}"><div class="fill" style="height:${h}%;background:var(--pool${g2.pool%6});opacity:${g2.rep%2?0.72:1}"></div></div>`; }
+    if(g2.type==='idle'){ const col=g2.pool==null? 'var(--amber-border)' : (g2.mode==='drs'? 'var(--violet)' : `var(--pool${g2.pool%6})`);
+      return `<div class="fm-gpu spare" title="${esc(g2.tip)}" style="border-color:${col}"></div>`; }
     if(g2.type==='sup'){ let y=0;
-      const bands=g2.bin.slices.map(sl=>{ const h=Math.max(10, sl.n/partMax*100); const b=`<div class="band" style="top:${y}%;height:${h}%;background:var(--sup${sl.kind})" ></div>`; y+=h; return b; }).join('');
+      const bands=g2.bin.slices.map(sl=>{ const h=Math.max(10, sl.n/partMax*100);
+        const b=`<div class="band" style="top:${y}%;height:${h}%;background:var(--sup${sl.kind})"></div>`; y+=h; return b; }).join('');
       const tip=g2.tip+': '+g2.bin.slices.map(sl=>`${KIND_LABEL[sl.kind]||sl.kind} ${sl.model}${sl.inst>1?' ×'+sl.inst:''} (${fmt(sl.gb)} GB slice)`).join(' · ');
       return `<div class="fm-gpu assigned" title="${esc(tip)}">${bands}</div>`; }
     return `<div class="fm-gpu spare" title="${esc(g2.tip)}"></div>`;
   };
-  $('fleetMap').className='fleet-map'+(nodes.length>14?' dense':'');
-  $('fleetMap').innerHTML=nodes.map(n2=>`<div class="fm-node ${n2.cls}${n2.active?' fm-active':''}">
-    <div class="fm-nlab">${n2.label}<span class="role">${n2.cls==='serve'? esc(short(n2.poolName)) : n2.cls==='support'? 'supporting' : 'standby'}</span></div>
-    <div class="fm-gpus">${n2.gpus.map(gpuHtml).join('')}</div></div>`).join('');
+  const nodeHtml=n2=>{
+    const role = n2.cls==='serve'? esc(short(n2.poolName))
+      : n2.cls==='support'? 'supporting'
+      : n2.cls==='mirror'? 'mirror' : n2.cls==='drs'? 'DR standby' : 'standby';
+    const right = n2.cls==='serve'? `<span class="pct">${(n2.util*100).toFixed(0)}%</span>` : `<span class="pct idle">idle</span>`;
+    return `<div class="fm-node ${n2.cls==='drs'?'standby':n2.cls}${n2.active?' fm-active':''}">
+      <div class="fm-nlab">${n2.label}<span class="role">${role}</span><span class="sp"></span>${n2.cls==='support'?'':right}</div>
+      <div class="fm-gpus">${n2.gpus.map(gpuHtml).join('')}</div></div>`;
+  };
+  const dense=sites.reduce((x,s2)=>x+s2.nodes.length,0)>14;
+  box.className='fleet-map'+(dense?' dense':'');
+  box.innerHTML=sites.map(s2=>{
+    let list=s2.nodes, moreN=0;
+    if(list.length>MAXN){ const idlers=list.filter(n2=>n2.cls!=='serve');
+      const servers=list.filter(n2=>n2.cls==='serve');
+      const room=Math.max(1, MAXN-1-idlers.length);
+      moreN=servers.length-room;
+      list=[...servers.slice(0,room), ...idlers]; }
+    return `<div class="fm-site">
+      <div class="fm-site-head"><span class="t">${esc(s2.title)}</span><span class="schip">${s2.workers} node${s2.workers>1?'s':''} · ${s2.gpus} GPU · ≈${fmt(s2.kW)} kW</span></div>
+      <div class="fm-nodes">${list.map(nodeHtml).join('')}${moreN>0?`<div class="fm-node fm-more">+${moreN} more ${esc(short(pools.length===1?pools[0].state.model.name:'serving'))} node${moreN>1?'s':''}</div>`:''}</div>
+    </div>`+(s2.link?`<div class="fm-link" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 4v16M7 20l-3-3.5M7 20l3-3.5M17 20V4M17 4l-3 3.5M17 4l3 3.5"/></svg>${esc(s2.link)}</div>`:'');
+  }).join('');
+  // legend
   $('fmLegend').innerHTML =
-    pools.map((p,pi)=>`<span class="lg-li"><span class="sw" style="background:var(--pool${pi%6})"></span>${esc(short(p.state.model.name))} · ${esc(p.state.wq.name)}</span>`).join('')+
+    pools.map((p,pi)=>`<span class="lg-li"><span class="sw" style="background:var(--pool${pi%6})"></span>${esc(short(p.state.model.name))} · ${esc(p.state.wq.name)} · fill = memory used</span>`).join('')+
     sup.items.map(it=>`<span class="lg-li"><span class="sw" style="background:var(--sup${it.kind})"></span>${KIND_LABEL[it.kind]||it.kind} · ${esc(it.model.name)}</span>`).join('')+
-    `<span class="lg-li"><span class="sw dashed"></span>spare / standby</span>`;
+    (info.add?`<span class="lg-li"><span class="sw dashed" style="border-color:var(--amber-border)"></span>shared spare · covers any pool</span>`:'')+
+    (/nn|dr|aa$|aan1|nndr/.test(hw.resil)?`<span class="lg-li"><span class="sw dashed"></span>mirror / DR / second site</span>`:'')+
+    `<span class="lg-li"><span class="sw dashed"></span>unassigned headroom</span>`;
   $('fmTotals').textContent=`${fleet.procW} nodes · ${fleet.procG} GPUs · ≈${fmt(fleet.kW)} kW TDP`;
-  // semantic alternative for screen readers
-  $('fleetList').innerHTML='<h3>Fleet map, text form</h3><ul>'+nodes.map(n2=>{
+  // semantic text form
+  $('fleetList').innerHTML='<h3>Deployment, text form</h3>'+sites.map(s2=>`<h4>${esc(s2.title)}</h4><ul>`+s2.nodes.map(n2=>{
     const parts=n2.gpus.map((g2,k)=>{
       if(g2.type==='pool') return `GPU ${k+1}: ${pools[g2.pool].state.model.name} replica ${g2.rep+1}`;
       if(g2.type==='sup') return `GPU ${k+1}: `+g2.bin.slices.map(sl=>`${KIND_LABEL[sl.kind]||sl.kind} ${sl.model}${sl.inst>1?' ×'+sl.inst:''}`).join(', ');
-      if(g2.type==='resil') return `GPU ${k+1}: standby`;
+      if(g2.type==='idle') return `GPU ${k+1}: ${n2.cls}`;
       return `GPU ${k+1}: spare`; });
-    return `<li>${n2.label} (${n2.cls}): ${parts.join('; ')}</li>`; }).join('')+'</ul>';
-  $('fmNote').textContent=(sup.gpus? `Supporting models are placed as ${sup.note}; spare pool GPUs are used before adding hardware. `:'')+
-    `Standby nodes come from ${info.long}. Colors identify the model pool; hover any GPU for its exact assignment.`;
-  return prj;
+    return `<li>${n2.label} (${n2.cls}): ${parts.join('; ')}</li>`; }).join('')+'</ul>').join('');
+  // note
+  const notes=[];
+  if(sup.gpus) notes.push(`Supporting models are placed as ${sup.note}; spare pool GPUs are used before adding hardware`+(sites.length>1?', shown in the primary site (replicate them per site operationally)':'')+'.');
+  if(info.add) notes.push(`The ${info.add} spare node${info.add>1?'s are':' is'} shared across all ${pools.length>1? pools.length+' pools':'pools'}: hardware is uniform, so any spare can take over any failed node.`);
+  notes.push(`GPU fill height shows each pool's memory use. Hover any GPU for its exact assignment.`);
+  $('fmNote').textContent=notes.join(' ');
+  // economics, project level
+  const agg=pools.reduce((x,p)=>x+p.d.agg,0), active=pools.reduce((x,p)=>x+p.d.active,0);
+  const procW=fleet.procW, procG=fleet.procG, kW=fleet.kW;
+  $('topoNote').textContent=`${info.label} · ${pools.length} pool${pools.length>1?'s':''} · ${pools.map(p=>'TP'+p.state.tp).join(' + ')}`;
+  const liveW=(info.live||(n=>n))(N), idleW=Math.max(0, procW-liveW-fleet.supNodes);
+  const burst=liveW>N? agg*liveW/N : null;
+  $('resilStats').innerHTML=
+    `<div class="rs"><div class="k">Guaranteed at peak</div><div class="v">${fmt(agg)} tok/s · ${active} calls</div><div class="n">${info.degraded?'≈ half of this during a site loss':'held even through the covered failure'}</div></div>`+
+    `<div class="rs"><div class="k">Normal-day capacity</div><div class="v">${burst?`≈ ${fmt(burst)} tok/s`:`${fmt(agg)} tok/s`}</div><div class="n">${burst?'both sites serving: burst headroom, not a guarantee': idleW>0?'spare hardware idles until a failure':'every worker serves; no reserve beyond N'}</div></div>`+
+    `<div class="rs"><div class="k">Idle hardware</div><div class="v">${idleW>0?`${idleW} node${idleW>1?'s':''}`:'none'}</div><div class="n">${idleW>0?'standing by in normal operation':'every node serves traffic'}</div></div>`+
+    `<div class="rs"><div class="k">Cost vs bare N</div><div class="v">${fmt(procW/Math.max(1,N))}×</div><div class="n">${procW} of ${N} load-bearing nodes</div></div>`;
+  const r=hw.resil;
+  const resLine = r==='n'? 'No redundancy: a node failure removes its replicas from service.'
+    : r==='n1'? 'One idle standby absorbs a single node failure with no capacity loss after failover.'
+    : r==='n2'? 'Two idle standbys absorb two node failures (or one failure during a maintenance window): the usual step up from N+1 for larger fleets.'
+    : r==='nn'? 'A full second system in the same site: survives node and system-level failures; can also cover maintenance windows.'
+    : r==='dr'? 'A standby remote site behind asynchronous replication: survives full site loss; the standby idles during normal operation.'
+    : r==='drh'? 'A half-size standby site: the cost-conscious DR pattern. Survives a site loss but runs degraded at roughly half capacity until the primary returns; guaranteed capacity during a site loss is about half the normal figure.'
+    : r==='aas'? 'The N load-bearing nodes are split across two live sites with no extra procurement: the cheapest geographic pattern. A site loss halves capacity until repair, and the SLA must say so. If the full number must survive a site loss, each site has to carry N alone: that is the Active/Active (2N) pattern.'
+    : r==='aas1'? 'N split across two live sites plus one idle spare: a single server failure anywhere is absorbed at full capacity (traffic rebalances across sites), while a site loss still roughly halves capacity. The pragmatic budget middle between bare split and per-site spares.'
+    : r==='aass'? 'N split across two live sites with an idle spare in each: any single server failure is absorbed locally, and after a site loss the surviving half still has its own spare. A site loss still roughly halves capacity; state it in the SLA.'
+    : r==='aa'? 'Two active sites share traffic behind global load balancing. Each site alone can carry the full load, so losing a site degrades nothing; in normal operation each runs at roughly half load.'
+    : r==='aan1'? 'Two active sites, each with its own local standby: survives the loss of an entire site plus a node failure in the surviving site. A pragmatic middle ground between plain active/active and N+N+DR.'
+    : 'Two active/active sites, each carrying N+N: traffic is shared across sites in normal operation, and the deployment survives any worker failure or the loss of an entire site without dropping below N. The most resilient, and most procurement-heavy, enterprise pattern.';
+  $('topoSum').innerHTML=
+    `Load: <b>N = ${N} node${N>1?'s':''} · ${fleet.servG} GPUs</b> (${hw.perW}/node${pools.length>1?', across '+pools.length+' pools':''}): performance and fit are computed on these. `+
+    `Procured for ${info.long}: <b>${procW} nodes · ${procG} GPUs · ≈ ${fmt(kW)} kW</b> GPU TDP${fleet.supNodes?`, including ${fleet.supNodes} supporting node${fleet.supNodes>1?'s':''}`:''}. ${resLine}`;
+  return {procW};
 }
 
 /* ================= SERIALIZE / APPLY ================= */
@@ -1661,7 +1633,7 @@ async function buildXlsxBytes(){
   // ----- images -----
   const images=[];
   try{ images.push(['Memory ledger', ledgerPngBytes(s,d)]); }catch(e){}
-  const grabs=[['Throughput vs admitted sequences','#chartBatch svg'],['Per-user speed vs context length','#chartCtx svg'],['Deployment topology','#topo svg']];
+  const grabs=[['Throughput vs admitted sequences','#chartBatch svg'],['Per-user speed vs context length','#chartCtx svg']];
   for(const [label,sel] of grabs){
     const el=document.querySelector(sel);
     if(el){ try{ images.push([label, await svgToPngBytes(el, 2)]); }catch(e){} }
@@ -1710,14 +1682,14 @@ async function buildXlsxBytes(){
    ['VRAM required GB',+prj.fleet.vramNeed.toFixed(1)],['VRAM available GB',+prj.fleet.vramAvail.toFixed(1)],
    ['Verdict', prj.fleet.fits? (prj.fleet.sloAll?'FITS · SLOs MET':'FITS · SLO FAILS'):'EXCEEDS VRAM']].forEach(rw=>pr(rw[0],rw[1]));
   pr(); pr('NODE MAP');
-  pr('Node','Role','GPU assignments');
-  fleetNodes(prj).forEach(n2=>{
+  pr('Node','Site / role','GPU assignments');
+  buildFleetSites(prj).sites.forEach(s2=>s2.nodes.forEach(n2=>{
     const parts=n2.gpus.map((g2,k)=>{
       if(g2.type==='pool') return `GPU${k+1}: ${prj.pools[g2.pool].state.model.name} r${g2.rep+1}`;
       if(g2.type==='sup') return `GPU${k+1}: `+g2.bin.slices.map(sl=>(KIND_LABEL[sl.kind]||sl.kind)+(sl.inst>1?' ×'+sl.inst:'')).join('+');
-      if(g2.type==='resil') return `GPU${k+1}: standby`;
+      if(g2.type==='idle') return `GPU${k+1}: ${n2.cls}`;
       return `GPU${k+1}: spare`; });
-    pr(n2.label, n2.cls, parts.join(' · ')); });
+    pr(n2.label, s2.title+' · '+n2.cls, parts.join(' · ')); }));
 
   const inpRows=[[`<c r="A1" s="5" t="inlineStr"><is><t>${xEsc('GPUscale.net sizing workbook · '+name+(multi? ' · pool: '+s.model.name+' '+s.wq.name:'')+' · Studio '+STUDIO_VERSION+' · engine v'+ENGINE_VERSION)}</t></is></c>`],
     ['<c r="A2" s="1" t="inlineStr"><is><t>Parameter</t></is></c>','<c r="B2" s="1" t="inlineStr"><is><t>Value (edit me)</t></is></c>','<c r="C2" s="1" t="inlineStr"><is><t>Notes</t></is></c>']];
