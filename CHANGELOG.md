@@ -1,5 +1,17 @@
 # Changelog
 
+## Studio 5.7.1 (2026-07-21)
+
+Excel report polish for real Excel.
+
+- Row heights across the Report sheet are now computed from the text (Excel
+  never auto-grows merged wrapped cells): nothing clips or overlaps in
+  Microsoft Excel; sections breathe with spacer rows.
+- The throughput line chart samples 13 points and skips alternate category
+  labels, so its axis is readable; bar charts keep every pool and use-case
+  label.
+
+
 ## Studio 5.7 (2026-07-21)
 
 Projects that survive reboots, and links that carry them.

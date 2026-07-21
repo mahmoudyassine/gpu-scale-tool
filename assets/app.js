@@ -7,7 +7,7 @@ if(!MODELS.length || !GPUS.length || !QUANTS.length || !CASES.length){
   document.body.innerHTML = '<div style="font-family:system-ui,sans-serif;max-width:560px;margin:80px auto;padding:0 20px;line-height:1.65;color:#1A2536"><h2 style="margin-bottom:10px">Data files not loaded</h2><p>GPUscale.net could not find its library. Keep <code>index.html</code> together with the <code>data/</code> and <code>assets/</code> folders: the four files <code>data/models.js</code>, <code>data/gpus.js</code>, <code>data/quants.js</code> and <code>data/usecases.js</code> must sit next to this page.</p><p>If you need one portable file instead, use <code>dist/gpuscale_standalone.html</code> or rebuild it with <code>python3 tools/build_single_file.py</code>.</p></div>';
   throw new Error('GPUscale.net data missing');
 }
-const STUDIO_VERSION = '5.7.0', ENGINE_VERSION = 23;
+const STUDIO_VERSION = '5.7.1', ENGINE_VERSION = 23;
 function newProjId(){ const L='abcdefghjkmnpqrstuvwxyz', D='0123456789';
   const pick=s=>s[Math.floor(Math.random()*s.length)];
   return 'Project_'+pick(L)+pick(L)+pick(D)+pick(D)+pick(D); }
@@ -2168,7 +2168,7 @@ async function buildXlsxBytes(){
   prj.pools.forEach((p,pi)=>{ const dd=p.d;
     setD(2+pi,1,ptag(pi)); setD(2+pi,2,+dd.weightsAll.toFixed(1)); setD(2+pi,3,+dd.kvTotal.toFixed(1));
     setD(2+pi,4,+(dd.act*dd.replicas).toFixed(1)); setD(2+pi,5,+(dd.fixed+dd.multi).toFixed(1)); setD(2+pi,6,+Math.max(0,dd.headroom).toFixed(1)); });
-  const NPTS=26;
+  const NPTS=13;
   const SmaxR=Math.max.apply(null, prj.pools.map(p=>Math.max(Math.ceil(p.state.concurrent*1.4), p.state.batch*p.d.replicas*1.3, 16)));
   setD(1,8,'Admitted');
   prj.pools.forEach((p,pi)=>setD(1,9+pi,ptag(pi)));
@@ -2185,7 +2185,7 @@ async function buildXlsxBytes(){
   const CNS='xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"';
   const strCache=vals=>`<c:strCache><c:ptCount val="${vals.length}"/>${vals.map((v,i)=>`<c:pt idx="${i}"><c:v>${xEsc(String(v))}</c:v></c:pt>`).join('')}</c:strCache>`;
   const numCache=vals=>`<c:numCache><c:formatCode>General</c:formatCode><c:ptCount val="${vals.length}"/>${vals.map((v,i)=>`<c:pt idx="${i}"><c:v>${v}</c:v></c:pt>`).join('')}</c:numCache>`;
-  const axPair=(a1,a2,catPos,valPos)=>`<c:catAx><c:axId val="${a1}"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="0"/><c:axPos val="${catPos}"/><c:txPr><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr sz="800"/></a:pPr><a:endParaRPr lang="en-US"/></a:p></c:txPr><c:crossAx val="${a2}"/></c:catAx><c:valAx><c:axId val="${a2}"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="0"/><c:axPos val="${valPos}"/><c:txPr><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr sz="800"/></a:pPr><a:endParaRPr lang="en-US"/></a:p></c:txPr><c:crossAx val="${a1}"/></c:valAx>`;
+  const axPair=(a1,a2,catPos,valPos,skip)=>`<c:catAx><c:axId val="${a1}"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="0"/><c:axPos val="${catPos}"/><c:txPr><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr sz="800"/></a:pPr><a:endParaRPr lang="en-US"/></a:p></c:txPr><c:crossAx val="${a2}"/>${skip?`<c:tickLblSkip val="${skip}"/><c:tickMarkSkip val="${skip}"/>`:''}</c:catAx><c:valAx><c:axId val="${a2}"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="0"/><c:axPos val="${valPos}"/><c:txPr><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr sz="800"/></a:pPr><a:endParaRPr lang="en-US"/></a:p></c:txPr><c:crossAx val="${a1}"/></c:valAx>`;
   function chartXML(title, inner){
     return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <c:chartSpace ${CNS}><c:chart><c:title><c:tx><c:rich><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr sz="1000" b="1"><a:solidFill><a:srgbClr val="1A2536"/></a:solidFill></a:defRPr></a:pPr><a:r><a:rPr lang="en-US" sz="1000" b="1"/><a:t>${xEsc(title)}</a:t></a:r></a:p></c:rich></c:tx><c:overlay val="0"/></c:title><c:autoTitleDeleted val="0"/><c:plotArea><c:layout/>${inner}</c:plotArea><c:legend><c:legendPos val="b"/><c:txPr><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr sz="800"/></a:pPr><a:endParaRPr lang="en-US"/></a:p></c:txPr></c:legend><c:plotVisOnly val="1"/><c:dispBlanksAs val="gap"/></c:chart></c:chartSpace>`; }
@@ -2199,7 +2199,7 @@ async function buildXlsxBytes(){
   const lineSeries=prj.pools.map((p,pi)=>{ const col=String.fromCharCode(73+pi);
     const vals=sVals.map(S=>{ const bpr=Math.max(1,S/p.d.replicas); return +(p.d.bwEff/(p.state.active*p.state.bytesW+bpr*p.d.effSeq*p.d.kvTok)).toFixed(1); });
     return `<c:ser><c:idx val="${pi}"/><c:order val="${pi}"/><c:tx><c:strRef><c:f>Data!$${col}$1</c:f>${strCache([ptag(pi)])}</c:strRef></c:tx><c:spPr><a:ln w="22225"><a:solidFill><a:srgbClr val="${P_HEX[PCr[pi]]}"/></a:solidFill></a:ln></c:spPr><c:marker><c:symbol val="none"/></c:marker><c:cat><c:numRef><c:f>Data!$H$2:$H$${1+NPTS}</c:f>${numCache(sVals)}</c:numRef></c:cat><c:val><c:numRef><c:f>Data!$${col}$2:$${col}$${1+NPTS}</c:f>${numCache(vals)}</c:numRef></c:val><c:smooth val="0"/></c:ser>`; }).join('');
-  const chart2=chartXML('Per-user tok/s vs admitted sequences', `<c:lineChart><c:grouping val="standard"/><c:varyColors val="0"/>${lineSeries}<c:marker val="1"/><c:axId val="201"/><c:axId val="202"/></c:lineChart>${axPair(201,202,'b','l')}`);
+  const chart2=chartXML('Per-user tok/s vs admitted sequences', `<c:lineChart><c:grouping val="standard"/><c:varyColors val="0"/>${lineSeries}<c:marker val="1"/><c:axId val="201"/><c:axId val="202"/></c:lineChart>${axPair(201,202,'b','l',2)}`);
   const ucNames=ucsAll.map(u=>ucName(u.x.uc));
   const latSeries=[['TTFT s','B','4F63C2'],['Overhead s','C','CBD5E1'],['Reasoning s','D','64748B'],['Output s','E','0F766E']]
     .map(([nm,col,hex],si)=>{ const vals=ucsAll.map(u=>{ const x=u.x;
@@ -2215,16 +2215,23 @@ async function buildXlsxBytes(){
     repRows[row-1][c0]=cell(ref,style,val);
     if(c1>c0) merges.push(colLetter(c0)+row+':'+colLetter(c1)+row); };
   const line=(style,val,ht,c0,c1)=>{ const r=push([],ht); txt(r,c0==null?0:c0,c1==null?NCOL-1:c1,style,val); return r; };
-  line(ST.title, 'GPUscale.net · '+name, 24);
-  line(ST.sub, `${UC.length} use cases · ${nP} pool${nP>1?'s':''} on ${hwr.g.name} · ${hwr.perW} GPU/node · ${resInfo.long} · Studio ${STUDIO_VERSION} · engine v${ENGINE_VERSION} · ${new Date().toLocaleString()}`, 14);
+  // Excel does not auto-grow merged wrapped cells: estimate the height from the
+  // text length at ~6 characters per column of width 6.6 (10pt Calibri)
+  const htFor=(text,cols,perLine)=>{ const cpl=(cols||NCOL)*(perLine||5.8);
+    return Math.max(18, Math.ceil(String(text).length/cpl)*14.5+6); };
+  const gap=(h)=>push([],h||7);
+  line(ST.title, 'GPUscale.net · '+name, 28);
+  line(ST.sub, `${UC.length} use cases · ${nP} pool${nP>1?'s':''} on ${hwr.g.name} · ${hwr.perW} GPU/node · ${resInfo.long} · Studio ${STUDIO_VERSION} · engine v${ENGINE_VERSION} · ${new Date().toLocaleString()}`, 17);
+  gap();
   push();
   line(F.fits? (F.sloAll? ST.okBan:ST.warnBan) : ST.badBan,
     (F.fits? (F.sloAll?'PROJECT FITS & SLO TARGETS MET':'PROJECT FITS · AN SLO TARGET FAILS'):'PROJECT EXCEEDS GPU MEMORY')
-    +`   ·   ${fmt(F.vramNeed)} of ${fmt(F.vramAvail)} GB   ·   ${F.procW} nodes · ${F.procG} GPUs procured   ·   ≈${fmt(F.kW)} kW`, 22);
+    +`   ·   ${fmt(F.vramNeed)} of ${fmt(F.vramAvail)} GB   ·   ${F.procW} nodes · ${F.procG} GPUs procured   ·   ≈${fmt(F.kW)} kW`, 26);
+  gap();
   push();
-  line(ST.sec,'Use cases · demand',16);
+  line(ST.sec,'Use cases · demand',24);
   ucsAll.forEach(u=>{ const x=u.x, f2=x.uc.f; const users=Math.max(1,+f2.nrmUsers||1);
-    const r=push([],15);
+    const r=push([],19);
     repRows[r-1][0]=cell(colLetter(0)+r, poolSoft(u.pi), '');
     txt(r,1,5,ST.b,ucName(x.uc));
     txt(r,6,10,ST.def,`${fmt(users)} users → ${fmt(x.s.concurrent)} calls (${(100*x.s.concurrent/users).toFixed(1)}%${x.uc.concManual?', manual':''})`);
@@ -2232,15 +2239,18 @@ async function buildXlsxBytes(){
     txt(r,15,NCOL-1, x.d.sloAll? ST.ok : (x.s.sloTtft>0||x.s.sloTps>0||x.s.sloP95>0? ST.bad : ST.off),
       x.d.sloAll? 'SLOs met' : (x.s.sloTtft>0||x.s.sloTps>0||x.s.sloP95>0? 'target missed':'no targets')); });
   push();
-  line(ST.sec,'Deployments',16);
-  prj.pools.forEach((p,pi)=>{ const r=push([],26);
+  gap();
+  line(ST.sec,'Deployments',24);
+  prj.pools.forEach((p,pi)=>{ const depTxt=`${p.state.model.name} ${p.state.wq.name}: one ${fmt(p.state.model.params*p.state.wq.bytes)} GB copy needs TP${p.state.tp}; ${p.d.replicas} replicas at batch ${p.state.batch} admit ${p.d.active} of ${p.state.concurrent} pooled calls on ${p.state.workers} node${p.state.workers>1?'s':''} · ${(p.d.total/p.d.avail*100).toFixed(0)}% memory used${p.state.gpus>p.d.replicas*p.state.tp?` · ${p.state.gpus-p.d.replicas*p.state.tp} GPUs spare`:''}`;
+    const r=push([],htFor(depTxt,NCOL-1));
     repRows[r-1][0]=cell(colLetter(0)+r, poolCell(pi), '');
-    txt(r,1,NCOL-1,ST.wrap,`${p.state.model.name} ${p.state.wq.name}: one ${fmt(p.state.model.params*p.state.wq.bytes)} GB copy needs TP${p.state.tp}; ${p.d.replicas} replicas at batch ${p.state.batch} admit ${p.d.active} of ${p.state.concurrent} pooled calls on ${p.state.workers} node${p.state.workers>1?'s':''} · ${(p.d.total/p.d.avail*100).toFixed(0)}% memory used${p.state.gpus>p.d.replicas*p.state.tp?` · ${p.state.gpus-p.d.replicas*p.state.tp} GPUs spare`:''}`); });
-  if(prj.sup.items.length) line(ST.wrapMut,'Supporting: '+prj.sup.items.map(it=>`${KIND_LABEL[it.kind]||it.kind} ×${it.instances} (${it.model.name})`).join(' · ')+` on ${prj.sup.gpus} shared GPU${prj.sup.gpus>1?'s':''} · ${prj.sup.note}`, 24);
-  if(window.__autoNote) line(ST.note, `Sizing decision (Auto-size, ${window.__autoNote.at.toLocaleString()}): ${window.__autoNote.text}`, 84);
+    txt(r,1,NCOL-1,ST.wrap,depTxt); });
+  if(prj.sup.items.length){ const supTxt='Supporting: '+prj.sup.items.map(it=>`${KIND_LABEL[it.kind]||it.kind} ×${it.instances} (${it.model.name})`).join(' · ')+` on ${prj.sup.gpus} shared GPU${prj.sup.gpus>1?'s':''} · ${prj.sup.note}`; line(ST.wrapMut, supTxt, htFor(supTxt,NCOL)); }
+  if(window.__autoNote){ const an=`Sizing decision (Auto-size, ${window.__autoNote.at.toLocaleString()}): ${window.__autoNote.text}`; line(ST.note, an, htFor(an,NCOL,5.4)); }
   push();
-  line(ST.sec,'Key numbers',16);
-  { const r1=push([],14), r2=push([],26), r3=push([],24);
+  gap();
+  line(ST.sec,'Key numbers',24);
+  { const r1=push([],17), r2=push([],34), r3=push([],20);
     const tiles=[['Avg first token', fmt(prj.pools.reduce((x2,p)=>x2+p.d.ttft*p.state.concurrent,0)/Math.max(1,prj.pools.reduce((x2,p)=>x2+p.state.concurrent,0)))+' ms','demand-weighted'],
       ['Avg per-user speed', fmt(prj.pools.reduce((x2,p)=>x2+p.d.tps*p.state.concurrent,0)/Math.max(1,prj.pools.reduce((x2,p)=>x2+p.state.concurrent,0)))+' tok/s','demand-weighted'],
       ['Aggregate throughput', fmt(prj.pools.reduce((x2,p)=>x2+p.d.agg,0))+' tok/s', prj.pools.reduce((x2,p)=>x2+p.d.active,0)+' admitted'],
@@ -2251,32 +2261,36 @@ async function buildXlsxBytes(){
       for(let rq=r1;rq<=r3;rq++) for(let cq=c0;cq<=c1;cq++) if(!repRows[rq-1][cq]) repRows[rq-1][cq]=cell(colLetter(cq)+rq, ST.klab, '');
     }); }
   push();
-  const ledgerCap=line(ST.sec,'Memory ledger · per pool',16);
+  gap();
+  const ledgerCap=line(ST.sec,'Memory ledger · per pool',24);
   const chart1Top=rr;
   for(let i=0;i<13;i++) push([],18);
   anchors.push({rid:'rIdC1', c0:1, r0:chart1Top, c1:NCOL, r1:rr});
   prj.pools.forEach((p,pi)=>{ const dd=p.d;
-    line(ST.wrapMut, `${ptag(pi)}: weights ${fmt(dd.weightsAll)} GB · KV ${fmt(dd.kvTotal)} GB (${dd.active} seq) · activations ${fmt(dd.act*dd.replicas)} GB · overhead ${fmt(dd.fixed+dd.multi)} GB · headroom ${fmt(dd.headroom)} GB · ${(dd.total/dd.avail*100).toFixed(0)}% of ${fmt(dd.avail)} GB`, 13); });
+    line(ST.wrapMut, `${ptag(pi)}: weights ${fmt(dd.weightsAll)} GB · KV ${fmt(dd.kvTotal)} GB (${dd.active} seq) · activations ${fmt(dd.act*dd.replicas)} GB · overhead ${fmt(dd.fixed+dd.multi)} GB · headroom ${fmt(dd.headroom)} GB · ${(dd.total/dd.avail*100).toFixed(0)}% of ${fmt(dd.avail)} GB`, 17); });
   push();
-  line(ST.sec,'Throughput & latency',16);
+  gap();
+  line(ST.sec,'Throughput & latency',24);
   const chartsTop=rr;
   for(let i=0;i<15;i++) push([],18);
   anchors.push({rid:'rIdC2', c0:1, r0:chartsTop, c1:9, r1:rr});
   anchors.push({rid:'rIdC3', c0:10, r0:chartsTop, c1:NCOL, r1:rr});
   push();
-  line(ST.sec,'Deployment topology & fleet map',16);
+  gap();
+  line(ST.sec,'Deployment topology & fleet map',24);
   { const sites=buildFleetSites(prj).sites;
     sites.forEach(s2=>{
-      line(ST.b, s2.title+'   ·   '+s2.workers+' nodes · '+s2.gpus+' GPU · ≈'+fmt(s2.kW)+' kW', 15);
+      line(ST.b, s2.title+'   ·   '+s2.workers+' nodes · '+s2.gpus+' GPU · ≈'+fmt(s2.kW)+' kW', 19);
       const MAXNODES=24;
       const shown=s2.nodes.slice(0,MAXNODES);
       for(let base=0; base<shown.length; base+=4){
         const group=shown.slice(base,base+4);
-        const rl=push([],12);
+        const rl=push([],15);
         group.forEach((n2,gi)=>{ const c0=gi*4+(gi>0?1:0)*0+gi; // 4 cols + 1 gap
           const cc0=gi*5; txt(rl,cc0,cc0+3,ST.cap,n2.label+' '+(ROLE_LABEL[n2.cls]||n2.cls)); });
         const gpuRowCount=Math.ceil((group[0]?group[0].gpus.length:8)/4);
-        const rowIds=[]; for(let q=0;q<gpuRowCount;q++) rowIds.push(push([],14));
+        const rowIds=[]; for(let q=0;q<gpuRowCount;q++) rowIds.push(push([],17));
+        
         group.forEach((n2,gi)=>{ const cc0=gi*5;
           n2.gpus.forEach((g2,k)=>{ const rq=rowIds[Math.floor(k/4)], cq=cc0+(k%4);
             let stl=ST.grid;
@@ -2285,19 +2299,23 @@ async function buildXlsxBytes(){
             else stl=ST.spare;
             repRows[rq-1][cq]=cell(colLetter(cq)+rq, stl, ''); }); });
       }
-      if(s2.nodes.length>MAXNODES) line(ST.wrapMut, '+'+(s2.nodes.length-MAXNODES)+' more nodes (see Project sheet node map for the full list)', 12);
-      if(s2.link) line(ST.sub, '⇅  '+s2.link, 12);
+      gap(5);
+      if(s2.nodes.length>MAXNODES) line(ST.wrapMut, '+'+(s2.nodes.length-MAXNODES)+' more nodes (see Project sheet node map for the full list)', 16);
+      if(s2.link) line(ST.sub, '⇅  '+s2.link, 16);
     });
-    const lg=push([],14); let lc=0;
+    gap(5);
+    const lg=push([],17); let lc=0;
     prj.pools.forEach((p,pi)=>{ repRows[lg-1][lc]=cell(colLetter(lc)+lg, poolCell(pi), ''); txt(lg,lc+1,lc+3,ST.legend,shortPoolTag(prj.pools,pi)); lc+=4; });
     if(prj.sup.items.length&&lc<NCOL-3){ repRows[lg-1][lc]=cell(colLetter(lc)+lg, supCell(prj.sup.items[0].kind), ''); txt(lg,lc+1,lc+3,ST.legend,'supporting'); lc+=4; }
     if(lc<NCOL-3){ repRows[lg-1][lc]=cell(colLetter(lc)+lg, ST.spare, ''); txt(lg,lc+1,lc+3,ST.legend,'spare/standby'); }
   }
   push();
-  line(ST.sec,'Recommendations',16);
+  gap();
+  line(ST.sec,'Recommendations',24);
   { prj.pools.forEach((p,pi)=>{ const rb=buildRecs(p.state,p.d,p.state.model,hwr.g,/2026/.test(hwr.g.cls));
-      rb.recs.slice(0,4).forEach(rec=>{ line(rec.lv==='bad'? xf(8,fillFor('FBE7E7'),0,'left',true) : rec.lv==='warn'? xf(9,fillFor('FBEEDD'),0,'left',true) : ST.wrap, shortPoolTag(prj.pools,pi)+' · '+rec.t+': '+rec.b.replace(/<[^>]+>/g,''), 26); }); }); }
-  line(ST.sub, 'All figures are peak closed-form estimates; production typically achieves 70-90%. Generated by GPUscale.net.', 13);
+      rb.recs.slice(0,4).forEach(rec=>{ const rt=shortPoolTag(prj.pools,pi)+' · '+rec.t+': '+rec.b.replace(/<[^>]+>/g,''); line(rec.lv==='bad'? xf(8,fillFor('FBE7E7'),0,'left',true) : rec.lv==='warn'? xf(9,fillFor('FBEEDD'),0,'left',true) : ST.wrap, rt, htFor(rt,NCOL)); }); }); }
+  gap();
+  line(ST.sub, 'All figures are peak closed-form estimates; production typically achieves 70-90%. Generated by GPUscale.net.', 16);
   // ---- assemble ----
   const styles=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="${FNT.length}">${FNT.join('')}</fonts><fills count="${FIL.length}">${FIL.join('')}</fills><borders count="${BRD.length}">${BRD.join('')}</borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="${XFS.length}">${XFS.join('')}</cellXfs></styleSheet>`;
