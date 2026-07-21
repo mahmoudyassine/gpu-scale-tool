@@ -1,5 +1,34 @@
 # Changelog
 
+## Studio 5.2 (2026-07-21)
+
+Color-coded use cases and a tighter flow.
+
+- Rail reordered: Use cases, then Workload, Model and Precision (the three
+  stations that edit the selected card), then Hardware. The Workload station
+  now sits right under the cards, where presets and demand are chosen first.
+- Every use case has its own color, carried everywhere: its card, the top
+  border and context chip of the Workload/Model/Precision stations (so it is
+  always clear which card the editor edits), its result card, and its pool's
+  GPUs in the fleet map. The active pool's map outline uses the same color.
+  Hardware is neutral and marked "project-wide · all use cases".
+- The use-case palette avoids the brand teal, warning amber and error red,
+  in both themes; supporting models keep a separate palette and draw as
+  hatched slices, so a GPU square can never be misread between a pool fill
+  and a support slice.
+- Fleet map: all node cards are one fixed size with centered GPU grids;
+  node labels show the shortest distinguishing model tag (K2.5 vs K3); the
+  legend moved below the map and explains fill height, replica shading and
+  hatching; the legend and map are followed by the placement note.
+- Mobile: the project-name field takes its own row, numeric inputs no
+  longer clip five-digit values, and card action buttons grow on touch
+  screens. Removing a use case now offers Undo in the toast.
+- Print: the fleet panel paginates instead of leaving a blank page, page
+  backgrounds are white to the end, hover-only hints are dropped from
+  paper, section captions stay with their panels, and SLO targets carry
+  units in the per-use-case cards.
+
+
 ## Studio 5.1 (2026-07-21)
 
 One topology view, and honest spare counts.

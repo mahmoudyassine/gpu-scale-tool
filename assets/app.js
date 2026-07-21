@@ -7,7 +7,7 @@ if(!MODELS.length || !GPUS.length || !QUANTS.length || !CASES.length){
   document.body.innerHTML = '<div style="font-family:system-ui,sans-serif;max-width:560px;margin:80px auto;padding:0 20px;line-height:1.65;color:#1A2536"><h2 style="margin-bottom:10px">Data files not loaded</h2><p>GPUscale.net could not find its library. Keep <code>index.html</code> together with the <code>data/</code> and <code>assets/</code> folders: the four files <code>data/models.js</code>, <code>data/gpus.js</code>, <code>data/quants.js</code> and <code>data/usecases.js</code> must sit next to this page.</p><p>If you need one portable file instead, use <code>dist/gpuscale_standalone.html</code> or rebuild it with <code>python3 tools/build_single_file.py</code>.</p></div>';
   throw new Error('GPUscale.net data missing');
 }
-const STUDIO_VERSION = '5.1.0', ENGINE_VERSION = 23;
+const STUDIO_VERSION = '5.2.0', ENGINE_VERSION = 23;
 const PROJ_ID = (()=>{ const L='abcdefghjkmnpqrstuvwxyz', D='0123456789';
   const pick=s=>s[Math.floor(Math.random()*s.length)];
   return 'Project_'+pick(L)+pick(L)+pick(D)+pick(D)+pick(D); })();
@@ -121,10 +121,14 @@ const SVG_ICO = {
 function svgIco(name,x,y,size,color){
   return `<g transform="translate(${x},${y}) scale(${(size/24).toFixed(3)})" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${SVG_ICO[name]}</g>`;
 }
-function toast(msg, err){
+function toast(msg, err, action){
   const t=document.createElement('div'); t.className='toast'+(err?' err':''); t.textContent=msg;
+  if(action){ const b=document.createElement('button'); b.className='t-act'; b.type='button';
+    b.textContent=action.label;
+    b.addEventListener('click',()=>{ action.fn(); t.classList.remove('show'); setTimeout(()=>t.remove(),250); });
+    t.appendChild(b); }
   $('toast').appendChild(t); requestAnimationFrame(()=>t.classList.add('show'));
-  setTimeout(()=>{ t.classList.remove('show'); setTimeout(()=>t.remove(),250); }, 2400);
+  setTimeout(()=>{ t.classList.remove('show'); setTimeout(()=>t.remove(),250); }, action?5200:2400);
 }
 
 /* ================= FIELD FACTORY ================= */
@@ -724,6 +728,7 @@ const UC_KEYS=['chkCustom','selModel','cusParams','cusActive','cusHidden','cusLa
 const UC_CHECKS={chkCustom:1,chkExtend:1};
 let UC=[], activeUc=0, ucSeq=0;
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const UCCOL=i=>'var(--pool'+(i%6)+')';
 function captureUc(){ const u=UC[activeUc]; if(!u) return;
   UC_KEYS.forEach(id=>{ const el=$(id); if(el) u.f[id]=UC_CHECKS[id]? el.checked : el.value; }); }
 function loadUc(i){ activeUc=Math.max(0,Math.min(UC.length-1,i)); const u=UC[activeUc]; if(!u) return;
@@ -762,7 +767,7 @@ function renderUcCards(){ const box=$('ucCards'); if(!box||!UC.length) return; c
       if(sp){ const sm=SUP_MODEL(sp.kind,sp.model)||{}; const kd=SUP_KIND(sp.kind)||{label:sp.kind};
         const opts=SUPPORT.models.filter(m=>m.kind===sp.kind).map(m=>`<option${m.name===sp.model?' selected':''}>${esc(m.name)}</option>`).join('');
         editor=`<div class="chip-editor"><div class="ce-row adv"><label>${esc(kd.label)} model</label><select data-chipsel="${i}:${sp.kind}">${opts}</select></div><div class="ce-note">${esc(sm.note||'')} · ~${sm.vram} GB per instance, one instance per ~${sm.cap} concurrent</div></div>`; } }
-    return `<div class="uc-card${i===activeUc?' active':''}" data-i="${i}" role="listitem" tabindex="0" aria-label="Use case ${esc(ucName(u))}${i===activeUc?', being edited':''}">
+    return `<div class="uc-card${i===activeUc?' active':''}" data-i="${i}" style="--uccol:${UCCOL(i)}" role="listitem" tabindex="0" aria-label="Use case ${esc(ucName(u))}${i===activeUc?', being edited':''}">
       <div class="uc-line">${name}${pool}
         <button class="uc-tool" data-ren="${i}" type="button" title="Rename" aria-label="Rename ${esc(ucName(u))}"><svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4"/></svg></button>
         <button class="uc-tool" data-dup="${i}" type="button" title="Duplicate" aria-label="Duplicate ${esc(ucName(u))}"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg></button>
@@ -771,7 +776,10 @@ function renderUcCards(){ const box=$('ucCards'); if(!box||!UC.length) return; c
       ${chips||ghosts?`<div class="uc-chips">${chips}${ghosts}</div>`:''}${editor}</div>`; }).join('');
   if(renamingUc!=null){ const inp=box.querySelector('[data-ren-input]'); if(inp){ inp.focus(); inp.select(); } }
   const tag=ucName(UC[activeUc]);
-  ['ctxModel','ctxPrec','ctxWork'].forEach(id=>{ const el=$(id); if(el) el.textContent = UC.length>1? tag : ''; }); }
+  ['ctxModel','ctxPrec','ctxWork'].forEach(id=>{ const el=$(id); if(el) el.textContent = UC.length>1? tag : ''; });
+  ['stWork','stModel','stPrec'].forEach(id=>{ const el=$(id);
+    if(el) el.style.setProperty('--uccol', UC.length>1? UCCOL(activeUc) : 'var(--line-soft)'); });
+  const hwc=$('ctxHw'); if(hwc) hwc.textContent = UC.length>1? 'project-wide · all use cases' : ''; }
 function selectUc(i){ if(i===activeUc){ return; } captureUc(); loadUc(i); renderUcCards(); render(); }
 function addUc(){ captureUc(); const base=UC[activeUc];
   const u={id:'uc'+(++ucSeq), name:'', f:Object.assign({},base?base.f:{}), supports:[], isolate:false};
@@ -785,9 +793,15 @@ function duplicateUc(i){ captureUc(); const base=UC[i]; if(!base) return;
     f:Object.assign({},base.f), supports:(base.supports||[]).map(sp=>Object.assign({},sp)), isolate:!!base.isolate};
   UC.splice(i+1,0,u); loadUc(i+1); renderUcCards(); render();
   toast('Duplicated: '+ucName(base)); }
-function removeUc(i){ if(UC.length<=1) return; const gone=ucName(UC[i]); UC.splice(i,1);
+let __removedUc=null;
+function removeUc(i){ if(UC.length<=1) return; const gone=ucName(UC[i]);
+  __removedUc={uc:UC[i], at:i};
+  UC.splice(i,1);
   if(activeUc>=UC.length) activeUc=UC.length-1; else if(i<activeUc) activeUc--;
-  loadUc(activeUc); renderUcCards(); render(); toast('Removed: '+gone); }
+  loadUc(activeUc); renderUcCards(); render();
+  toast('Removed: '+gone, false, {label:'Undo', fn:()=>{ if(!__removedUc) return;
+    UC.splice(Math.min(__removedUc.at,UC.length),0,__removedUc.uc); __removedUc=null;
+    loadUc(activeUc); renderUcCards(); render(); }}); }
 function commitRename(inp){ const i=+inp.dataset.renInput, v=inp.value.trim();
   if(UC[i]) UC[i].name=v; renamingUc=null; renderUcCards(); }
 function chipAct(e){
@@ -1111,6 +1125,7 @@ function renderProject(){
   if(!multi){ panel.style.display='none'; if(cap) cap.style.display='none'; return null; }
   const prj=window.__prj||computeProject();
   const {pools, sup, fleet, hw}=prj;
+  const PC=pools.map(p=>p.members[0]%6);
   panel.style.display='';
   if(cap){ cap.style.display='';
     const ap=pools.find(p2=>p2.members.includes(activeUc));
@@ -1121,7 +1136,7 @@ function renderProject(){
   const short=n=>n.length>26? n.slice(0,24)+'…':n;
   // strip: one chip per pool + supports + procurement
   $('projStrip').innerHTML =
-    pools.map((p,pi)=>`<span class="ps-chip"><span class="dot" style="background:var(--pool${pi%6})"></span><b>${esc(short(p.state.model.name))}</b><span class="mono">${esc(p.state.wq.name)} · TP${p.state.tp} · ${p.state.workers}×${p.state.perW} GPU · ${p.d.replicas} repl · ${p.state.concurrent} calls</span><span class="dot" style="background:${p.d.fits&&p.perUc.every(x=>x.d.sloAll)?'var(--teal-strong)':'var(--red)'};border-radius:50%"></span></span>`).join('')+
+    pools.map((p,pi)=>`<span class="ps-chip"><span class="dot" style="background:var(--pool${PC[pi]})"></span><b>${esc(short(p.state.model.name))}</b><span class="mono">${esc(p.state.wq.name)} · TP${p.state.tp} · ${p.state.workers}×${p.state.perW} GPU · ${p.d.replicas} repl · ${p.state.concurrent} calls</span><span class="dot" style="background:${p.d.fits&&p.perUc.every(x=>x.d.sloAll)?'var(--teal-strong)':'var(--red)'};border-radius:50%"></span></span>`).join('')+
     (sup.gpus? `<span class="ps-chip"><span class="dot" style="background:var(--amber-border)"></span><b>Supporting</b><span class="mono">${sup.items.reduce((t,i2)=>t+i2.instances,0)} instances · ${sup.gpus} shared GPU${sup.gpus>1?'s':''}</span></span>`:'')+
     `<span class="ps-chip"><b>Procured</b><span class="mono">${fleet.procW} nodes · ${fleet.procG} GPUs · ≈${fmt(fleet.kW)} kW</span></span>`;
   // per-usecase result cards
@@ -1129,13 +1144,13 @@ function renderProject(){
   pools.forEach((p,pi)=>p.perUc.forEach(x=>{
     const f=x.uc.f;
     const slo=(on,pass,val,tgt)=>on? `<span class="${pass?'ok':'miss'}">${val}</span> <span>· ${tgt}</span>` : `<span>${val}</span>`;
-    cards+=`<div class="ucr" data-ucr="${x.i}" style="border-left-color:var(--pool${pi%6})">
+    cards+=`<div class="ucr" data-ucr="${x.i}" style="border-left-color:${UCCOL(x.i)}">
       <div class="u-name">${esc(ucName(x.uc))}${x.uc.isolate?' <span class="mono" style="font-size:9px">isolated</span>':''}</div>
       <div class="u-sub">${esc(short(x.s.model.name))} · ${esc(x.s.wq.name)} · pool batch ${p.state.batch}</div>
       <div class="u-row"><span>Admitted at peak</span><span class="v">${x.share} of ${x.s.concurrent}</span></div>
-      <div class="u-row"><span>First token</span><span class="v">${slo(x.s.sloTtft>0, x.d.slo.ttft.pass, fmt(x.d.ttft)+' ms', '≤ '+fmt(x.s.sloTtft))}</span></div>
-      <div class="u-row"><span>Per-user speed</span><span class="v">${slo(x.s.sloTps>0, x.d.slo.tps.pass, fmt(x.d.tps)+' tok/s', '≥ '+fmt(x.s.sloTps))}</span></div>
-      <div class="u-row"><span>P95 latency</span><span class="v">${slo(x.s.sloP95>0, x.d.slo.p95.pass, fmt(x.d.p95)+' s', '≤ '+fmt(x.s.sloP95))}</span></div>
+      <div class="u-row"><span>First token</span><span class="v">${slo(x.s.sloTtft>0, x.d.slo.ttft.pass, fmt(x.d.ttft)+' ms', '≤ '+fmt(x.s.sloTtft)+' ms')}</span></div>
+      <div class="u-row"><span>Per-user speed</span><span class="v">${slo(x.s.sloTps>0, x.d.slo.tps.pass, fmt(x.d.tps)+' tok/s', '≥ '+fmt(x.s.sloTps)+' tok/s')}</span></div>
+      <div class="u-row"><span>P95 latency</span><span class="v">${slo(x.s.sloP95>0, x.d.slo.p95.pass, fmt(x.d.p95)+' s', '≤ '+fmt(x.s.sloP95)+' s')}</span></div>
       <div class="u-row"><span>KV per call</span><span class="v">${fmt(x.d.kvCall||x.d.kvTotal/Math.max(1,x.d.active))} GB</span></div>
       ${(x.uc.supports||[]).length?`<div class="u-row"><span>Supporting</span><span class="v">${x.uc.supports.map(sp=>KIND_LABEL[sp.kind]||sp.kind).join(', ')}</span></div>`:''}
     </div>`; }));
@@ -1149,13 +1164,19 @@ function renderFleet(prj){
   const box=$('fleetMap'); if(!box) return;
   const {pools, sup, fleet, hw}=prj;
   const {sites, info, N}=buildFleetSites(prj);
+  const PC=pools.map(p=>p.members[0]%6);
+  // first word that tells this pool apart from its rivals (Kimi K2.5 vs Kimi K3 -> K2.5 / K3)
+  const poolTag=(()=>{ const words=pools.map(p=>p.state.model.name.split(/\s+/));
+    return pi=>{ const w=words[pi]; let s=0;
+      while(s<w.length-1 && words.some((o,oi)=>oi!==pi && o[s]===w[s])) s++;
+      return w[s]||w[0]; }; })();
   const partMax=(hw.g.part&&hw.g.part.max)||1;
   const short=n=>n.length>26? n.slice(0,24)+'…':n;
   const MAXN=18;
   const gpuHtml=g2=>{
     if(g2.type==='pool'){ const h=Math.max(6, Math.round(g2.util*100));
-      return `<div class="fm-gpu assigned" title="${esc(g2.tip)}"><div class="fill" style="height:${h}%;background:var(--pool${g2.pool%6});opacity:${g2.rep%2?0.72:1}"></div></div>`; }
-    if(g2.type==='idle'){ const col=g2.pool==null? 'var(--amber-border)' : (g2.mode==='drs'? 'var(--violet)' : `var(--pool${g2.pool%6})`);
+      return `<div class="fm-gpu assigned" title="${esc(g2.tip)}"><div class="fill" style="height:${h}%;background:var(--pool${PC[g2.pool]});opacity:${g2.rep%2?0.72:1}"></div></div>`; }
+    if(g2.type==='idle'){ const col=g2.pool==null? 'var(--amber-border)' : (g2.mode==='drs'? 'var(--violet)' : `var(--pool${PC[g2.pool]})`);
       return `<div class="fm-gpu spare" title="${esc(g2.tip)}" style="border-color:${col}"></div>`; }
     if(g2.type==='sup'){ let y=0;
       const bands=g2.bin.slices.map(sl=>{ const h=Math.max(10, sl.n/partMax*100);
@@ -1165,11 +1186,11 @@ function renderFleet(prj){
     return `<div class="fm-gpu spare" title="${esc(g2.tip)}"></div>`;
   };
   const nodeHtml=n2=>{
-    const role = n2.cls==='serve'? esc(short(n2.poolName))
+    const role = n2.cls==='serve'? esc(poolTag(n2.pool))
       : n2.cls==='support'? 'supporting'
       : n2.cls==='mirror'? 'mirror' : n2.cls==='drs'? 'DR standby' : 'standby';
     const right = n2.cls==='serve'? `<span class="pct">${(n2.util*100).toFixed(0)}%</span>` : `<span class="pct idle">idle</span>`;
-    return `<div class="fm-node ${n2.cls==='drs'?'standby':n2.cls}${n2.active?' fm-active':''}">
+    return `<div class="fm-node ${n2.cls==='drs'?'standby':n2.cls}${n2.active?' fm-active':''}"${n2.active?` style="--acol:var(--pool${PC[n2.pool]})"`:''} title="${esc(n2.label+' · '+(ROLE_LABEL[n2.cls]||n2.cls)+(n2.poolName?' · '+n2.poolName:''))}">
       <div class="fm-nlab">${n2.label}<span class="role">${role}</span><span class="sp"></span>${n2.cls==='support'?'':right}</div>
       <div class="fm-gpus">${n2.gpus.map(gpuHtml).join('')}</div></div>`;
   };
@@ -1189,13 +1210,13 @@ function renderFleet(prj){
   }).join('');
   // legend
   $('fmLegend').innerHTML =
-    pools.map((p,pi)=>`<span class="lg-li"><span class="sw" style="background:var(--pool${pi%6})"></span>${esc(short(p.state.model.name))} · ${esc(p.state.wq.name)}</span>`).join('')+
-    sup.items.map(it=>`<span class="lg-li"><span class="sw" style="background:var(--sup${it.kind})"></span>${KIND_LABEL[it.kind]||it.kind} · ${esc(it.model.name)}</span>`).join('')+
+    pools.map((p,pi)=>`<span class="lg-li"><span class="sw" style="background:var(--pool${PC[pi]})"></span>${esc(short(p.state.model.name))} · ${esc(p.state.wq.name)}${p.members.length>1?' · shared by '+p.members.length+' use cases':''}</span>`).join('')+
+    sup.items.map(it=>`<span class="lg-li"><span class="sw hatch" style="background:var(--sup${it.kind})"></span>${KIND_LABEL[it.kind]||it.kind} · ${esc(it.model.name)} (hatched slice)</span>`).join('')+
     (info.add?`<span class="lg-li"><span class="sw dashed" style="border-color:var(--amber-border)"></span>${(hw.resil==='aass'||hw.resil==='aan1')?'spare · one per site':'shared spare · covers any pool'}</span>`:'')+
     (sites.some(s2=>s2.nodes.some(n2=>n2.cls==='mirror'))?`<span class="lg-li"><span class="sw dashed"></span>mirror · idle copy</span>`:'')+
     (sites.some(s2=>s2.nodes.some(n2=>n2.cls==='drs'))?`<span class="lg-li"><span class="sw dashed" style="border-color:var(--violet)"></span>DR standby</span>`:'')+
     `<span class="lg-li"><span class="sw dashed"></span>unassigned headroom</span>`+
-    `<span class="lg-li">fill height = share of GPU memory used</span>`;
+    `<span class="lg-li">fill height = share of GPU memory used · alternating shade = replica boundary</span>`;
   $('fmTotals').textContent=`${fleet.procW} nodes · ${fleet.procG} GPUs · ≈${fmt(fleet.kW)} kW TDP`;
   // semantic text form
   $('fleetList').innerHTML='<h3>Deployment, text form</h3>'+sites.map(s2=>`<h4>${esc(s2.title)}</h4><ul>`+s2.nodes.map(n2=>{
@@ -1212,8 +1233,7 @@ function renderFleet(prj){
   if(info.add) notes.push((hw.resil==='aass'||hw.resil==='aan1')
     ? `Each site keeps one idle spare: it covers a node failure in its own site, for any pool (hardware is uniform).`
     : `The ${info.add} spare node${info.add>1?'s are':' is'} shared${pools.length>1?` across all ${pools.length} pools`:''}: hardware is uniform, so any spare can take over any failed node.`);
-  notes.push(`GPU fill height shows each pool's memory use. Hover any GPU for its exact assignment.`);
-  $('fmNote').textContent=notes.join(' ');
+  $('fmNote').innerHTML=notes.map(esc).join(' ')+` GPU fill height shows each pool's memory use.<span class="no-print"> Hover any GPU for its exact assignment.</span>`;
   // economics, project level
   const agg=pools.reduce((x,p)=>x+p.d.agg,0), active=pools.reduce((x,p)=>x+p.d.active,0);
   const procW=fleet.procW, procG=fleet.procG, kW=fleet.kW;
@@ -1224,7 +1244,7 @@ function renderFleet(prj){
     `<div class="rs"><div class="k">Guaranteed at peak</div><div class="v">${fmt(agg)} tok/s · ${active} calls</div><div class="n">${hw.resil==='n'?'assumes no failures: any node loss removes capacity':info.degraded?'≈ half of this during a site loss':'held even through the covered failure'}</div></div>`+
     `<div class="rs"><div class="k">Normal-day capacity</div><div class="v">${burst?`≈ ${fmt(burst)} tok/s`:`${fmt(agg)} tok/s`}</div><div class="n">${burst?'both sites serving: burst headroom, not a guarantee': idleW>0?'spare hardware idles until a failure':'every worker serves; no reserve beyond N'}</div></div>`+
     `<div class="rs"><div class="k">Idle hardware</div><div class="v">${idleW>0?`${idleW} node${idleW>1?'s':''}`:'none'}</div><div class="n">${idleW>0?'standing by in normal operation':'every node serves traffic'}</div></div>`+
-    `<div class="rs"><div class="k">Cost vs bare N</div><div class="v">${fmt((procW-fleet.supNodes)/Math.max(1,N))}×</div><div class="n">${procW-fleet.supNodes} of ${N} load-bearing nodes${fleet.supNodes?' · support nodes excluded':''}</div></div>`;
+    `<div class="rs"><div class="k">Cost vs bare N</div><div class="v">${fmt((procW-fleet.supNodes)/Math.max(1,N))}×</div><div class="n">${procW-fleet.supNodes} procured for N=${N}${fleet.supNodes?' · support nodes excluded':''}</div></div>`;
   const r=hw.resil;
   const resLine = r==='n'? 'No redundancy: a node failure removes its replicas from service.'
     : r==='n1'? 'One idle standby absorbs a single node failure with no capacity loss after failover.'

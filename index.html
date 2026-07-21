@@ -85,46 +85,7 @@
     <div id="ucCards" role="list"></div>
   </section>
 
-  <section class="station">
-    <div class="st-title"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 3 8l9 5 9-5-9-5z"/><path d="M3 12.5l9 5 9-5"/><path d="M3 17l9 5 9-5"/></svg>Model<span class="st-ctx" id="ctxModel"></span></div>
-    <div class="field">
-      <div class="f-head"><label for="selModel">Model</label><button class="info" data-help="hModel" aria-expanded="false" type="button">i</button><span class="spacer"></span><span class="unit" id="modelCount"></span></div>
-      <select id="selModel"></select>
-      <div class="f-help" id="hModel">Architecture geometry drives every estimate: total params size the weights, active params drive compute and decode reads, and the effective KV heads &times; head dim encode each model's real cache cost (MLA, sparse and SSM hybrids use sheet-compatible effective values).</div>
-    </div>
-    <div class="toggle-row adv"><input type="checkbox" id="chkCustom"><label for="chkCustom">Custom model · enter geometry manually</label></div>
-    <div id="customBox" style="display:none;margin-top:10px">
-      <div class="grid2">
-        <div class="field"><div class="f-head"><label>Total params</label><span class="unit">B</span></div><input type="number" id="cusParams" value="70" min="0.1" step="0.1" title="All weights that must sit in VRAM; for MoE, every expert."></div>
-        <div class="field"><div class="f-head"><label>Active params</label><span class="unit">B</span></div><input type="number" id="cusActive" value="70" min="0.1" step="0.1" title="Parameters used per token; drives prefill compute and decode weight reads."></div>
-        <div class="field"><div class="f-head"><label>Hidden dim</label></div><input type="number" id="cusHidden" value="8192" min="64" step="64" title="Model width; drives the activation workspace estimate."></div>
-        <div class="field"><div class="f-head"><label>Layers</label></div><input type="number" id="cusLayers" value="80" min="1" title="Transformer blocks; KV cache scales linearly with layers."></div>
-        <div class="field"><div class="f-head"><label>KV heads</label></div><input type="number" id="cusKvh" value="8" min="1" title="Effective KV heads (GQA groups; 1 for MLA-style compressed caches)."></div>
-        <div class="field"><div class="f-head"><label>Head dim</label></div><input type="number" id="cusHdim" value="128" min="8" title="Effective per-head dimension (use the compressed-latent equivalent for MLA)."></div>
-      </div>
-      <div class="field"><div class="f-head"><label>Max context</label><span class="unit">tokens</span></div><input type="number" id="cusCtx" value="131072" min="1024" step="1024"></div>
-    </div>
-    <div class="meta-card" id="modelMeta"></div>
-  </section>
-
-  <section class="station">
-    <div class="st-title"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><rect x="8.5" y="8.5" width="7" height="7" rx="1.5" fill="currentColor" stroke="none"/></svg>Precision<span class="st-ctx" id="ctxPrec"></span></div>
-    <div class="grid2">
-      <div class="field">
-        <div class="f-head"><label for="selWQuant">Weights</label><button class="info" data-help="hWq" aria-expanded="false" type="button">i</button></div>
-        <select id="selWQuant"></select>
-      </div>
-      <div class="field adv">
-        <div class="f-head"><label for="selKQuant">KV cache</label><button class="info" data-help="hKq" aria-expanded="false" type="button">i</button></div>
-        <select id="selKQuant"></select>
-      </div>
-    </div>
-    <div class="f-help" id="hWq">Bytes per weight. FP8 is the 2026 serving default (half of BF16, minimal loss). NVFP4/MXFP4 are Blackwell-native 4-bit floats; Q-tiers are GGUF/llama.cpp formats.<span class="typ">Typical production: FP8 · edge/workstation: Q4_K_M or MXFP4</span></div>
-    <div class="f-help" id="hKq">Bytes per KV element. FP8 KV halves cache cost with negligible quality impact and is the vLLM production default.<span class="typ">Typical: FP8 · long-context on tight VRAM: INT4</span></div>
-    <div class="meta-card" id="quantMeta"></div>
-  </section>
-
-  <section class="station">
+  <section class="station uc-scope" id="stWork">
     <div class="st-title"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg>Workload<span class="st-ctx" id="ctxWork"></span></div>
     <div class="field">
       <div class="f-head"><label for="selCase">Use-case preset</label><button class="info" data-help="hCase" aria-expanded="false" type="button">i</button></div>
@@ -182,8 +143,47 @@
     </details>
   </section>
 
+  <section class="station uc-scope" id="stModel">
+    <div class="st-title"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 3 8l9 5 9-5-9-5z"/><path d="M3 12.5l9 5 9-5"/><path d="M3 17l9 5 9-5"/></svg>Model<span class="st-ctx" id="ctxModel"></span></div>
+    <div class="field">
+      <div class="f-head"><label for="selModel">Model</label><button class="info" data-help="hModel" aria-expanded="false" type="button">i</button><span class="spacer"></span><span class="unit" id="modelCount"></span></div>
+      <select id="selModel"></select>
+      <div class="f-help" id="hModel">Architecture geometry drives every estimate: total params size the weights, active params drive compute and decode reads, and the effective KV heads &times; head dim encode each model's real cache cost (MLA, sparse and SSM hybrids use sheet-compatible effective values).</div>
+    </div>
+    <div class="toggle-row adv"><input type="checkbox" id="chkCustom"><label for="chkCustom">Custom model · enter geometry manually</label></div>
+    <div id="customBox" style="display:none;margin-top:10px">
+      <div class="grid2">
+        <div class="field"><div class="f-head"><label>Total params</label><span class="unit">B</span></div><input type="number" id="cusParams" value="70" min="0.1" step="0.1" title="All weights that must sit in VRAM; for MoE, every expert."></div>
+        <div class="field"><div class="f-head"><label>Active params</label><span class="unit">B</span></div><input type="number" id="cusActive" value="70" min="0.1" step="0.1" title="Parameters used per token; drives prefill compute and decode weight reads."></div>
+        <div class="field"><div class="f-head"><label>Hidden dim</label></div><input type="number" id="cusHidden" value="8192" min="64" step="64" title="Model width; drives the activation workspace estimate."></div>
+        <div class="field"><div class="f-head"><label>Layers</label></div><input type="number" id="cusLayers" value="80" min="1" title="Transformer blocks; KV cache scales linearly with layers."></div>
+        <div class="field"><div class="f-head"><label>KV heads</label></div><input type="number" id="cusKvh" value="8" min="1" title="Effective KV heads (GQA groups; 1 for MLA-style compressed caches)."></div>
+        <div class="field"><div class="f-head"><label>Head dim</label></div><input type="number" id="cusHdim" value="128" min="8" title="Effective per-head dimension (use the compressed-latent equivalent for MLA)."></div>
+      </div>
+      <div class="field"><div class="f-head"><label>Max context</label><span class="unit">tokens</span></div><input type="number" id="cusCtx" value="131072" min="1024" step="1024"></div>
+    </div>
+    <div class="meta-card" id="modelMeta"></div>
+  </section>
+
+  <section class="station uc-scope" id="stPrec">
+    <div class="st-title"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><rect x="8.5" y="8.5" width="7" height="7" rx="1.5" fill="currentColor" stroke="none"/></svg>Precision<span class="st-ctx" id="ctxPrec"></span></div>
+    <div class="grid2">
+      <div class="field">
+        <div class="f-head"><label for="selWQuant">Weights</label><button class="info" data-help="hWq" aria-expanded="false" type="button">i</button></div>
+        <select id="selWQuant"></select>
+      </div>
+      <div class="field adv">
+        <div class="f-head"><label for="selKQuant">KV cache</label><button class="info" data-help="hKq" aria-expanded="false" type="button">i</button></div>
+        <select id="selKQuant"></select>
+      </div>
+    </div>
+    <div class="f-help" id="hWq">Bytes per weight. FP8 is the 2026 serving default (half of BF16, minimal loss). NVFP4/MXFP4 are Blackwell-native 4-bit floats; Q-tiers are GGUF/llama.cpp formats.<span class="typ">Typical production: FP8 · edge/workstation: Q4_K_M or MXFP4</span></div>
+    <div class="f-help" id="hKq">Bytes per KV element. FP8 KV halves cache cost with negligible quality impact and is the vLLM production default.<span class="typ">Typical: FP8 · long-context on tight VRAM: INT4</span></div>
+    <div class="meta-card" id="quantMeta"></div>
+  </section>
+
   <section class="station">
-    <div class="st-title"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="7" rx="2"/><rect x="3" y="13" width="18" height="7" rx="2"/><path d="M7 7.5h.01M7 16.5h.01"/></svg>Hardware &amp; resilience</div>
+    <div class="st-title"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="7" rx="2"/><rect x="3" y="13" width="18" height="7" rx="2"/><path d="M7 7.5h.01M7 16.5h.01"/></svg>Hardware &amp; resilience<span class="st-ctx neutral" id="ctxHw"></span></div>
     <div class="field">
       <div class="f-head"><label for="selGpu">GPU</label><button class="info" data-help="hGpu" aria-expanded="false" type="button">i</button><span class="spacer"></span><span class="unit" id="gpuCount"></span></div>
       <select id="selGpu"></select>
@@ -312,8 +312,8 @@
   <section class="panel topo-box">
     <div class="p-head"><span class="p-title"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="2.4"/><circle cx="5" cy="19" r="2.4"/><circle cx="19" cy="19" r="2.4"/><path d="M12 7.4v3.6M12 11 6.6 17.1M12 11l5.4 6.1"/></svg>Deployment topology &amp; fleet map · every model on every GPU</span><span class="p-note" id="topoNote"></span></div>
     <div class="fm-head"><span class="fm-title"></span><span class="fm-totals mono" id="fmTotals"></span></div>
-    <div class="fm-legend" id="fmLegend"></div>
     <div class="fleet-map" id="fleetMap" aria-hidden="true"></div>
+    <div class="fm-legend" id="fmLegend"></div>
     <div class="sr-only" id="fleetList"></div>
     <div class="fm-note" id="fmNote"></div>
     <div class="resil-stats" id="resilStats"></div>
@@ -380,7 +380,7 @@
       <span class="f-fact">Version <span class="mono" id="appVer">—</span></span>
       <span class="f-fact">Engine <span class="mono" id="engVer">—</span> · library <span class="mono" id="libVer">—</span></span>
       <span class="f-fact">Scripting API at <span class="mono">window.GPUscale</span></span>
-      <span class="f-privacy"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="9.5" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></svg>Private by design: everything runs in your browser. Nothing you enter is saved, uploaded or tracked; one UI preference (the mode) stays in your browser\u2019s local storage. No accounts, no analytics, no cookies.</span>
+      <span class="f-privacy"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="9.5" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></svg>Private by design: everything runs in your browser. Nothing you enter is saved, uploaded or tracked; one UI preference (the mode) stays in your browser&rsquo;s local storage. No accounts, no analytics, no cookies.</span>
     </div>
   </div>
 </footer>
