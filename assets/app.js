@@ -7,10 +7,15 @@ if(!MODELS.length || !GPUS.length || !QUANTS.length || !CASES.length){
   document.body.innerHTML = '<div style="font-family:system-ui,sans-serif;max-width:560px;margin:80px auto;padding:0 20px;line-height:1.65;color:#1A2536"><h2 style="margin-bottom:10px">Data files not loaded</h2><p>GPUscale.net could not find its library. Keep <code>index.html</code> together with the <code>data/</code> and <code>assets/</code> folders: the four files <code>data/models.js</code>, <code>data/gpus.js</code>, <code>data/quants.js</code> and <code>data/usecases.js</code> must sit next to this page.</p><p>If you need one portable file instead, use <code>dist/gpuscale_standalone.html</code> or rebuild it with <code>python3 tools/build_single_file.py</code>.</p></div>';
   throw new Error('GPUscale.net data missing');
 }
-const STUDIO_VERSION = '5.6.0', ENGINE_VERSION = 23;
-const PROJ_ID = (()=>{ const L='abcdefghjkmnpqrstuvwxyz', D='0123456789';
+const STUDIO_VERSION = '5.7.0', ENGINE_VERSION = 23;
+function newProjId(){ const L='abcdefghjkmnpqrstuvwxyz', D='0123456789';
   const pick=s=>s[Math.floor(Math.random()*s.length)];
-  return 'Project_'+pick(L)+pick(L)+pick(D)+pick(D)+pick(D); })();
+  return 'Project_'+pick(L)+pick(L)+pick(D)+pick(D)+pick(D); }
+let PROJ_ID = newProjId();
+function setProjId(id){ if(!id||!/^[A-Za-z0-9_-]{3,40}$/.test(id)) return;
+  PROJ_ID=id;
+  const inp=$('scenarioName'); if(inp) inp.placeholder=PROJ_ID;
+  const sid=document.getElementById('storyId'); if(sid) sid.textContent=PROJ_ID; }
 function projName(){ const v=($('scenarioName')&&$('scenarioName').value||'').trim(); return v||PROJ_ID; }
 const scenName=projName; // legacy alias
 /* UX mode: normal (curated minimum) vs advanced (everything). Persisted locally only. */
@@ -707,6 +712,7 @@ function render(){
     : `GPUscale.net · ${projName()} · ${m.name} · weights ${s.wq.name} / KV ${s.kq.name} · seq ${fmtTok(s.resident)} (+${fmtTok(s.reasonTok)} reasoning) · `+
       `${s.concurrent} concurrent, batch ${s.batch}/replica · ${s.workers}× worker (${s.perW} GPU) ${g.name} · TP${s.tp} · ${RESIL[s.resil].long} → ${topoInfo.procW} workers procured · ${new Date().toLocaleDateString()}`;
   if(window.__prj && UC.length>1) renderProjectReport(window.__prj); else restoreSingleReport();
+  autosave();
 }
 
 /* ================= PRESETS ================= */
@@ -1495,6 +1501,130 @@ function restoreSingleReport(){
   const labs={kpiTtft:'Time to first token', kpiTps:'Per-user speed', kpiAgg:'Aggregate throughput', kpiLat:'Mean user latency'};
   Object.keys(labs).forEach(id=>{ const el=$(id); if(el) el.querySelector('.k-lab').lastChild.textContent=labs[id]; });
 }
+
+/* ================= LOCAL PROJECTS & SHARE LINKS ================= */
+/* Projects autosave to this browser's local storage (survives reboot) and are
+   listed in the history menu. Share links carry the whole project compressed
+   inside the URL fragment: nothing is uploaded anywhere. SHARE_API, when set
+   to a deployed endpoint (docs/share-worker.js), switches sharing to short
+   ?p=<id> links stored on your own backend. */
+const SHARE_API=null;
+const LS_IDX='gpuscale-projects', LS_CUR='gpuscale-current', LS_PRE='gpuscale-project-';
+function lsIndex(){ try{ return JSON.parse(localStorage.getItem(LS_IDX)||'[]'); }catch(e){ return []; } }
+let __saveT=null;
+function autosave(){
+  clearTimeout(__saveT);
+  __saveT=setTimeout(()=>{ try{
+    const j=serialize();
+    localStorage.setItem(LS_PRE+PROJ_ID, JSON.stringify(j));
+    localStorage.setItem(LS_CUR, PROJ_ID);
+    const idx=lsIndex().filter(e=>e.id!==PROJ_ID);
+    idx.unshift({id:PROJ_ID, name:projName(), savedAt:new Date().toISOString(),
+      ucs:UC.length, model:(UC[0]&&ucModelName(UC[0]))||''});
+    localStorage.setItem(LS_IDX, JSON.stringify(idx.slice(0,40)));
+    const el=$('saveState'); if(el){ el.textContent='saved locally'; el.classList.add('on');
+      clearTimeout(el.__t); el.__t=setTimeout(()=>el.classList.remove('on'),1600); }
+  }catch(e){} }, 1200);
+}
+function loadProject(id){
+  try{ const raw=localStorage.getItem(LS_PRE+id); if(!raw) return false;
+    const j=JSON.parse(raw);
+    setProjId(id);
+    applyConfig(j);
+    localStorage.setItem(LS_CUR,id);
+    toast('Loaded: '+(j.name||id));
+    return true;
+  }catch(e){ toast('Could not load that project', true); return false; }
+}
+function deleteProject(id){
+  try{ localStorage.removeItem(LS_PRE+id);
+    localStorage.setItem(LS_IDX, JSON.stringify(lsIndex().filter(e=>e.id!==id)));
+    if(localStorage.getItem(LS_CUR)===id) localStorage.removeItem(LS_CUR);
+  }catch(e){}
+  renderProjMenu();
+}
+function newProject(){ try{ localStorage.removeItem(LS_CUR); }catch(e){} location.href=location.pathname; }
+const b64u=u8=>{ let s2=''; u8.forEach(b=>s2+=String.fromCharCode(b));
+  return btoa(s2).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); };
+const b64uDec=s2=>{ const b=atob(s2.replace(/-/g,'+').replace(/_/g,'/'));
+  const u8=new Uint8Array(b.length); for(let i=0;i<b.length;i++) u8[i]=b.charCodeAt(i); return u8; };
+async function shareLink(){
+  captureUc();
+  const json=JSON.stringify(serialize());
+  let url=null;
+  if(SHARE_API){
+    try{ const r=await fetch(SHARE_API,{method:'POST',headers:{'Content-Type':'application/json'},body:json});
+      const o=await r.json(); if(o&&o.id) url=location.origin+location.pathname+'?p='+encodeURIComponent(o.id);
+    }catch(e){}
+  }
+  if(!url){
+    try{
+      const buf=await new Response(new Blob([json]).stream().pipeThrough(new CompressionStream('deflate-raw'))).arrayBuffer();
+      url=location.origin+location.pathname+'#p=z:'+b64u(new Uint8Array(buf));
+    }catch(e){
+      url=location.origin+location.pathname+'#p=j:'+b64u(new TextEncoder().encode(json));
+    }
+  }
+  try{ await navigator.clipboard.writeText(url); toast('Share link copied: the project travels inside the link itself'+(url.length>2000?' (~'+(url.length/1024).toFixed(1)+' KB)':'')); }
+  catch(e){ window.prompt('Copy this share link:', url); }
+}
+async function loadSharedFromUrl(){
+  const h=location.hash||'';
+  const q=new URLSearchParams(location.search);
+  try{
+    if(h.indexOf('#p=')===0){
+      const payload=h.slice(3);
+      let json;
+      if(payload.indexOf('z:')===0){
+        const buf=await new Response(new Blob([b64uDec(payload.slice(2))]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer();
+        json=new TextDecoder().decode(buf);
+      } else if(payload.indexOf('j:')===0) json=new TextDecoder().decode(b64uDec(payload.slice(2)));
+      else return false;
+      const j=JSON.parse(json);
+      if(j.projectId) setProjId(j.projectId);
+      applyConfig(j); autoSize(true);
+      toast('Shared project loaded from the link');
+      return true;
+    }
+    if(q.get('p') && SHARE_API){
+      const r=await fetch(SHARE_API+'/'+encodeURIComponent(q.get('p')));
+      if(r.ok){ const j=await r.json(); if(j.projectId) setProjId(j.projectId);
+        applyConfig(j); autoSize(true); toast('Shared project loaded'); return true; }
+    }
+  }catch(e){ toast('Could not load the shared link', true); }
+  return false;
+}
+function renderProjMenu(){
+  const box=$('projMenu'); if(!box) return;
+  const idx=lsIndex();
+  box.innerHTML=
+    `<div class="pm-head">Saved in this browser</div>`+
+    (idx.length? idx.map(e=>`<div class="pm-row${e.id===PROJ_ID?' cur':''}" data-load="${esc(e.id)}" role="menuitem" tabindex="0">
+        <span class="pm-name">${esc(e.name||e.id)}</span>
+        <span class="pm-meta">${esc((e.model||'').split(' ').slice(0,2).join(' '))} · ${e.ucs||1} uc · ${new Date(e.savedAt).toLocaleDateString()}</span>
+        <button class="pm-x" data-del="${esc(e.id)}" type="button" title="Delete from this browser" aria-label="Delete ${esc(e.name||e.id)}">×</button></div>`).join('')
+      : `<div class="pm-empty">Nothing saved yet: projects autosave as you work.</div>`)+
+    `<div class="pm-actions"><button class="pm-act" id="pmNew" type="button">New project</button><button class="pm-act" id="pmShare" type="button">Copy share link</button></div>`;
+}
+function toggleProjMenu(force){
+  const box=$('projMenu'); if(!box) return;
+  const show = force!=null? force : box.style.display==='none'||!box.style.display;
+  if(show) renderProjMenu();
+  box.style.display=show?'block':'none';
+  const bh=$('btnHist'); if(bh) bh.setAttribute('aria-expanded', show?'true':'false');
+}
+document.addEventListener('click',e=>{
+  const box=$('projMenu'); if(!box) return;
+  const open = box.style.display==='block';
+  if(e.target.closest&&e.target.closest('#btnHist')){ toggleProjMenu(!open); return; }
+  if(!open) return;
+  const del=e.target.closest('[data-del]'); if(del){ deleteProject(del.dataset.del); return; }
+  const row=e.target.closest('[data-load]'); if(row){ toggleProjMenu(false); loadProject(row.dataset.load); return; }
+  if(e.target.closest('#pmNew')){ newProject(); return; }
+  if(e.target.closest('#pmShare')){ toggleProjMenu(false); shareLink(); return; }
+  if(!e.target.closest('#projMenu')) toggleProjMenu(false);
+});
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') toggleProjMenu(false); });
 
 /* ================= SERIALIZE / APPLY ================= */
 function serialize(){
@@ -2429,6 +2559,7 @@ window.addEventListener('afterprint',()=>{
   if(printTitleRestore){ document.title=printTitleRestore; printTitleRestore=null; }
   if(printThemeRestore){ setTheme(printThemeRestore); printThemeRestore=null; } });
 $('btnImport').addEventListener('click',()=>$('fileImport').click());
+$('btnShare').addEventListener('click',()=>shareLink());
 $('fileImport').addEventListener('change',e=>{
   const f=e.target.files[0]; if(!f) return;
   const r=new FileReader();
@@ -2443,7 +2574,8 @@ $('fileImport').addEventListener('change',e=>{
 
 /* ================= PUBLIC API & BOOT ================= */
 window.GPUscale = {compute, readState, serialize, applyConfig, buildXls, buildXlsxBytes, render, autoSize, computeProject, MODELS, GPUS, QUANTS, CASES,
-  usecases:{list:()=>UC, active:()=>activeUc, add:addUc, select:selectUc, remove:removeUc}};
+  usecases:{list:()=>UC, active:()=>activeUc, add:addUc, select:selectUc, remove:removeUc},
+  projects:{list:lsIndex, load:loadProject, del:deleteProject, share:shareLink, id:()=>PROJ_ID}};
 window.SizingConsole = window.GPUscale;
 (function boot(){
   UC.push({id:'uc'+(++ucSeq), name:'', f:{}, supports:[], isolate:false});
@@ -2464,4 +2596,12 @@ window.SizingConsole = window.GPUscale;
   const sid=document.getElementById('storyId'); if(sid) sid.textContent=PROJ_ID;
   captureUc();
   render();
+  loadSharedFromUrl().then(loaded=>{
+    if(loaded) return;
+    try{
+      const cur=localStorage.getItem(LS_CUR);
+      const raw=cur&&localStorage.getItem(LS_PRE+cur);
+      if(raw){ const j=JSON.parse(raw); setProjId(cur); applyConfig(j); }
+    }catch(e){}
+  });
 })();

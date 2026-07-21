@@ -29,7 +29,9 @@ source, and fully static: no backend, no build step, nothing uploaded.
 - ⚡ **Performance**: time to first token, per-user tok/s, aggregate throughput, latency anatomy
 - 🎯 **SLO compliance**: set TTFT / TPS / P95 targets and see pass or fail as you tune
 - 🏗️ **Resilient topology**: N, N+1, N+2, N+N, DR (full or half-size), Active/Active and N+N+DR, with guaranteed-vs-normal-day economics and workers/GPUs/kW roll-ups
-- 🔒 **Private by design**: everything runs in your browser; nothing you enter is saved, uploaded or tracked
+- 💾 **Projects persist**: autosaved to your browser's local storage, surviving reboots; a history menu lists, reloads and deletes them
+- 🔗 **Share links**: the whole project travels compressed inside the URL itself; send the link, they see your project (an optional self-hosted backend for short links ships in docs/share-worker.js)
+- 🔒 **Private by design**: everything runs and stays in your browser; nothing is uploaded or tracked
 - 📚 **Library**: 94 models (GQA, MoE, MLA, SSM hybrids, Arabic/GCC sovereign set), 37 GPUs with partitioning profiles, and 17 supporting models, one line each
 - 📤 **Exports**: JSON configs, an Excel template with live formulas, and a print-ready PDF report
 - 🪄 **Auto-size**: one click picks the TP that fits one copy of the model and the workers that admit your peak load

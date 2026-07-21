@@ -1,5 +1,26 @@
 # Changelog
 
+## Studio 5.7 (2026-07-21)
+
+Projects that survive reboots, and links that carry them.
+
+- The current project autosaves to the browser's local storage (debounced,
+  with a quiet "saved locally" pulse next to the project name) and is
+  restored on the next visit, reboot included.
+- A history menu (clock icon in the project box) lists every project saved
+  in this browser with model, use-case count and date; click to load,
+  delete per entry, or start a new project. Up to 40 projects kept.
+- Share links: one click copies a URL that carries the whole project
+  compressed inside the fragment (about 1-2 KB); anyone opening it gets
+  the project loaded and auto-sized, with no upload and no backend.
+  For short ?p=id links, docs/share-worker.js is a ready-to-deploy
+  Cloudflare Worker + KV backend; deploying it and setting SHARE_API in
+  app.js switches sharing over, as an explicit opt-in.
+- Privacy wording updated honestly everywhere: projects stay on this
+  device; nothing leaves the browser unless you create a share link,
+  which itself contains the data.
+
+
 ## Studio 5.6 (2026-07-21)
 
 A native Excel report, a richer ledger, and a quieter rail.
