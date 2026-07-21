@@ -1,5 +1,38 @@
 # Changelog
 
+## Studio 5.4 (2026-07-21)
+
+One report for the whole project, and demand grounded in research.
+
+- The results canvas is now selection-independent: switching the edited
+  use case never changes the report. Memory ledger shows one bar per pool,
+  KPI tiles show project totals and demand-weighted averages, SLO
+  compliance rolls up per use case, charts draw one line per pool, latency
+  anatomy shows one row per use case, and recommendations are prefixed by
+  pool. Exports (PDF, Excel) are stable no matter which card was selected.
+- "In plain words" became "Summary": bullet points with icons covering
+  every use case (active users, derived concurrent calls and the share in
+  flight, model, SLO status), every deployment (why that TP, replicas,
+  batch, memory use, spares), supporting models, resilience, and findings.
+- Users-to-concurrency ratios are now researched per use-case type and
+  seeded by the preset: enterprise copilot ~3% of active users in flight,
+  chatbot ~8%, advanced RAG ~15%, code agents ~40%, code completion ~2.5%,
+  voice and batch 1:1 (sources: Microsoft Copilot usage telemetry, GitHub
+  Copilot latency data, contact-center Erlang math, production RAG and
+  agent papers). Typing a concurrency directly marks it manual and stops
+  the derivation; the field under Active users says which mode is live.
+- Importing a JSON now auto-sizes the whole deployment for the file's
+  demand, and re-seeds never-customized traffic shapes from the presets.
+- Fixed an import bug where applying a file's theme re-rendered mid-import
+  and overwrote the active card's inputs with the last card's values.
+- The Auto-size button is now "Auto-size deployment": it derives
+  concurrency from active users first, then solves TP, nodes and batch per
+  pool, places supporting models and spares.
+- Fleet map legend now explains the node outline (selected use case,
+  screen only) and the alternating replica shades; site headers and result
+  cards carry icons; the print verdict is stacked and clean.
+
+
 ## Studio 5.3 (2026-07-21)
 
 Demand-honest sizing: no more replicas nobody asked for.

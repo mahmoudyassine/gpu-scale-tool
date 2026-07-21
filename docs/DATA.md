@@ -117,3 +117,15 @@ A v5 file is a v4 file plus a `project` block: `{active, usecases:[{id, name,
 isolate, supports, config, snapshot}], results}`. The top-level `config` and
 `snapshot` still describe the active use case in v4 shape, so v4-era
 importers read v5 files. Import accepts v3, v4 and v5.
+
+## data/usecases.js · `traffic` field (v27)
+
+Per-preset users-to-concurrency shape, grounded in published production data
+(Microsoft Copilot Usage Report, GitHub Copilot telemetry, contact-center
+Erlang math, I-GUIDE iterative-RAG paper, SWE-agent, voice-platform
+concurrency docs): `traffic:{turns, calls, durS, burst, pct}` where
+concurrent calls = users x turns x calls x durS / 3600 x burst (durS 0 =
+model-derived latency), or `traffic:{direct:1}` for workloads where the
+users figure IS the concurrency (voice calls, batch queue depth). `pct` is
+the display note. The estimator drawer edits these per card; a directly
+typed concurrency sets `concManual` and stops the derivation.

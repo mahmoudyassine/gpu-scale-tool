@@ -7,7 +7,7 @@ if(!MODELS.length || !GPUS.length || !QUANTS.length || !CASES.length){
   document.body.innerHTML = '<div style="font-family:system-ui,sans-serif;max-width:560px;margin:80px auto;padding:0 20px;line-height:1.65;color:#1A2536"><h2 style="margin-bottom:10px">Data files not loaded</h2><p>GPUscale.net could not find its library. Keep <code>index.html</code> together with the <code>data/</code> and <code>assets/</code> folders: the four files <code>data/models.js</code>, <code>data/gpus.js</code>, <code>data/quants.js</code> and <code>data/usecases.js</code> must sit next to this page.</p><p>If you need one portable file instead, use <code>dist/gpuscale_standalone.html</code> or rebuild it with <code>python3 tools/build_single_file.py</code>.</p></div>';
   throw new Error('GPUscale.net data missing');
 }
-const STUDIO_VERSION = '5.3.0', ENGINE_VERSION = 23;
+const STUDIO_VERSION = '5.4.0', ENGINE_VERSION = 23;
 const PROJ_ID = (()=>{ const L='abcdefghjkmnpqrstuvwxyz', D='0123456789';
   const pick=s=>s[Math.floor(Math.random()*s.length)];
   return 'Project_'+pick(L)+pick(L)+pick(D)+pick(D)+pick(D); })();
@@ -521,7 +521,9 @@ function render(){
   window.__prj = computeProject();
   let s, d;
   if(UC.length>1){
-    const p = window.__prj.pools.find(p2=>p2.members.includes(activeUc));
+    // pool 1 feeds the (mostly hidden) single-pool scaffolding so the rendered
+    // report is byte-stable regardless of which card is selected for editing
+    const p = window.__prj.pools[0];
     s = p.state; d = p.d;
   } else { s = readState(); d = compute(s); }
   const m=s.model, g=s.gpu;
@@ -630,7 +632,12 @@ function render(){
   if(nd){ const users=Math.max(1,+$('nrmUsers').value||1);
     const turns=+$('ccTurns').value||8, burst=+$('ccBurst').value||1.5;
     const dur=+$('ccDur').value>0? +$('ccDur').value : Math.min(120,Math.max(5,d.latency));
-    nd.textContent=`→ ${fmt(s.concurrent)} concurrent calls from ${fmt(users)} users (${fmt(turns)} interactions/h · ${fmt(burst)}× burst · ${fmt(dur)} s/call)`; }
+    const cc0=Math.max(1,+$('inConc').value||1);
+    const pct=users>0? (100*cc0/users) : 0;
+    const cs0=CASES[+$('selCase').value];
+    nd.textContent = cs0&&cs0.traffic&&cs0.traffic.direct
+      ? `→ ${fmt(cc0)} concurrent LLM calls (${esc(cs0.traffic.pct||'1:1 with users')})${UC[activeUc]&&UC[activeUc].concManual?' · set manually':''}`
+      : `→ ${fmt(cc0)} concurrent LLM calls ≈ ${pct<1? pct.toFixed(1) : fmt(pct)}% of ${fmt(users)} active users in flight (${fmt(turns)} interactions/h · ${fmt(burst)}× burst · ${fmt(dur)} s/call)${UC[activeUc]&&UC[activeUc].concManual?' · set manually, users ignored':''}`; }
   const mb=$('miniBar');
   if(mb){ const F=window.__prj.fleet;
     const fits=F.fits, sloOk=F.sloAll;
@@ -677,7 +684,7 @@ function render(){
     $('vKv').innerHTML = `<b>${fmt(F.vramNeed)} GB</b> required · <b>${fmt(F.vramAvail)} GB</b> across ${F.activeG+F.supG} active GPUs${F.spare?` · ${F.spare} spare`:''}`;
     $('vSub').textContent = `${prj.pools.length} pool${prj.pools.length>1?'s':''} · ${F.procG} GPUs procured · ≈${fmt(F.kW)} kW`;
   }
-  $('story').innerHTML = buildStory(s,d,m,g);
+  $('story').innerHTML = (window.__prj && UC.length>1)? buildProjectSummary(window.__prj) : buildStory(s,d,m,g);
   $('printInputs').innerHTML = '<div class="pi-title">'+(window.__prj&&UC.length>1? 'Inputs · pool '+m.name+' '+s.wq.name+' ('+UC.length+' use cases; project panel below lists all)' : 'Inputs · complete configuration')+'</div><div class="pi-grid">'+[
     ['Model', m.name],['Total params', fmt(s.params)+' B'],['Active params', fmt(s.active)+' B'],
     ['Geometry', s.layers+'L · h'+s.hidden+' · KV '+s.kvHeads+'×'+s.headDim],['Max context', fmtTok(m.ctx)],
@@ -698,6 +705,7 @@ function render(){
       ` · ${window.__prj.fleet.procG} GPUs procured (${RESIL[s.resil].label}) · ≈${fmt(window.__prj.fleet.kW)} kW · ${new Date().toLocaleDateString()}`
     : `GPUscale.net · ${projName()} · ${m.name} · weights ${s.wq.name} / KV ${s.kq.name} · seq ${fmtTok(s.resident)} (+${fmtTok(s.reasonTok)} reasoning) · `+
       `${s.concurrent} concurrent, batch ${s.batch}/replica · ${s.workers}× worker (${s.perW} GPU) ${g.name} · TP${s.tp} · ${RESIL[s.resil].long} → ${topoInfo.procW} workers procured · ${new Date().toLocaleDateString()}`;
+  if(window.__prj && UC.length>1) renderProjectReport(window.__prj); else restoreSingleReport();
 }
 
 /* ================= PRESETS ================= */
@@ -707,12 +715,16 @@ function applyCase(i){
   const u=UC[activeUc];
   if(u){ u.supports=defaultSupports(i);
     if(u.supports.length) announce('Attached to '+(c.name)+': '+u.supports.map(sp=>(SUP_KIND(sp.kind)||{label:sp.kind}).label+' ('+sp.model+')').join(', ')); }
+  const tr=c.traffic;
+  if(tr){ $('ccTurns').value=tr.turns; $('ccCalls').value=tr.calls; $('ccBurst').value=tr.burst;
+    $('ccDur').value=tr.durS||0; $('ccShare').value=100; }
   if(c.resident) $('inSeq').value=c.resident;
   if(c.visibleOut) $('inOut').value=c.visibleOut;
   $('selReason').value=REASON_TOK.hasOwnProperty(c.reasoning)?c.reasoning:'None';
   syncReason();
   $('sloTtft').value=c.ttftTarget; $('sloTps').value=c.tpsTarget; $('sloP95').value=c.p95Target;
   refreshCtl('inSeq'); refreshCtl('inOut');
+  if(UC[activeUc]) applyNrmUsers();
 }
 function syncReason(){
   const mode=$('selReason').value, el=$('inReasonTok'), rng=$('inReasonTok_r');
@@ -1036,6 +1048,55 @@ function fleetTotals(pools, sup, hw){
 
 /* ================= PROJECT RESULTS (fleet map + per-usecase cards) ================= */
 const KIND_LABEL={embed:'Embeddings',rerank:'Reranker',asr:'ASR',tts:'TTS',ocr:'OCR',guard:'Guard'};
+/* small stroked icons for result surfaces */
+const RICO={
+  users:'<path d="M8 11a3.2 3.2 0 1 0 0-6.4A3.2 3.2 0 0 0 8 11zM2.5 20c0-3 2.5-5 5.5-5s5.5 2 5.5 5"/><path d="M15.5 11a2.8 2.8 0 1 0-.01-5.6M16.5 15.2c2.6.3 5 2.1 5 4.8"/>',
+  chip:'<rect x="7" y="7" width="10" height="10" rx="2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/>',
+  layers:'<path d="M12 3 3 8l9 5 9-5-9-5z"/><path d="M3 12.5l9 5 9-5"/>',
+  puzzle:'<path d="M9 4h4a1 1 0 0 1 1 1v2h2a2 2 0 1 1 0 4h-2v3h3a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1h-4v-2a2 2 0 1 0-4 0v2H5a1 1 0 0 1-1-1v-4h2a2 2 0 1 0 0-4H4V5a1 1 0 0 1 1-1h4z"/>',
+  shield:'<path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3z"/>',
+  flag:'<path d="M5 21V4M5 4h12l-2.5 3.5L17 11H5"/>',
+  chat:'<path d="M4 5h16v11H9l-5 4V5z"/>',
+  gauge:'<path d="M4.5 16.5a8.5 8.5 0 1 1 15 0"/><path d="M12 13.5l3.6-3.6"/>',
+  zap:'<path d="M13 2 4.5 14H11l-1 8 8.5-12H12l1-8z"/>',
+};
+const rico=(k,cls)=>`<svg class="${cls||'ri'}" viewBox="0 0 24 24" aria-hidden="true">${RICO[k]||RICO.flag}</svg>`;
+function buildProjectSummary(prj){
+  const {pools, sup, fleet, hw}=prj;
+  const info=RESIL[hw.resil]||RESIL.n;
+  const li=(icon,html,cls)=>`<li class="${cls||''}">${rico(icon)}<span>${html}</span></li>`;
+  let h='';
+  h+=`<div class="sum-head">${UC.length} use case${UC.length>1?'s':''} in ${pools.length} pool${pools.length>1?'s':''} on <b>${esc(hw.g.name)}</b> · <b>${fleet.procW} nodes · ${fleet.procG} GPUs · ≈${fmt(fleet.kW)} kW</b> procured (${esc(info.label)})</div>`;
+  h+='<div class="sum-cap">Use cases · demand</div><ul class="sum">';
+  pools.forEach((p,pi)=>p.perUc.forEach(x=>{
+    const f=x.uc.f; const users=Math.max(1,+f.nrmUsers||1);
+    const pct=100*x.s.concurrent/users;
+    const fails=[];
+    if(x.s.sloTtft>0&&!x.d.slo.ttft.pass) fails.push(`TTFT ${fmt(x.d.ttft)} ms > ${fmt(x.s.sloTtft)}`);
+    if(x.s.sloTps>0&&!x.d.slo.tps.pass) fails.push(`speed ${fmt(x.d.tps)} < ${fmt(x.s.sloTps)} tok/s`);
+    if(x.s.sloP95>0&&!x.d.slo.p95.pass) fails.push(`P95 ${fmt(x.d.p95)} s > ${fmt(x.s.sloP95)}`);
+    h+=li('users',`<b>${esc(ucName(x.uc))}</b> · ${fmt(users)} active users → <b>${fmt(x.s.concurrent)} concurrent calls</b> (${pct<1?pct.toFixed(1):fmt(pct)}% in flight${x.uc.concManual?', set manually':''}) · ${esc(x.s.model.name)}${fails.length?` · <span class="bad">${fails.join(' · ')}</span>`:' · <span class="ok">SLOs met</span>'}`);
+  }));
+  h+='</ul><div class="sum-cap">Deployments</div><ul class="sum">';
+  pools.forEach((p,pi)=>{
+    const st=p.state, wPer=st.model.params*st.wq.bytes;
+    const spareG=st.gpus-p.d.replicas*st.tp;
+    h+=li('layers',`<b>${esc(st.model.name)} ${esc(st.wq.name)}</b>: one ${fmt(wPer)} GB copy needs TP${st.tp} (smallest slice that fits it in the memory target); ${p.d.replicas} replica${p.d.replicas>1?'s':''} at batch ${st.batch} admit ${p.d.active} of ${st.concurrent} pooled calls on ${st.workers} node${st.workers>1?'s':''}${spareG>0?`, ${spareG} GPUs spare`:''} · ${(p.d.total/p.d.avail*100).toFixed(0)}% memory used`);
+  });
+  if(sup.items.length)
+    h+=li('puzzle',`<b>Supporting models</b>: ${sup.items.map(it=>`${KIND_LABEL[it.kind]||it.kind} ×${it.instances}`).join(', ')} on ${sup.gpus} shared GPU${sup.gpus>1?'s':''} (${esc(sup.note)})`);
+  h+=li('shield',`<b>Resilience</b>: ${esc(info.long)}${fleet.resilW?` adds ${fleet.resilW} idle node${fleet.resilW>1?'s':''}`:' adds nothing'}${fleet.supNodes?`; ${fleet.supNodes} supporting node${fleet.supNodes>1?'s':''} added`:''}.`);
+  const finds=[];
+  if(!fleet.fits) finds.push(['bad','The project exceeds GPU memory: see Recommendations.']);
+  const failing=pools.flatMap(p=>p.perUc.filter(x=>!x.d.sloAll));
+  if(failing.length) finds.push(['bad',`${failing.length} use case${failing.length>1?'s miss':' misses'} an SLO target (marked above): widen TP for faster first token, raise replicas for speed at batch, or relax the target.`]);
+  pools.forEach(p=>{ if(p.capped) finds.push(['warn',`${esc(p.state.model.name)}: ${p.capped-p.d.replicas} replica${p.capped-p.d.replicas>1?'s':''} beyond demand turned into spare GPUs.`]); });
+  pools.forEach(p=>{ if(p.d.kvTotal>p.d.weightsAll) finds.push(['warn',`${esc(p.state.model.name)}: KV cache outweighs the weights; FP8 KV or shorter context pays off most.`]); });
+  if(finds.length){ h+='</ul><div class="sum-cap">Findings</div><ul class="sum">';
+    finds.forEach(([cls,txt])=>{ h+=li('flag',txt,cls); }); }
+  h+='</ul>';
+  return h;
+}
 const ROLE_LABEL={serve:'serving',support:'supporting',standby:'standby',mirror:'mirror',drs:'DR standby'};
 function buildFleetSites(prj){
   const {pools, sup, hw}=prj;
@@ -1145,16 +1206,12 @@ function renderProject(){
   const {pools, sup, fleet, hw}=prj;
   const PC=pools.map(p=>p.members[0]%6);
   panel.style.display='';
-  if(cap){ cap.style.display='';
-    const ap=pools.find(p2=>p2.members.includes(activeUc));
-    cap.textContent = UC.length>1 && ap
-      ? 'Pool detail · '+ap.state.model.name+' '+ap.state.wq.name+' · serving '+ap.members.map(mi=>ucName(UC[mi])).join(' + ')
-      : 'Detail · '+ucName(UC[activeUc]); }
+  if(cap) cap.style.display='none';
   $('projNote').textContent = pools.length+' pool'+(pools.length>1?'s':'')+' · '+UC.length+' use case'+(UC.length>1?'s':'')+(sup.items.length? ' · '+sup.items.length+' supporting model'+(sup.items.length>1?'s':''):'');
   const short=n=>n.length>26? n.slice(0,24)+'…':n;
   // strip: one chip per pool + supports + procurement
   $('projStrip').innerHTML =
-    pools.map((p,pi)=>`<span class="ps-chip"><span class="dot" style="background:var(--pool${PC[pi]})"></span><b>${esc(short(p.state.model.name))}</b><span class="mono">${esc(p.state.wq.name)} · TP${p.state.tp} · ${p.state.workers}×${p.state.perW} GPU · ${p.d.replicas} repl · ${p.state.concurrent} calls${p.capped?' · '+(p.capped-p.d.replicas)+' idle repl → spare':''}</span><span class="dot" style="background:${p.d.fits&&p.perUc.every(x=>x.d.sloAll)?'var(--teal-strong)':'var(--red)'};border-radius:50%"></span></span>`).join('')+
+    pools.map((p,pi)=>`<span class="ps-chip">${rico('layers','ri')}<span class="dot" style="background:var(--pool${PC[pi]})"></span><b>${esc(short(p.state.model.name))}</b><span class="mono">${esc(p.state.wq.name)} · TP${p.state.tp} · ${p.state.workers}×${p.state.perW} GPU · ${p.d.replicas} repl · ${p.state.concurrent} calls${p.capped?' · '+(p.capped-p.d.replicas)+' idle repl → spare':''}</span><span class="dot" style="background:${p.d.fits&&p.perUc.every(x=>x.d.sloAll)?'var(--teal-strong)':'var(--red)'};border-radius:50%"></span></span>`).join('')+
     (sup.gpus? `<span class="ps-chip"><span class="dot" style="background:var(--amber-border)"></span><b>Supporting</b><span class="mono">${sup.items.reduce((t,i2)=>t+i2.instances,0)} instances · ${sup.gpus} shared GPU${sup.gpus>1?'s':''}</span></span>`:'')+
     `<span class="ps-chip"><b>Procured</b><span class="mono">${fleet.procW} nodes · ${fleet.procG} GPUs · ≈${fmt(fleet.kW)} kW</span></span>`;
   // per-usecase result cards
@@ -1163,7 +1220,7 @@ function renderProject(){
     const f=x.uc.f;
     const slo=(on,pass,val,tgt)=>on? `<span class="${pass?'ok':'miss'}">${val}</span> <span>· ${tgt}</span>` : `<span>${val}</span>`;
     cards+=`<div class="ucr" data-ucr="${x.i}" style="border-left-color:${UCCOL(x.i)}">
-      <div class="u-name">${esc(ucName(x.uc))}${x.uc.isolate?' <span class="mono" style="font-size:9px">isolated</span>':''}</div>
+      <div class="u-name">${rico('users','ri')}${esc(ucName(x.uc))}${x.uc.isolate?' <span class="mono" style="font-size:9px">isolated</span>':''}</div>
       <div class="u-sub">${esc(short(x.s.model.name))} · ${esc(x.s.wq.name)} · pool batch ${p.state.batch}</div>
       <div class="u-row"><span>Admitted at peak</span><span class="v">${x.share} of ${x.s.concurrent}</span></div>
       <div class="u-row"><span>First token</span><span class="v">${slo(x.s.sloTtft>0, x.d.slo.ttft.pass, fmt(x.d.ttft)+' ms', '≤ '+fmt(x.s.sloTtft)+' ms')}</span></div>
@@ -1221,8 +1278,9 @@ function renderFleet(prj){
       const room=Math.max(1, MAXN-1-idlers.length);
       moreN=servers.length-room;
       list=[...servers.slice(0,room), ...idlers]; }
+    const sico=s2.icon==='globe'?'<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9s1.3-6.3 3.8-9z"/>':s2.icon==='shield'?RICO.shield:'<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 7h2M13 7h2M9 11h2M13 11h2M9 15h2M13 15h2"/>';
     return `<div class="fm-site">
-      <div class="fm-site-head"><span class="t">${esc(s2.title)}</span><span class="schip">${s2.workers} node${s2.workers>1?'s':''} · ${s2.gpus} GPU · ≈${fmt(s2.kW)} kW</span></div>
+      <div class="fm-site-head"><span class="t"><svg class="ri" viewBox="0 0 24 24" aria-hidden="true">${sico}</svg>${esc(s2.title)}</span><span class="schip">${s2.workers} node${s2.workers>1?'s':''} · ${s2.gpus} GPU · ≈${fmt(s2.kW)} kW</span></div>
       <div class="fm-nodes">${list.map(nodeHtml).join('')}${moreN>0?`<div class="fm-node fm-more">+${moreN} more ${esc(short(pools.length===1?pools[0].state.model.name:'serving'))} node${moreN>1?'s':''}</div>`:''}</div>
     </div>`+(s2.link?`<div class="fm-link" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 4v16M7 20l-3-3.5M7 20l3-3.5M17 20V4M17 4l-3 3.5M17 4l3 3.5"/></svg>${esc(s2.link)}</div>`:'');
   }).join('');
@@ -1234,7 +1292,9 @@ function renderFleet(prj){
     (sites.some(s2=>s2.nodes.some(n2=>n2.cls==='mirror'))?`<span class="lg-li"><span class="sw dashed"></span>mirror · idle copy</span>`:'')+
     (sites.some(s2=>s2.nodes.some(n2=>n2.cls==='drs'))?`<span class="lg-li"><span class="sw dashed" style="border-color:var(--violet)"></span>DR standby</span>`:'')+
     `<span class="lg-li"><span class="sw dashed"></span>unassigned headroom</span>`+
-    `<span class="lg-li">fill height = share of GPU memory used · alternating shade = replica boundary</span>`;
+    (UC.length>1?`<span class="lg-li no-print"><span class="sw" style="background:transparent;border:2px solid var(--text)"></span>outlined nodes = pool of the selected use case (screen only)</span>`:'')+
+    `<span class="lg-li"><span class="sw duo"></span>same pool, adjacent replicas alternate shade</span>`+
+    `<span class="lg-li">fill height = share of GPU memory used</span>`;
   $('fmTotals').textContent=`${fleet.procW} nodes · ${fleet.procG} GPUs · ≈${fmt(fleet.kW)} kW TDP`;
   // semantic text form
   $('fleetList').innerHTML='<h3>Deployment, text form</h3>'+sites.map(s2=>`<h4>${esc(s2.title)}</h4><ul>`+s2.nodes.map(n2=>{
@@ -1282,6 +1342,140 @@ function renderFleet(prj){
   return {procW};
 }
 
+/* ================= PROJECT REPORT (selection-independent) ================= */
+/* In a multi-use-case project every results panel describes the WHOLE project:
+   averages plus per-item breakdown, never the selected card alone, so the
+   exported report reads the same no matter which card was being edited. */
+const POOL_HEX=['#2563EB','#7C3AED','#DB2777','#4D7C0F','#EA580C','#64748B'];
+const POOL_HEX_D=['#82AAFF','#C4A5FF','#FF8FC1','#B5D96B','#FF9E66','#94A3B8'];
+function poolHex(i){ return (document.documentElement.dataset.theme==='dark'? POOL_HEX_D:POOL_HEX)[i%6]; }
+function shortPoolTag(pools, pi){
+  const words=pools.map(p=>p.state.model.name.split(/\s+/));
+  const w=words[pi]; let s=0;
+  while(s<w.length-1 && words.some((o,oi)=>oi!==pi && o[s]===w[s])) s++;
+  return w[s]||w[0];
+}
+function renderProjectReport(prj){
+  const {pools, sup, fleet, hw}=prj;
+  const PC=pools.map(p=>p.members[0]%6);
+  const tag=pi=>shortPoolTag(pools, pi)+' '+pools[pi].state.wq.name;
+  const wsum=pools.reduce((x,p)=>x+p.state.concurrent,0)||1;
+  // --- memory ledger: one bar per pool ---
+  const panel=$('lgScale').parentElement;
+  let box=$('projLedger');
+  if(!box){ box=document.createElement('div'); box.id='projLedger'; $('lgLegend').before(box); }
+  ['lgScale'].forEach(id=>$(id).style.display='none');
+  panel.querySelector('.lg-wrap').style.display='none';
+  $('lgLegend').style.display='none';
+  $('ledgerNote').textContent=`${fmt(fleet.vramNeed)} of ${fmt(fleet.vramAvail)} GB across ${pools.length} pools + supports`;
+  box.innerHTML=pools.map((p,pi)=>{
+    const d=p.d, cap=d.avail;
+    const seg=(v,cls)=>`<div class="seg ${cls}" style="width:${Math.min(100,v/cap*100)}%"></div>`;
+    return `<div class="pl-row">
+      <div class="pl-lab"><span class="dot" style="background:var(--pool${PC[pi]})"></span>${esc(tag(pi))}<span class="pl-note">${p.d.replicas}×TP${p.state.tp}</span></div>
+      <div class="pl-bar">${seg(d.weightsAll,'weights')}${seg(d.kvTotal,'kv')}${seg(d.act*d.replicas,'act')}${seg(d.fixed+d.multi,'ovh')}</div>
+      <div class="pl-val mono">${fmt(d.total)} / ${fmt(cap)} GB · ${(d.total/cap*100).toFixed(0)}%</div></div>`;
+  }).join('')+`<div class="pl-key"><span class="lg-li"><span class="sw seg weights"></span>weights</span><span class="lg-li"><span class="sw seg kv"></span>KV cache</span><span class="lg-li"><span class="sw seg act"></span>activations</span><span class="lg-li"><span class="sw seg ovh"></span>overhead</span></div>`;
+  box.style.display='';
+  // --- KPI tiles: project totals + demand-weighted averages ---
+  const wavg=get=>pools.reduce((x,p)=>x+get(p)*p.state.concurrent,0)/wsum;
+  const agg=pools.reduce((x,p)=>x+p.d.agg,0);
+  const admitted=pools.reduce((x,p)=>x+p.d.active,0), queued=pools.reduce((x,p)=>x+p.d.queued,0);
+  const setTile=(id,lab,val,unit,sub)=>{ const el=$(id); if(!el) return;
+    el.querySelector('.k-lab').lastChild.textContent=lab;
+    el.querySelector('[data-v]').textContent=val;
+    el.querySelector('.unit').textContent=unit;
+    el.querySelector('.k-sub').textContent=sub; };
+  setTile('kpiTtft','Avg first token', fmt(wavg(p=>p.d.ttft)),'ms','demand-weighted · per pool in Summary');
+  setTile('kpiTps','Avg per-user speed', fmt(wavg(p=>p.d.tps)),'tok/s','demand-weighted across pools');
+  setTile('kpiAgg','Aggregate throughput', fmt(agg),'tok/s',`${admitted} admitted · ${queued} queued`);
+  setTile('kpiLat','Avg user latency', fmt(wavg(p=>p.d.latency)),'s',`P95 up to ${fmt(Math.max.apply(null,pools.map(p=>p.d.p95)))} s`);
+  // --- SLO roll-up: one chip per use case ---
+  let chips='';
+  pools.forEach((p,pi)=>p.perUc.forEach(x=>{
+    const on=x.s.sloTtft>0||x.s.sloTps>0||x.s.sloP95>0;
+    chips+=`<div class="slo ${on?(x.d.sloAll?'pass':'fail'):'off'}"><span class="dot"></span><span class="s-name">${esc(ucName(x.uc))}</span><span class="s-val">${on?(x.d.sloAll?'all targets met':'target missed'):'no targets'}</span></div>`; }));
+  $('sloRow').innerHTML=chips;
+  $('sloNote').textContent='per use case; details in the cards above';
+  // --- charts: one line per pool ---
+  const P=pal();
+  const Smax=Math.max.apply(null, pools.map(p=>Math.max(Math.ceil(p.state.concurrent*1.4), p.state.batch*p.d.replicas*1.3, 16)));
+  let maxL=0;
+  const series=pools.map((p,pi)=>{ const pts=[];
+    for(let i2=0;i2<=56;i2++){ const S=Math.max(1,Math.round(1+(Smax-1)*i2/56));
+      const bpr=Math.max(1,S/p.d.replicas);
+      const v=p.d.bwEff/(p.state.active*p.state.bytesW+bpr*p.d.effSeq*p.d.kvTok);
+      pts.push([S,v]); maxL=Math.max(maxL,v); }
+    return {pts, color:poolHex(PC[pi]), axis:'L'}; });
+  const m0=pools[0];
+  $('chartBatch').innerHTML=chartSVG({
+    aria:'Per-user throughput versus admitted sequences, one line per pool',
+    xScale:v=>(v-1)/(Smax-1||1), xMax:Smax, maxL, maxR:0, rightAxis:false,
+    xTicks:[1,Math.round(Smax/4),Math.round(Smax/2),Math.round(3*Smax/4),Smax].map(v=>[v,fmt(v)]),
+    xLabel:'admitted sequences', yLabelL:'tok/s per user',
+    series, marker:{x:Math.min(m0.d.active,Smax), y:m0.d.tps, label:esc(shortPoolTag(pools,0))+' '+fmt(m0.d.tps), series:0}});
+  const ctxMax=Math.max.apply(null, pools.map(p=>p.state.ctx));
+  let maxC=0;
+  const cser=pools.map((p,pi)=>{ const pts=[];
+    for(let i2=0;i2<=56;i2++){ const c=Math.round(1024*Math.pow(ctxMax/1024, i2/56));
+      const v=p.d.bwEff/(p.state.active*p.state.bytesW+p.d.batchPerRep*Math.min(c,p.state.ctx)*p.d.kvTok);
+      pts.push([c,v]); maxC=Math.max(maxC,v); }
+    return {pts, color:poolHex(PC[pi]), axis:'L'}; });
+  $('chartCtx').innerHTML=chartSVG({
+    aria:'Per-user speed versus context length, one line per pool',
+    xScale:v=>Math.log(v/1024)/Math.log(ctxMax/1024||2), xMax:ctxMax, maxL:maxC, maxR:0, rightAxis:false,
+    xTicks:[1024,4096,16384,65536,ctxMax].filter((v,ix,arr)=>arr.indexOf(v)===ix&&v<=ctxMax).map(v=>[v,fmtTok(v)]),
+    xLabel:'resident context (tokens, log scale)', yLabelL:'tok/s per user', series:cser});
+  const clg=id=>{ const el=$(id); if(el){ el.style.display='flex'; el.innerHTML=pools.map((p,pi)=>`<span class="lg-li"><span class="sw" style="background:${poolHex(PC[pi])}"></span>${esc(tag(pi))}</span>`).join(''); } };
+  clg('chartBatchLgd'); clg('chartCtxLgd');
+  document.querySelectorAll('.chart-legend').forEach(el=>el.style.display='none');
+  // --- latency anatomy: one row per use case ---
+  const rows=[];
+  pools.forEach(p=>p.perUc.forEach(x=>{
+    const segs=[['ttft',x.d.ttft],['ovh',x.s.ovh],['reason',x.s.reasonTok? x.s.reasonTok/x.d.tps*1000:0],['out',x.s.visibleOut/x.d.tps*1000]].filter(sg=>sg[1]>0.01);
+    const tot=segs.reduce((a2,sg)=>a2+sg[1],0);
+    rows.push(`<div class="wfp"><span class="n">${esc(ucName(x.uc))}</span><div class="bar">${segs.map(sg=>`<div class="wf-seg ${sg[0]}" style="width:${(sg[1]/tot*100)}%" title="${sg[0]}: ${fmt(sg[1])} ms"></div>`).join('')}</div><span class="t mono">${tot>=1000? fmt(tot/1000)+' s' : fmt(tot)+' ms'}</span></div>`); }));
+  $('wfBar').innerHTML=`<div class="wfp-list">${rows.join('')}</div>`;
+  $('wfLegend').innerHTML=[['TTFT','ttft'],['Overhead','ovh'],['Reasoning','reason'],['Visible output','out']].map(([n2,c2])=>`<span class="lg-li"><span class="lg-sw wf-seg ${c2}" style="width:10px;height:10px"></span><span class="k">${n2}</span></span>`).join('');
+  $('wfTotal').textContent=`mean ${fmt(wavg(p=>p.d.latency))} s (demand-weighted)`;
+  // --- insights hidden (Summary carries findings); recommendations per pool ---
+  const insPanel=$('insights').closest('section'); if(insPanel) insPanel.style.display='none';
+  let recs=[], bns=[];
+  pools.forEach((p,pi)=>{
+    const g2=hw.g, pre=/2026/.test(g2.cls);
+    const rb=buildRecs(p.state, p.d, p.state.model, g2, pre);
+    if(rb.bottleneck!=='none') bns.push(shortPoolTag(pools,pi)+': '+rb.bottleneck);
+    rb.recs.forEach(r=>recs.push(`<div class="rec ${r.lv}"><div class="r-t">${esc(shortPoolTag(pools,pi))} · ${r.t}</div><div class="r-b">${r.b}</div></div>`)); });
+  $('recBottleneck').textContent=bns.length? bns.join(' · ') : 'no active bottleneck';
+  $('recs').innerHTML=recs.join('');
+  // --- print inputs: every use case, side by side ---
+  const cols=[];
+  pools.forEach(p=>p.perUc.forEach(x=>cols.push(x)));
+  const row=(label,get)=>`<tr><td>${label}</td>${cols.map(get).map(v=>`<td>${v}</td>`).join('')}</tr>`;
+  $('printInputs').innerHTML=`<div class="pi-title">Inputs · all use cases · ${esc(hw.g.name)} · ${hw.perW} GPU/node · ${esc((RESIL[hw.resil]||RESIL.n).long)}</div>
+  <table class="pi-table"><tr><td></td>${cols.map(x=>`<td><b>${esc(ucName(x.uc))}</b></td>`).join('')}</tr>
+  ${row('Model', x=>esc(x.s.model.name))}
+  ${row('Weights / KV', x=>esc(x.s.wq.name+' / '+x.s.kq.name))}
+  ${row('Active users', x=>fmt(+x.uc.f.nrmUsers||0))}
+  ${row('Concurrent calls', x=>x.s.concurrent)}
+  ${row('Resident seq', x=>fmtTok(x.s.resident))}
+  ${row('Visible out', x=>fmtTok(x.s.visibleOut))}
+  ${row('SLO ttft/tps/p95', x=>(x.s.sloTtft||'—')+' / '+(x.s.sloTps||'—')+' / '+(x.s.sloP95||'—'))}
+  ${row('Pool topology', x=>'TP'+x.s.tp+' · '+x.s.workers+' node · batch '+x.s.batch)}
+  </table>`;
+}
+function restoreSingleReport(){
+  const box=$('projLedger'); if(box) box.style.display='none';
+  document.querySelectorAll('.chart-legend').forEach(el=>el.style.display='');
+  ['chartBatchLgd','chartCtxLgd'].forEach(id=>{ const el=$(id); if(el) el.style.display='none'; });
+  const panel=$('lgScale').parentElement;
+  $('lgScale').style.display=''; panel.querySelector('.lg-wrap').style.display='';
+  $('lgLegend').style.display='';
+  const insPanel=$('insights').closest('section'); if(insPanel) insPanel.style.display='';
+  const labs={kpiTtft:'Time to first token', kpiTps:'Per-user speed', kpiAgg:'Aggregate throughput', kpiLat:'Mean user latency'};
+  Object.keys(labs).forEach(id=>{ const el=$(id); if(el) el.querySelector('.k-lab').lastChild.textContent=labs[id]; });
+}
+
 /* ================= SERIALIZE / APPLY ================= */
 function serialize(){
   captureUc();
@@ -1321,7 +1515,8 @@ function serialize(){
     // v5: the full use-case list. config/snapshot above stay v4-shaped (the active
     // card) so older importers still read this file as a single-scenario config.
     project:{active:activeUc, usecases:UC.map(u=>({id:u.id, name:u.name||null,
-      isolate:!!u.isolate, supports:u.supports||[],
+      isolate:!!u.isolate, supports:u.supports||[], concManual:!!u.concManual,
+      activeUsers:+u.f.nrmUsers||null,
       config:ucToConfig(u), snapshot:ucSnapshot(u)})),
       results:(()=>{ const prj=computeProject(); const F=prj.fleet;
         return {fits:F.fits, sloMet:F.sloAll,
@@ -1422,12 +1617,23 @@ function applyConfig(raw){
   if(proj && Array.isArray(proj.usecases) && proj.usecases.length){
     UC.length=0;
     proj.usecases.forEach(pu=>UC.push({id:'uc'+(++ucSeq), name:pu.name||'',
-      supports:Array.isArray(pu.supports)?pu.supports:[], isolate:!!pu.isolate, f:{}}));
+      supports:Array.isArray(pu.supports)?pu.supports:[], isolate:!!pu.isolate, concManual:!!pu.concManual, f:{}}));
     UC.forEach((u,idx)=>{ activeUc=idx; const pu=proj.usecases[idx];
-      applyUcDom(pu.config||{}, pu.snapshot||{}, notes); captureUc(); });
+      applyUcDom(pu.config||{}, pu.snapshot||{}, notes); captureUc();
+      UC[idx].f.nrmUsers = pu.activeUsers || +((pu.config||{}).estimator||{}).sessions || UC[idx].f.nrmUsers;
+      const est=(pu.config||{}).estimator||{};
+      const untouched = (+est.turnsPerHour===8||est.turnsPerHour==null) && (+est.callsPerTurn===1.5||est.callsPerTurn==null)
+        && (+est.burst===1.5||est.burst==null) && (!est.callDurS);
+      const cs=CASES[+UC[idx].f.selCase];
+      if(untouched && cs && cs.traffic && !cs.traffic.direct){
+        UC[idx].f.ccTurns=cs.traffic.turns; UC[idx].f.ccCalls=cs.traffic.calls;
+        UC[idx].f.ccBurst=cs.traffic.burst; UC[idx].f.ccDur=cs.traffic.durS||0; } });
     activeUc=Math.max(0,Math.min(+proj.active||0, UC.length-1));
-    applyGlobalDom(raw.config||{}, raw, notes);
+    // sync the editor to the active card BEFORE global settings: applying the
+    // file's theme re-renders, and render() captures the editor DOM into the
+    // active card, which would otherwise clobber it with the last card's values
     loadUc(activeUc);
+    applyGlobalDom(raw.config||{}, raw, notes);
   } else {
     // v3/v4 single-scenario file: the saved config is the whole project (one card)
     UC.length=0; UC.push({id:'uc'+(++ucSeq), name:'', f:{}, supports:[], isolate:false});
@@ -1635,7 +1841,7 @@ function ledgerPngBytes(s,d){
 
 async function buildXlsxBytes(){
   const prj=computeProject();
-  const actPool=prj.pools.find(p=>p.members.includes(activeUc))||prj.pools[0];
+  const actPool=prj.pools[0];
   const multi=UC.length>1;
   const s=multi? actPool.state : readState(), d=multi? actPool.d : compute(s);
   const enc=new TextEncoder();
@@ -1753,7 +1959,7 @@ async function buildXlsxBytes(){
       return `GPU${k+1}: spare`; });
     pr(n2.label, s2.title+' · '+(ROLE_LABEL[n2.cls]||n2.cls), parts.join(' · ')); }));
 
-  const inpRows=[[`<c r="A1" s="5" t="inlineStr"><is><t>${xEsc('GPUscale.net sizing workbook · '+name+(multi? ' · pool: '+s.model.name+' '+s.wq.name:'')+' · Studio '+STUDIO_VERSION+' · engine v'+ENGINE_VERSION)}</t></is></c>`],
+  const inpRows=[[`<c r="A1" s="5" t="inlineStr"><is><t>${xEsc('GPUscale.net sizing workbook · '+name+(multi? ' · pool 1 of '+prj.pools.length+': '+s.model.name+' '+s.wq.name:'')+' · Studio '+STUDIO_VERSION+' · engine v'+ENGINE_VERSION)}</t></is></c>`],
     ['<c r="A2" s="1" t="inlineStr"><is><t>Parameter</t></is></c>','<c r="B2" s="1" t="inlineStr"><is><t>Value (edit me)</t></is></c>','<c r="C2" s="1" t="inlineStr"><is><t>Notes</t></is></c>']];
   INP.forEach((r,i)=>{
     const ri=i+3;
@@ -1834,14 +2040,24 @@ async function buildXlsxBytes(){
 }
 
 /* ================= WIRING ================= */
-function applyNrmUsers(){
-  const users=Math.max(1,+$('nrmUsers').value||1);
-  $('ccSessions').value=users;
-  const turns=+$('ccTurns').value||8, share=(+$('ccShare').value||100)/100;
-  const calls=+$('ccCalls').value||1.5, burst=+$('ccBurst').value||1.5;
-  const dur=+$('ccDur').value>0? +$('ccDur').value : Math.min(120, Math.max(5, window.__lastLat||20));
+function deriveConcFor(u){
+  const f=u.f;
+  const users=Math.max(1,+f.nrmUsers||1);
+  const cs=CASES[+f.selCase];
+  if(cs&&cs.traffic&&cs.traffic.direct){ f.ccSessions=users; f.inConc=users; u.concManual=false; return users; }
+  const turns=+f.ccTurns||8, share=(+f.ccShare||100)/100;
+  const calls=+f.ccCalls||1.5, burst=+f.ccBurst||1.5;
+  const dur=+f.ccDur>0? +f.ccDur : Math.min(120, Math.max(5, window.__lastLat||20));
   const conc=Math.max(1, Math.ceil(users*turns*share*calls*dur/3600*burst));
-  $('inConc').value=conc; refreshCtl('inConc');
+  f.ccSessions=users; f.inConc=conc;
+  u.concManual=false;
+  return conc;
+}
+function applyNrmUsers(){
+  captureUc();
+  const u=UC[activeUc]; if(!u) return 1;
+  const conc=deriveConcFor(u);
+  $('ccSessions').value=u.f.nrmUsers; $('inConc').value=conc; refreshCtl('inConc');
   return conc;
 }
 document.querySelectorAll('input,select').forEach(el=>{
@@ -1850,6 +2066,7 @@ document.querySelectorAll('input,select').forEach(el=>{
     if(el.id==='selReason') syncReason();
     if(el.id==='chkCustom'){ $('customBox').style.display=el.checked?'block':'none'; $('selModel').disabled=el.checked; }
     if(el.id==='nrmUsers'||el.id==='ccTurns'||el.id==='ccShare'||el.id==='ccCalls'||el.id==='ccBurst'||el.id==='ccDur') applyNrmUsers();
+    if((el.id==='inConc'||el.id==='inConc_r')&&UC[activeUc]) UC[activeUc].concManual=true;
     if(el.id==='selResilSimple') $('selResil').value=el.value;
     if(el.id==='selResil'){ const v=el.value, sim=$('selResilSimple');
       if(sim) sim.value = v==='n'? 'n' : (v==='n1'||v==='n2')? 'n1' : 'dr'; }
@@ -1930,6 +2147,8 @@ function autoSizeProject(quiet){
 }
 function autoSize(quiet){
   captureUc();
+  UC.forEach(u=>{ if(!u.concManual) deriveConcFor(u); });
+  loadUc(activeUc);
   if(UC.length>1) return autoSizeProject(quiet);
   const s=readState();
   const r=solvePool(s);
@@ -2017,7 +2236,8 @@ $('fileImport').addEventListener('change',e=>{
   const f=e.target.files[0]; if(!f) return;
   const r=new FileReader();
   r.onload=()=>{ try{ const notes=applyConfig(JSON.parse(r.result))||[];
-      toast(notes.length? 'Imported with notes: '+notes.join(' · ') : 'Configuration imported', notes.length>0); }
+      autoSize(true);
+      toast(notes.length? 'Imported and auto-sized, with notes: '+notes.join(' · ') : 'Imported and auto-sized for the file\u2019s demand', notes.length>0); }
     catch(err){ toast('Import failed: not a valid configuration file', true); } };
   r.onerror=()=>toast('Could not read the file', true);
   r.readAsText(f);
