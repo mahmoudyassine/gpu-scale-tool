@@ -94,8 +94,29 @@ header.top{display:flex;align-items:center;justify-content:space-between;gap:16p
 .mode-seg{display:inline-flex;background:var(--panel);border:1px solid var(--line);border-radius:9px;box-shadow:var(--shadow);overflow:hidden}
 .mode-seg button{font-family:var(--body);font-size:12px;font-weight:500;color:var(--muted);background:transparent;border:none;padding:8px 12px;cursor:pointer}
 .mode-seg button[aria-pressed="true"]{background:var(--teal-strong);color:#fff;font-weight:600}
+html[data-theme="dark"] .mode-seg button[aria-pressed="true"]{color:#0C1322}
 .mode-seg button:focus-visible{outline:2px solid var(--teal);outline-offset:-2px}
 html[data-ux-mode="normal"] .adv{display:none !important}
+
+/* ============ USE-CASE CARDS ============ */
+.st-spacer{flex:1}
+.st-title{display:flex;align-items:center;gap:7px}
+.st-ctx{font-family:var(--mono);font-size:10px;font-weight:500;color:var(--teal-strong);background:var(--teal-soft);border-radius:6px;padding:2.5px 7px;max-width:46%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.uc-add{font-family:var(--body);font-size:11.5px;font-weight:600;color:var(--teal-strong);background:var(--teal-soft);border:1px solid transparent;border-radius:7px;padding:4px 9px;cursor:pointer;transition:border-color .15s}
+.uc-add:hover{border-color:var(--teal)}
+.uc-add:focus-visible{outline:2px solid var(--teal);outline-offset:1px}
+.uc-card{border:1px solid var(--line);border-radius:9px;padding:9px 11px;margin-bottom:8px;cursor:pointer;background:var(--panel-2);transition:border-color .15s,background .15s;position:relative}
+.uc-card:last-child{margin-bottom:0}
+.uc-card:hover{border-color:var(--teal)}
+.uc-card:focus-visible{outline:2px solid var(--teal);outline-offset:1px}
+.uc-card.active{border-color:var(--teal-strong);background:var(--teal-soft)}
+.uc-card.active::before{content:"editing";position:absolute;top:-7px;right:8px;font-family:var(--mono);font-size:8.5px;font-weight:600;letter-spacing:.05em;color:#fff;background:var(--teal-strong);border-radius:5px;padding:1.5px 6px}
+html[data-theme="dark"] .uc-card.active::before{color:#0C1322}
+.uc-line{display:flex;align-items:center;gap:8px}
+.uc-name{font-family:var(--disp);font-size:12.5px;font-weight:600;color:var(--text);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.uc-x{width:20px;height:20px;border-radius:6px;border:1px solid transparent;background:transparent;color:var(--faint);font-size:13px;line-height:1;cursor:pointer;flex:none;display:inline-flex;align-items:center;justify-content:center}
+.uc-x:hover{color:var(--red);border-color:var(--red)}
+.uc-meta{font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 /* ============ LAYOUT ============ */
 .console{display:grid;grid-template-columns:368px minmax(0,1fr);gap:20px;align-items:start}
@@ -433,8 +454,14 @@ footer.foot .mono{font-family:var(--mono);color:var(--text)}
 <aside class="rail">
   <div class="col-cap">Inputs · work top to bottom, results update live</div>
 
+  <section class="station" id="ucStation">
+    <div class="st-title"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="6" rx="2"/><rect x="3" y="14" width="18" height="6" rx="2"/><path d="M7 7h.01M7 17h.01"/></svg>Use cases<button class="info" data-help="hUc" aria-expanded="false" type="button">i</button><span class="st-spacer"></span><button class="uc-add" id="btnAddUc" type="button" title="Add a use case">+ Add</button></div>
+    <div class="f-help" id="hUc">Each card is one workload this project serves, with its own model, shape and concurrency. The stations below edit the selected card. Use cases that pick the same model and precision are served by one shared pooled deployment.<span class="typ">project structure</span></div>
+    <div id="ucCards" role="list"></div>
+  </section>
+
   <section class="station">
-    <div class="st-title"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 3 8l9 5 9-5-9-5z"/><path d="M3 12.5l9 5 9-5"/><path d="M3 17l9 5 9-5"/></svg>Model</div>
+    <div class="st-title"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 3 8l9 5 9-5-9-5z"/><path d="M3 12.5l9 5 9-5"/><path d="M3 17l9 5 9-5"/></svg>Model<span class="st-ctx" id="ctxModel"></span></div>
     <div class="field">
       <div class="f-head"><label for="selModel">Model</label><button class="info" data-help="hModel" aria-expanded="false" type="button">i</button><span class="spacer"></span><span class="unit" id="modelCount"></span></div>
       <select id="selModel"></select>
@@ -456,7 +483,7 @@ footer.foot .mono{font-family:var(--mono);color:var(--text)}
   </section>
 
   <section class="station">
-    <div class="st-title"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><rect x="8.5" y="8.5" width="7" height="7" rx="1.5" fill="currentColor" stroke="none"/></svg>Precision</div>
+    <div class="st-title"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><rect x="8.5" y="8.5" width="7" height="7" rx="1.5" fill="currentColor" stroke="none"/></svg>Precision<span class="st-ctx" id="ctxPrec"></span></div>
     <div class="grid2">
       <div class="field">
         <div class="f-head"><label for="selWQuant">Weights</label><button class="info" data-help="hWq" aria-expanded="false" type="button">i</button></div>
@@ -473,7 +500,7 @@ footer.foot .mono{font-family:var(--mono);color:var(--text)}
   </section>
 
   <section class="station">
-    <div class="st-title"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg>Workload</div>
+    <div class="st-title"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg>Workload<span class="st-ctx" id="ctxWork"></span></div>
     <div class="field">
       <div class="f-head"><label for="selCase">Use-case preset</label><button class="info" data-help="hCase" aria-expanded="false" type="button">i</button></div>
       <select id="selCase"></select>
@@ -1555,6 +1582,7 @@ function buildRecs(s,d,m,g,prelaunch){
 
 /* ================= RENDER ================= */
 function render(){
+  captureUc();
   const s = readState(), d = compute(s);
   const m=s.model, g=s.gpu;
   const prelaunch=/2026/.test(g.cls);
@@ -1684,6 +1712,7 @@ function render(){
   $('ccDerived').textContent=`→ ${cc} concurrent calls (call ≈ ${fmt(dur)} s${+$('ccDur').value>0?'':' · model-derived'})`;
   $('ccDerived').dataset.cc=cc;
 
+  renderUcCards();
   $('story').innerHTML = buildStory(s,d,m,g);
   $('printInputs').innerHTML = '<div class="pi-title">Inputs · complete configuration</div><div class="pi-grid">'+[
     ['Model', m.name],['Total params', fmt(s.params)+' B'],['Active params', fmt(s.active)+' B'],
@@ -1722,11 +1751,84 @@ function syncReason(){
   refreshCtl('inReasonTok');
 }
 
+/* ================= PROJECT USE-CASE STATE ================= */
+/* The Model/Precision/Workload stations are one editor bound to the active card.
+   captureUc pulls the editor DOM into the active use case; loadUc pushes a card
+   back into the editor. Hardware, resilience and tuning stay project-global. */
+const UC_KEYS=['chkCustom','selModel','cusParams','cusActive','cusHidden','cusLayers','cusKvh','cusHdim','cusCtx',
+  'selWQuant','selKQuant','selCase','inSeq','inOut','selReason','inReasonTok','chkExtend',
+  'inConc','inBatch','selPolicy','sloTtft','sloTps','sloP95',
+  'ccSessions','ccTurns','ccShare','ccCalls','ccBurst','ccDur','inWorkers','inTp'];
+const UC_CHECKS={chkCustom:1,chkExtend:1};
+let UC=[], activeUc=0, ucSeq=0;
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function captureUc(){ const u=UC[activeUc]; if(!u) return;
+  UC_KEYS.forEach(id=>{ const el=$(id); if(el) u.f[id]=UC_CHECKS[id]? el.checked : el.value; }); }
+function loadUc(i){ activeUc=Math.max(0,Math.min(UC.length-1,i)); const u=UC[activeUc]; if(!u) return;
+  UC_KEYS.forEach(id=>{ const el=$(id); if(el&&u.f[id]!==undefined){ if(UC_CHECKS[id]) el.checked=!!u.f[id]; else el.value=u.f[id]; } });
+  $('customBox').style.display=$('chkCustom').checked?'block':'none';
+  $('selModel').disabled=$('chkCustom').checked;
+  syncReason(); Object.keys(FIELDS).forEach(refreshCtl); }
+function ucName(u){ if(u.name) return u.name;
+  const ci=+u.f.selCase; if(ci>=0&&CASES[ci]) return CASES[ci].name;
+  return ucModelName(u); }
+function ucModelName(u){ return u.f.chkCustom? 'Custom model' : ((MODELS[+u.f.selModel||0]||{}).name||'?'); }
+function renderUcCards(){ const box=$('ucCards'); if(!box||!UC.length) return; captureUc();
+  box.innerHTML=UC.map((u,i)=>{ const f=u.f, wq=QUANTS[+f.selWQuant||0]||{};
+    return `<div class="uc-card${i===activeUc?' active':''}" data-i="${i}" role="listitem" tabindex="0" aria-label="Use case ${esc(ucName(u))}${i===activeUc?', being edited':''}">
+      <div class="uc-line"><span class="uc-name">${esc(ucName(u))}</span>${UC.length>1?`<button class="uc-x" data-x="${i}" type="button" title="Remove this use case" aria-label="Remove ${esc(ucName(u))}">×</button>`:''}</div>
+      <div class="uc-meta">${esc(ucModelName(u))} · ${esc(wq.name||'')} · ${f.inConc||0} concurrent</div></div>`; }).join('');
+  const tag=ucName(UC[activeUc]);
+  ['ctxModel','ctxPrec','ctxWork'].forEach(id=>{ const el=$(id); if(el) el.textContent = UC.length>1? tag : ''; }); }
+function selectUc(i){ if(i===activeUc){ return; } captureUc(); loadUc(i); renderUcCards(); render(); }
+function addUc(){ captureUc(); const base=UC[activeUc];
+  const u={id:'uc'+(++ucSeq), name:'', f:Object.assign({},base?base.f:{}), supports:[], isolate:false};
+  UC.push(u); loadUc(UC.length-1); renderUcCards(); render();
+  toast('Use case added: edit it in the stations below'); }
+function removeUc(i){ if(UC.length<=1) return; const gone=ucName(UC[i]); UC.splice(i,1);
+  if(activeUc>=UC.length) activeUc=UC.length-1; else if(i<activeUc) activeUc--;
+  loadUc(activeUc); renderUcCards(); render(); toast('Removed: '+gone); }
+$('ucCards').addEventListener('click',e=>{
+  const x=e.target.closest('.uc-x'); if(x){ e.stopPropagation(); removeUc(+x.dataset.x); return; }
+  const card=e.target.closest('.uc-card'); if(card) selectUc(+card.dataset.i); });
+$('ucCards').addEventListener('keydown',e=>{
+  if(e.key!=='Enter'&&e.key!==' ') return;
+  const card=e.target.closest('.uc-card'); if(card){ e.preventDefault(); selectUc(+card.dataset.i); } });
+$('btnAddUc').addEventListener('click',addUc);
+function ucToConfig(u){ const f=u.f;
+  const wq=QUANTS[+f.selWQuant||0]||QUANTS[0], kq=KV_QUANTS[+f.selKQuant||0]||KV_QUANTS[0];
+  const ci=+f.selCase;
+  return {
+    model: f.chkCustom? {custom:true, params:+f.cusParams, active:+f.cusActive, hidden:+f.cusHidden,
+      layers:+f.cusLayers, kvHeads:+f.cusKvh, headDim:+f.cusHdim, ctx:+f.cusCtx}
+      : {custom:false, name:((MODELS[+f.selModel||0]||{}).name||'')},
+    weightQuant:wq.name, kvQuant:kq.name,
+    preset: ci>=0&&CASES[ci]? CASES[ci].name : null,
+    residentSeq:+f.inSeq, visibleOut:+f.inOut,
+    reasoning:{mode:f.selReason, tokens:+f.inReasonTok, extendsKV:!!f.chkExtend},
+    concurrentCalls:+f.inConc, maxBatchPerReplica:+f.inBatch, kvPolicy:f.selPolicy,
+    hardware:{workers:+f.inWorkers, tensorParallel:+f.inTp},
+    sloTargets:{ttftMs:+f.sloTtft||0, tps:+f.sloTps||0, p95s:+f.sloP95||0},
+    estimator:{sessions:+f.ccSessions||0, turnsPerHour:+f.ccTurns||0, pctTurnsLLM:+f.ccShare||0,
+      callsPerTurn:+f.ccCalls||0, burst:+f.ccBurst||1, callDurS:+f.ccDur||0},
+  };
+}
+function ucSnapshot(u){ const f=u.f;
+  const m=f.chkCustom? {name:'Custom', params:+f.cusParams, active:+f.cusActive, hidden:+f.cusHidden,
+      layers:+f.cusLayers, kvHeads:+f.cusKvh, headDim:+f.cusHdim, ctx:+f.cusCtx, arch:'Custom', dev:'—'}
+    : (MODELS[+f.selModel||0]||MODELS[0]);
+  const wq=QUANTS[+f.selWQuant||0]||QUANTS[0], kq=KV_QUANTS[+f.selKQuant||0]||KV_QUANTS[0];
+  return {model:{name:m.name, params:m.params, active:m.active, hidden:m.hidden, layers:m.layers,
+      kvHeads:m.kvHeads, headDim:m.headDim, ctx:m.ctx, arch:m.arch||'', dev:m.dev||''},
+    weightBytes:wq.bytes, kvBytes:kq.bytes};
+}
+
 /* ================= SERIALIZE / APPLY ================= */
 function serialize(){
+  captureUc();
   const s=readState(), d=compute(s);
   return {
-    schema:'gpuscale.net/4', engine:ENGINE_VERSION, studio:STUDIO_VERSION,
+    schema:'gpuscale.net/5', engine:ENGINE_VERSION, studio:STUDIO_VERSION,
     name: projName(), projectId: PROJ_ID, scenarioId: PROJ_ID, mode: document.documentElement.dataset.uxMode||'advanced',
     savedAt: new Date().toISOString(),
     config:{
@@ -1756,17 +1858,22 @@ function serialize(){
     results:{vramRequiredGB:+d.total.toFixed(1), vramAvailableGB:d.avail, headroomGB:+d.headroom.toFixed(1),
       ttftMs:+d.ttft.toFixed(1), perUserTps:+d.tps.toFixed(1), aggregateTps:+d.agg.toFixed(0),
       meanLatencyS:+d.latency.toFixed(2), p95S:+d.p95.toFixed(2), admitted:d.active, queued:d.queued,
-      fits:d.fits, sloMet:d.sloAll}
+      fits:d.fits, sloMet:d.sloAll},
+    // v5: the full use-case list. config/snapshot above stay v4-shaped (the active
+    // card) so older importers still read this file as a single-scenario config.
+    project:{active:activeUc, usecases:UC.map(u=>({id:u.id, name:u.name||null,
+      isolate:!!u.isolate, supports:u.supports||[],
+      config:ucToConfig(u), snapshot:ucSnapshot(u)}))}
   };
 }
+function setSel(notes, sel, name, what){ if(!name) return true; const o=findOption(sel,name);
+  if(o){ sel.value=o.value; return true; }
+  notes.push(`${what} "${name}" not found; kept the current selection`); return false; }
 function findOption(sel, match){
   return [...sel.querySelectorAll('option')].find(o=>o.textContent===match)
       || [...sel.querySelectorAll('option')].find(o=>o.textContent.includes(match));
 }
-function applyConfig(raw){
-  const c = raw.config || raw;
-  const snap = raw.snapshot || {};
-  const notes = [];
+function applyUcDom(c, snap, notes){
   const mdl = c.model && typeof c.model==='object' ? c.model : {custom:false, name:c.model};
   if(mdl.custom){
     $('chkCustom').checked=true; $('customBox').style.display='block'; $('selModel').disabled=true;
@@ -1788,8 +1895,7 @@ function applyConfig(raw){
       notes.push(`model "${mdl.name}" not found; kept the current selection`);
     }
   }
-  const setSel=(sel,name,what)=>{ if(!name) return true; const o=findOption(sel,name); if(o){ sel.value=o.value; return true; } notes.push(`${what} "${name}" not found; kept the current selection`); return false; };
-  setSel($('selWQuant'), c.weightQuant, 'weight quant'); setSel($('selKQuant'), c.kvQuant, 'KV quant');
+  setSel(notes, $('selWQuant'), c.weightQuant, 'weight quant'); setSel(notes, $('selKQuant'), c.kvQuant, 'KV quant');
   if(c.preset){ const o=findOption($('selCase'), c.preset); if(o) $('selCase').value=o.value; }
   else if(c.preset===null) $('selCase').value=-1;
   if(c.residentSeq!=null) $('inSeq').value=c.residentSeq;
@@ -1802,13 +1908,10 @@ function applyConfig(raw){
   if(c.concurrentCalls!=null) $('inConc').value=c.concurrentCalls;
   if(c.maxBatchPerReplica!=null) $('inBatch').value=c.maxBatchPerReplica;
   if(c.kvPolicy) $('selPolicy').value=c.kvPolicy;
-  setSel($('selGpu'), c.gpu, 'GPU');
   const hw=c.hardware;
   if(hw){
     if(hw.workers!=null) $('inWorkers').value=hw.workers;
-    if(hw.gpusPerWorker!=null) $('inPerW').value=hw.gpusPerWorker;
     if(hw.tensorParallel!=null) $('inTp').value=hw.tensorParallel;
-    if(hw.resilience && RESIL[hw.resilience]) $('selResil').value=hw.resilience;
   } else if(c.gpuCount!=null){
     const count=Math.max(1,Math.round(c.gpuCount));
     const perW = count<=16? count : 8;
@@ -1816,12 +1919,6 @@ function applyConfig(raw){
     $('inWorkers').value=Math.max(1,Math.ceil(count/perW));
     if(c.tensorParallel!=null) $('inTp').value=c.tensorParallel;
   }
-  const t=c.tuning||{};
-  if(t.prefillMFU!=null) $('inMfu').value=t.prefillMFU;
-  if(t.decodeMBU!=null) $('inMbu').value=t.decodeMBU;
-  if(t.interconnectEff!=null) $('inIc').value=t.interconnectEff;
-  if(t.frameworkOverheadMs!=null) $('inOvh').value=t.frameworkOverheadMs;
-  if(t.autoSizeUtilPct!=null&&$('autoUtil')) $('autoUtil').value=t.autoSizeUtilPct;
   const sl=c.sloTargets||{};
   if(sl.ttftMs!=null) $('sloTtft').value=sl.ttftMs;
   if(sl.tps!=null) $('sloTps').value=sl.tps;
@@ -1833,10 +1930,45 @@ function applyConfig(raw){
   if(es.callsPerTurn!=null) $('ccCalls').value=es.callsPerTurn;
   if(es.burst!=null) $('ccBurst').value=es.burst;
   if(es.callDurS!=null) $('ccDur').value=es.callDurS;
-  if(raw.name) $('scenarioName').value = raw.name==='Untitled scenario'? '' : raw.name;
+}
+function applyGlobalDom(c, raw, notes){
+  setSel(notes, $('selGpu'), c.gpu, 'GPU');
+  const hw=c.hardware||{};
+  if(hw.gpusPerWorker!=null) $('inPerW').value=hw.gpusPerWorker;
+  if(hw.resilience && RESIL[hw.resilience]) $('selResil').value=hw.resilience;
+  const t=c.tuning||{};
+  if(t.prefillMFU!=null) $('inMfu').value=t.prefillMFU;
+  if(t.decodeMBU!=null) $('inMbu').value=t.decodeMBU;
+  if(t.interconnectEff!=null) $('inIc').value=t.interconnectEff;
+  if(t.frameworkOverheadMs!=null) $('inOvh').value=t.frameworkOverheadMs;
+  if(t.autoSizeUtilPct!=null&&$('autoUtil')) $('autoUtil').value=t.autoSizeUtilPct;
+  if(raw.name) $('scenarioName').value = /^Untitled (scenario|project)$/.test(raw.name)? '' : raw.name;
   if(c.theme==='dark'||c.theme==='light'){ window.__themeLocked=true; setTheme(c.theme); }
   if(raw.mode==='normal'||raw.mode==='advanced'||c.mode==='normal'||c.mode==='advanced') setUxMode(raw.mode||c.mode);
+}
+function applyConfig(raw){
+  const notes=[];
+  const proj=raw.project;
+  if(proj && Array.isArray(proj.usecases) && proj.usecases.length){
+    UC.length=0;
+    proj.usecases.forEach(pu=>UC.push({id:'uc'+(++ucSeq), name:pu.name||'',
+      supports:Array.isArray(pu.supports)?pu.supports:[], isolate:!!pu.isolate, f:{}}));
+    UC.forEach((u,idx)=>{ activeUc=idx; const pu=proj.usecases[idx];
+      applyUcDom(pu.config||{}, pu.snapshot||{}, notes); captureUc(); });
+    activeUc=Math.max(0,Math.min(+proj.active||0, UC.length-1));
+    applyGlobalDom(raw.config||{}, raw, notes);
+    loadUc(activeUc);
+  } else {
+    // v3/v4 single-scenario file: the saved config is the whole project (one card)
+    UC.length=0; UC.push({id:'uc'+(++ucSeq), name:'', f:{}, supports:[], isolate:false});
+    activeUc=0;
+    const c=raw.config||raw, snap=raw.snapshot||{};
+    applyUcDom(c, snap, notes);
+    applyGlobalDom(c, raw, notes);
+    captureUc();
+  }
   Object.keys(FIELDS).forEach(refreshCtl);
+  renderUcCards();
   render();
   return notes;
 }
@@ -2320,9 +2452,11 @@ $('fileImport').addEventListener('change',e=>{
 });
 
 /* ================= PUBLIC API & BOOT ================= */
-window.GPUscale = {compute, readState, serialize, applyConfig, buildXls, buildXlsxBytes, render, autoSize, MODELS, GPUS, QUANTS, CASES};
+window.GPUscale = {compute, readState, serialize, applyConfig, buildXls, buildXlsxBytes, render, autoSize, MODELS, GPUS, QUANTS, CASES,
+  usecases:{list:()=>UC, active:()=>activeUc, add:addUc, select:selectUc, remove:removeUc}};
 window.SizingConsole = window.GPUscale;
 (function boot(){
+  UC.push({id:'uc'+(++ucSeq), name:'', f:{}, supports:[], isolate:false});
   const mi=MODELS.findIndex(m=>/Kimi K2\.5/.test(m.name)); if(mi>=0)$('selModel').value=mi;
   const wi=QUANTS.findIndex(q=>q.name==='BF16'); if(wi>=0)$('selWQuant').value=wi;
   const gi=GPUS.findIndex(g2=>/B300/.test(g2.name)); if(gi>=0)$('selGpu').value=gi;
@@ -2338,6 +2472,7 @@ window.SizingConsole = window.GPUscale;
   $('scenarioName').placeholder=PROJ_ID;
   try{ setUxMode(localStorage.getItem('gpuscale-mode')||'advanced'); }catch(e){ setUxMode('advanced'); }
   const sid=document.getElementById('storyId'); if(sid) sid.textContent=PROJ_ID;
+  captureUc();
   render();
 })();
 
