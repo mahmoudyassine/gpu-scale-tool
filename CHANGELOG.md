@@ -1,5 +1,21 @@
 # Changelog
 
+## Studio 5.2.1 (2026-07-21)
+
+Header redesign.
+
+- One compact brand row with a short tagline ("Size self-hosted LLM fleets
+  in your browser"); the long feature sentence is gone.
+- The Normal/Advanced toggle is now two icon buttons (one slider for
+  Normal, three for Advanced) with tooltips, styled like every other
+  toolbar button.
+- All actions sit in a single aligned toolbar row: mode toggle, then
+  Import/JSON/XLS/PDF, then theme/GitHub/reset as one grouped cluster;
+  the project-name field has its own row on small screens.
+- The privacy chip hides on phones (the full statement stays in the
+  footer); consistent control heights and spacing across all widths.
+
+
 ## Studio 5.2 (2026-07-21)
 
 Color-coded use cases and a tighter flow.
