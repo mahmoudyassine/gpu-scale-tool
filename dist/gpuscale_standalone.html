@@ -117,6 +117,25 @@ html[data-theme="dark"] .uc-card.active::before{color:#0C1322}
 .uc-x{width:20px;height:20px;border-radius:6px;border:1px solid transparent;background:transparent;color:var(--faint);font-size:13px;line-height:1;cursor:pointer;flex:none;display:inline-flex;align-items:center;justify-content:center}
 .uc-x:hover{color:var(--red);border-color:var(--red)}
 .uc-meta{font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.uc-tool{width:20px;height:20px;border-radius:6px;border:1px solid transparent;background:transparent;color:var(--faint);cursor:pointer;flex:none;display:inline-flex;align-items:center;justify-content:center;padding:0}
+.uc-tool svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.uc-tool:hover{color:var(--teal-strong);border-color:var(--teal)}
+.uc-pool{font-family:var(--mono);font-size:8.5px;font-weight:600;letter-spacing:.05em;color:var(--violet);border:1px solid var(--violet);border-radius:5px;padding:1px 5px;flex:none}
+.uc-rename{flex:1;min-width:0;font-family:var(--disp);font-size:12.5px;font-weight:600;color:var(--text);background:var(--panel);border:1px solid var(--teal);border-radius:6px;padding:2px 6px;outline:none}
+.uc-chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}
+.chip{display:inline-flex;align-items:center;gap:4px;font-family:var(--mono);font-size:9.5px;font-weight:500;color:var(--teal-strong);background:var(--teal-soft);border:1px solid transparent;border-radius:6px;padding:2.5px 4px 2.5px 7px;cursor:pointer}
+.chip:hover,.chip.open{border-color:var(--teal)}
+.chip:focus-visible{outline:2px solid var(--teal);outline-offset:1px}
+.chip.ghost{color:var(--faint);background:transparent;border:1px dashed var(--line);padding-right:7px}
+.chip.ghost:hover{color:var(--teal-strong);border-color:var(--teal)}
+.chip-x{width:13px;height:13px;border:none;background:transparent;color:inherit;opacity:.65;font-size:11px;line-height:1;cursor:pointer;padding:0;display:inline-flex;align-items:center;justify-content:center}
+.chip-x:hover{opacity:1}
+.chip-editor{margin-top:7px;background:var(--panel);border:1px solid var(--line-soft);border-radius:7px;padding:7px 9px}
+.chip-editor .ce-row{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.chip-editor .ce-row label{font-size:10.5px;font-weight:500;color:var(--muted);flex:none}
+.chip-editor select{flex:1;min-width:0;font-family:var(--body);font-size:11.5px;color:var(--text);background:var(--inset);border:1px solid var(--line);border-radius:6px;padding:4px 6px}
+.chip-editor .ce-note{font-size:10.5px;color:var(--faint);line-height:1.45}
 
 /* ============ LAYOUT ============ */
 .console{display:grid;grid-template-columns:368px minmax(0,1fr);gap:20px;align-items:start}
@@ -415,6 +434,7 @@ footer.foot .mono{font-family:var(--mono);color:var(--text)}
 </head>
 <body>
 <div class="wrap">
+<div id="live" class="sr-only" aria-live="polite"></div>
 
 <header class="top">
   <div class="brand">
@@ -743,7 +763,7 @@ footer.foot .mono{font-family:var(--mono);color:var(--text)}
 // GPUscale.net · model library (params B · active B · hidden · layers · effective KV heads × head dim · max ctx)
 // One entry per line. Field reference: docs/DATA.md
 window.GPUSCALE_DATA = window.GPUSCALE_DATA || {};
-window.GPUSCALE_DATA.meta = {"library":"v25","engine":23,"updated":"2026-07-19"};
+window.GPUSCALE_DATA.meta = {"library":"v26","engine":23,"updated":"2026-07-21"};
 window.GPUSCALE_DATA.models = [
 {"name":"Llama 3.1 8B","params":8.0,"active":8.0,"hidden":4096,"layers":32,"kvHeads":8,"headDim":128,"ctx":131072,"experts":null,"activeExperts":null,"arch":"Dense (GQA)","dev":"Meta","url":"https://ai.meta.com/blog/meta-llama-3-1/"},
 {"name":"Llama 3.1 70B","params":70.0,"active":70.0,"hidden":8192,"layers":80,"kvHeads":8,"headDim":128,"ctx":131072,"experts":null,"activeExperts":null,"arch":"Dense (GQA)","dev":"Meta","url":"https://ai.meta.com/blog/meta-llama-3-1/"},
@@ -844,43 +864,43 @@ window.GPUSCALE_DATA.models = [
 // One entry per line. Field reference: docs/DATA.md
 window.GPUSCALE_DATA = window.GPUSCALE_DATA || {};
 window.GPUSCALE_DATA.gpus = [
-{"name":"RTX 4060 Ti 16GB","vram":16.0,"bw":0.288,"tflops":44.0,"mem":"GDDR6","arch":"Ada Lovelace","watts":165,"cls":"Consumer","link":"PCIe 4.0","url":"https://www.nvidia.com/en-us/geforce/graphics-cards/40-series/"},
-{"name":"RTX 4070 Ti Super 16GB","vram":16.0,"bw":0.672,"tflops":88.0,"mem":"GDDR6X","arch":"Ada Lovelace","watts":285,"cls":"Consumer","link":"PCIe 4.0","url":"https://www.nvidia.com/en-us/geforce/graphics-cards/40-series/"},
-{"name":"RTX 4080 Super 16GB","vram":16.0,"bw":0.736,"tflops":104.0,"mem":"GDDR6X","arch":"Ada Lovelace","watts":320,"cls":"Consumer","link":"PCIe 4.0","url":"https://www.nvidia.com/en-us/geforce/graphics-cards/40-series/"},
-{"name":"RTX 4090 24GB","vram":24.0,"bw":1.008,"tflops":165.0,"mem":"GDDR6X","arch":"Ada Lovelace","watts":450,"cls":"Consumer","link":"PCIe 4.0","url":"https://www.nvidia.com/en-us/geforce/graphics-cards/40-series/"},
-{"name":"RTX 5070 Ti 16GB","vram":16.0,"bw":0.896,"tflops":88.0,"mem":"GDDR7","arch":"Blackwell","watts":300,"cls":"Consumer","link":"PCIe 5.0","url":"https://www.nvidia.com/en-us/geforce/graphics-cards/50-series/"},
-{"name":"RTX 5080 16GB","vram":16.0,"bw":0.96,"tflops":113.0,"mem":"GDDR7","arch":"Blackwell","watts":360,"cls":"Consumer","link":"PCIe 5.0","url":"https://www.nvidia.com/en-us/geforce/graphics-cards/50-series/"},
-{"name":"RTX 5090 32GB","vram":32.0,"bw":1.792,"tflops":210.0,"mem":"GDDR7","arch":"Blackwell","watts":575,"cls":"Consumer","link":"PCIe 5.0","url":"https://www.nvidia.com/en-us/geforce/graphics-cards/50-series/"},
-{"name":"RTX 6000 Ada 48GB","vram":48.0,"bw":0.96,"tflops":182.0,"mem":"GDDR6","arch":"Ada Lovelace","watts":300,"cls":"Workstation","link":"PCIe 4.0","url":"https://www.nvidia.com/en-us/products/workstations/rtx-6000/"},
-{"name":"RTX PRO 6000 Blackwell Server Edition 96GB","vram":96.0,"bw":1.597,"tflops":250.0,"mem":"GDDR7","arch":"Blackwell","watts":600,"cls":"Server / Workstation","link":"PCIe 5.0","url":"https://www.nvidia.com/en-us/data-center/rtx-pro-6000-blackwell-server-edition/"},
-{"name":"A100 40GB SXM","vram":40.0,"bw":1.555,"tflops":312.0,"mem":"HBM2e","arch":"Ampere","watts":400,"cls":"Data Center","link":"NVLink Gen3","url":"https://www.nvidia.com/en-us/data-center/a100/"},
-{"name":"A100 80GB SXM","vram":80.0,"bw":2.039,"tflops":312.0,"mem":"HBM2e","arch":"Ampere","watts":400,"cls":"Data Center","link":"NVLink Gen3","url":"https://www.nvidia.com/en-us/data-center/a100/"},
-{"name":"A100 80GB PCIe","vram":80.0,"bw":1.935,"tflops":312.0,"mem":"HBM2e","arch":"Ampere","watts":300,"cls":"Data Center","link":"PCIe 4.0","url":"https://www.nvidia.com/en-us/data-center/a100/"},
-{"name":"L4 24GB","vram":24.0,"bw":0.3,"tflops":60.5,"mem":"GDDR6","arch":"Ada Lovelace","watts":72,"cls":"Data Center","link":"PCIe 4.0","url":"https://www.nvidia.com/en-us/data-center/l4/"},
-{"name":"L40 48GB","vram":48.0,"bw":0.864,"tflops":90.5,"mem":"GDDR6","arch":"Ada Lovelace","watts":300,"cls":"Data Center","link":"PCIe 4.0","url":"https://www.nvidia.com/en-us/data-center/l40/"},
-{"name":"L40S 48GB","vram":48.0,"bw":0.864,"tflops":183.0,"mem":"GDDR6","arch":"Ada Lovelace","watts":350,"cls":"Data Center","link":"PCIe 4.0","url":"https://www.nvidia.com/en-us/data-center/l40s/"},
-{"name":"H100 NVL 94GB","vram":94.0,"bw":3.9,"tflops":835.0,"mem":"HBM3","arch":"Hopper","watts":350,"cls":"Data Center","link":"NVLink Gen4","url":"https://www.nvidia.com/en-us/data-center/h100/"},
-{"name":"H100 80GB SXM","vram":80.0,"bw":3.35,"tflops":989.0,"mem":"HBM3","arch":"Hopper","watts":700,"cls":"Data Center","link":"NVLink Gen4","url":"https://www.nvidia.com/en-us/data-center/h100/"},
-{"name":"H100 80GB PCIe","vram":80.0,"bw":2.0,"tflops":756.0,"mem":"HBM2e","arch":"Hopper","watts":350,"cls":"Data Center","link":"PCIe 5.0","url":"https://www.nvidia.com/en-us/data-center/h100/"},
-{"name":"H200 141GB NVL","vram":141.0,"bw":4.8,"tflops":989.0,"mem":"HBM3e","arch":"Hopper","watts":600,"cls":"Data Center","link":"NVLink Gen4","url":"https://www.nvidia.com/en-us/data-center/h200/"},
-{"name":"H200 141GB SXM","vram":141.0,"bw":4.8,"tflops":989.0,"mem":"HBM3e","arch":"Hopper","watts":700,"cls":"Data Center","link":"NVLink Gen4","url":"https://www.nvidia.com/en-us/data-center/h200/"},
-{"name":"B200 180GB","vram":180.0,"bw":8.0,"tflops":2250.0,"mem":"HBM3e","arch":"Blackwell","watts":1000,"cls":"Data Center","link":"NVLink Gen5","url":"https://www.nvidia.com/en-us/data-center/dgx-b200/"},
-{"name":"B300 288GB","vram":288.0,"bw":8.0,"tflops":2250.0,"mem":"HBM3e","arch":"Blackwell Ultra","watts":1200,"cls":"Data Center","link":"NVLink Gen5","url":"https://www.nvidia.com/en-us/data-center/dgx-b300/"},
-{"name":"Apple M2 Ultra 192GB","vram":192.0,"bw":0.8,"tflops":27.2,"mem":"Unified LPDDR5","arch":"Apple M2","watts":215,"cls":"Apple Silicon","link":"—","url":"https://www.apple.com/newsroom/2023/06/apple-introduces-m2-ultra/"},
-{"name":"Apple M4 Max 128GB","vram":128.0,"bw":0.546,"tflops":38.0,"mem":"Unified LPDDR5X","arch":"Apple M4","watts":150,"cls":"Apple Silicon","link":"—","url":"https://www.apple.com/macbook-pro/"},
-{"name":"AMD Instinct MI300X 192GB","vram":192.0,"bw":5.3,"tflops":1307.0,"mem":"HBM3","arch":"CDNA 3","watts":750,"cls":"Data Center","link":"Infinity Fabric","url":"https://www.amd.com/en/products/accelerators/instinct/mi300/mi300x.html"},
-{"name":"AMD Instinct MI325X 256GB","vram":256.0,"bw":6.0,"tflops":1307.0,"mem":"HBM3E","arch":"CDNA 3","watts":1000,"cls":"Data Center","link":"Infinity Fabric","url":"https://www.amd.com/en/products/accelerators/instinct/mi325x.html"},
-{"name":"AMD Instinct MI355X 288GB","vram":288.0,"bw":8.0,"tflops":2513.0,"mem":"HBM3E","arch":"CDNA 4","watts":1400,"cls":"Data Center","link":"Infinity Fabric","url":"https://www.amd.com/en/products/accelerators/instinct/mi350.html"},
-{"name":"NVIDIA GB200 186GB (per GPU)","vram":186.0,"bw":8.0,"tflops":2250.0,"mem":"HBM3e","arch":"Blackwell (Grace)","watts":1200,"cls":"Data Center","link":"NVLink Gen5","url":"https://www.nvidia.com/en-us/data-center/gb200-nvl72/"},
-{"name":"Apple M3 Ultra 256GB","vram":256.0,"bw":0.819,"tflops":28.0,"mem":"Unified LPDDR5","arch":"Apple M3","watts":270,"cls":"Apple Silicon","link":"—","url":"https://www.apple.com/mac-studio/"},
-{"name":"Intel Gaudi 3 128GB","vram":128.0,"bw":3.7,"tflops":1835.0,"mem":"HBM2e","arch":"Intel Gaudi 3","watts":900,"cls":"Data Center","link":"RoCE / Ethernet","url":"https://www.intel.com/content/www/us/en/products/details/processors/ai-accelerators/gaudi3.html"},
-{"name":"GH200 141GB","vram":141.0,"bw":4.9,"tflops":989.0,"mem":"HBM3e","arch":"Grace Hopper","watts":1000,"cls":"Data Center","link":"NVLink-C2C","url":"https://www.nvidia.com/en-us/data-center/grace-hopper-superchip/"},
-{"name":"GB300 288GB (per GPU)","vram":288.0,"bw":8.0,"tflops":2250.0,"mem":"HBM3e","arch":"Blackwell Ultra","watts":1400,"cls":"Data Center","link":"NVLink Gen5","url":"https://www.nvidia.com/en-us/data-center/gb300-nvl72/"},
-{"name":"AMD Instinct MI350X 288GB","vram":288.0,"bw":8.0,"tflops":2300.0,"mem":"HBM3E","arch":"CDNA 4","watts":1000,"cls":"Data Center","link":"Infinity Fabric","url":"https://www.amd.com/en/products/accelerators/instinct/mi350.html"},
-{"name":"AMD Instinct MI455X 432GB","vram":432.0,"bw":19.6,"tflops":5000.0,"mem":"HBM4","arch":"CDNA 5","watts":2000,"cls":"Data Center (H2 2026)","link":"IF + UALink","url":"https://www.amd.com/en/products/accelerators/instinct.html"},
-{"name":"NVIDIA Rubin VR200 288GB","vram":288.0,"bw":20.5,"tflops":8300.0,"mem":"HBM4","arch":"Rubin","watts":1800,"cls":"Data Center (H2 2026)","link":"NVLink Gen6","url":"https://www.nvidia.com/en-us/data-center/vera-rubin/"},
-{"name":"NVIDIA DGX Spark 128GB (GB10)","vram":128.0,"bw":0.273,"tflops":125.0,"mem":"Unified LPDDR5x","arch":"Grace Blackwell","watts":240,"cls":"Desktop","link":"NVLink-C2C","url":"https://www.nvidia.com/en-us/products/workstations/dgx-spark/"},
-{"name":"Apple M3 Ultra 512GB","vram":512.0,"bw":0.819,"tflops":28.0,"mem":"Unified LPDDR5","arch":"Apple M3","watts":270,"cls":"Apple Silicon","link":"—","url":"https://www.apple.com/mac-studio/"},
+{"name": "RTX 4060 Ti 16GB", "vram": 16.0, "bw": 0.288, "tflops": 44.0, "mem": "GDDR6", "arch": "Ada Lovelace", "watts": 165, "cls": "Consumer", "link": "PCIe 4.0", "url": "https://www.nvidia.com/en-us/geforce/graphics-cards/40-series/", "part": {"kind": "frac"}},
+{"name": "RTX 4070 Ti Super 16GB", "vram": 16.0, "bw": 0.672, "tflops": 88.0, "mem": "GDDR6X", "arch": "Ada Lovelace", "watts": 285, "cls": "Consumer", "link": "PCIe 4.0", "url": "https://www.nvidia.com/en-us/geforce/graphics-cards/40-series/", "part": {"kind": "frac"}},
+{"name": "RTX 4080 Super 16GB", "vram": 16.0, "bw": 0.736, "tflops": 104.0, "mem": "GDDR6X", "arch": "Ada Lovelace", "watts": 320, "cls": "Consumer", "link": "PCIe 4.0", "url": "https://www.nvidia.com/en-us/geforce/graphics-cards/40-series/", "part": {"kind": "frac"}},
+{"name": "RTX 4090 24GB", "vram": 24.0, "bw": 1.008, "tflops": 165.0, "mem": "GDDR6X", "arch": "Ada Lovelace", "watts": 450, "cls": "Consumer", "link": "PCIe 4.0", "url": "https://www.nvidia.com/en-us/geforce/graphics-cards/40-series/", "part": {"kind": "frac"}},
+{"name": "RTX 5070 Ti 16GB", "vram": 16.0, "bw": 0.896, "tflops": 88.0, "mem": "GDDR7", "arch": "Blackwell", "watts": 300, "cls": "Consumer", "link": "PCIe 5.0", "url": "https://www.nvidia.com/en-us/geforce/graphics-cards/50-series/", "part": {"kind": "frac"}},
+{"name": "RTX 5080 16GB", "vram": 16.0, "bw": 0.96, "tflops": 113.0, "mem": "GDDR7", "arch": "Blackwell", "watts": 360, "cls": "Consumer", "link": "PCIe 5.0", "url": "https://www.nvidia.com/en-us/geforce/graphics-cards/50-series/", "part": {"kind": "frac"}},
+{"name": "RTX 5090 32GB", "vram": 32.0, "bw": 1.792, "tflops": 210.0, "mem": "GDDR7", "arch": "Blackwell", "watts": 575, "cls": "Consumer", "link": "PCIe 5.0", "url": "https://www.nvidia.com/en-us/geforce/graphics-cards/50-series/", "part": {"kind": "frac"}},
+{"name": "RTX 6000 Ada 48GB", "vram": 48.0, "bw": 0.96, "tflops": 182.0, "mem": "GDDR6", "arch": "Ada Lovelace", "watts": 300, "cls": "Workstation", "link": "PCIe 4.0", "url": "https://www.nvidia.com/en-us/products/workstations/rtx-6000/", "part": {"kind": "frac"}},
+{"name": "RTX PRO 6000 Blackwell Server Edition 96GB", "vram": 96.0, "bw": 1.597, "tflops": 250.0, "mem": "GDDR7", "arch": "Blackwell", "watts": 600, "cls": "Server / Workstation", "link": "PCIe 5.0", "url": "https://www.nvidia.com/en-us/data-center/rtx-pro-6000-blackwell-server-edition/", "part": {"kind": "mig", "max": 4, "min": 24}},
+{"name": "A100 40GB SXM", "vram": 40.0, "bw": 1.555, "tflops": 312.0, "mem": "HBM2e", "arch": "Ampere", "watts": 400, "cls": "Data Center", "link": "NVLink Gen3", "url": "https://www.nvidia.com/en-us/data-center/a100/", "part": {"kind": "mig", "max": 7, "min": 5}},
+{"name": "A100 80GB SXM", "vram": 80.0, "bw": 2.039, "tflops": 312.0, "mem": "HBM2e", "arch": "Ampere", "watts": 400, "cls": "Data Center", "link": "NVLink Gen3", "url": "https://www.nvidia.com/en-us/data-center/a100/", "part": {"kind": "mig", "max": 7, "min": 10}},
+{"name": "A100 80GB PCIe", "vram": 80.0, "bw": 1.935, "tflops": 312.0, "mem": "HBM2e", "arch": "Ampere", "watts": 300, "cls": "Data Center", "link": "PCIe 4.0", "url": "https://www.nvidia.com/en-us/data-center/a100/", "part": {"kind": "mig", "max": 7, "min": 10}},
+{"name": "L4 24GB", "vram": 24.0, "bw": 0.3, "tflops": 60.5, "mem": "GDDR6", "arch": "Ada Lovelace", "watts": 72, "cls": "Data Center", "link": "PCIe 4.0", "url": "https://www.nvidia.com/en-us/data-center/l4/", "part": {"kind": "frac"}},
+{"name": "L40 48GB", "vram": 48.0, "bw": 0.864, "tflops": 90.5, "mem": "GDDR6", "arch": "Ada Lovelace", "watts": 300, "cls": "Data Center", "link": "PCIe 4.0", "url": "https://www.nvidia.com/en-us/data-center/l40/", "part": {"kind": "frac"}},
+{"name": "L40S 48GB", "vram": 48.0, "bw": 0.864, "tflops": 183.0, "mem": "GDDR6", "arch": "Ada Lovelace", "watts": 350, "cls": "Data Center", "link": "PCIe 4.0", "url": "https://www.nvidia.com/en-us/data-center/l40s/", "part": {"kind": "frac"}},
+{"name": "H100 NVL 94GB", "vram": 94.0, "bw": 3.9, "tflops": 835.0, "mem": "HBM3", "arch": "Hopper", "watts": 350, "cls": "Data Center", "link": "NVLink Gen4", "url": "https://www.nvidia.com/en-us/data-center/h100/", "part": {"kind": "mig", "max": 7, "min": 12}},
+{"name": "H100 80GB SXM", "vram": 80.0, "bw": 3.35, "tflops": 989.0, "mem": "HBM3", "arch": "Hopper", "watts": 700, "cls": "Data Center", "link": "NVLink Gen4", "url": "https://www.nvidia.com/en-us/data-center/h100/", "part": {"kind": "mig", "max": 7, "min": 10}},
+{"name": "H100 80GB PCIe", "vram": 80.0, "bw": 2.0, "tflops": 756.0, "mem": "HBM2e", "arch": "Hopper", "watts": 350, "cls": "Data Center", "link": "PCIe 5.0", "url": "https://www.nvidia.com/en-us/data-center/h100/", "part": {"kind": "mig", "max": 7, "min": 10}},
+{"name": "H200 141GB NVL", "vram": 141.0, "bw": 4.8, "tflops": 989.0, "mem": "HBM3e", "arch": "Hopper", "watts": 600, "cls": "Data Center", "link": "NVLink Gen4", "url": "https://www.nvidia.com/en-us/data-center/h200/", "part": {"kind": "mig", "max": 7, "min": 18}},
+{"name": "H200 141GB SXM", "vram": 141.0, "bw": 4.8, "tflops": 989.0, "mem": "HBM3e", "arch": "Hopper", "watts": 700, "cls": "Data Center", "link": "NVLink Gen4", "url": "https://www.nvidia.com/en-us/data-center/h200/", "part": {"kind": "mig", "max": 7, "min": 18}},
+{"name": "B200 180GB", "vram": 180.0, "bw": 8.0, "tflops": 2250.0, "mem": "HBM3e", "arch": "Blackwell", "watts": 1000, "cls": "Data Center", "link": "NVLink Gen5", "url": "https://www.nvidia.com/en-us/data-center/dgx-b200/", "part": {"kind": "mig", "max": 7, "min": 23}},
+{"name": "B300 288GB", "vram": 288.0, "bw": 8.0, "tflops": 2250.0, "mem": "HBM3e", "arch": "Blackwell Ultra", "watts": 1200, "cls": "Data Center", "link": "NVLink Gen5", "url": "https://www.nvidia.com/en-us/data-center/dgx-b300/", "part": {"kind": "mig", "max": 7, "min": 34}},
+{"name": "Apple M2 Ultra 192GB", "vram": 192.0, "bw": 0.8, "tflops": 27.2, "mem": "Unified LPDDR5", "arch": "Apple M2", "watts": 215, "cls": "Apple Silicon", "link": "—", "url": "https://www.apple.com/newsroom/2023/06/apple-introduces-m2-ultra/", "part": {"kind": "frac"}},
+{"name": "Apple M4 Max 128GB", "vram": 128.0, "bw": 0.546, "tflops": 38.0, "mem": "Unified LPDDR5X", "arch": "Apple M4", "watts": 150, "cls": "Apple Silicon", "link": "—", "url": "https://www.apple.com/macbook-pro/", "part": {"kind": "frac"}},
+{"name": "AMD Instinct MI300X 192GB", "vram": 192.0, "bw": 5.3, "tflops": 1307.0, "mem": "HBM3", "arch": "CDNA 3", "watts": 750, "cls": "Data Center", "link": "Infinity Fabric", "url": "https://www.amd.com/en/products/accelerators/instinct/mi300/mi300x.html", "part": {"kind": "cpx", "max": 8, "min": 24}},
+{"name": "AMD Instinct MI325X 256GB", "vram": 256.0, "bw": 6.0, "tflops": 1307.0, "mem": "HBM3E", "arch": "CDNA 3", "watts": 1000, "cls": "Data Center", "link": "Infinity Fabric", "url": "https://www.amd.com/en/products/accelerators/instinct/mi325x.html", "part": {"kind": "cpx", "max": 8, "min": 32}},
+{"name": "AMD Instinct MI355X 288GB", "vram": 288.0, "bw": 8.0, "tflops": 2513.0, "mem": "HBM3E", "arch": "CDNA 4", "watts": 1400, "cls": "Data Center", "link": "Infinity Fabric", "url": "https://www.amd.com/en/products/accelerators/instinct/mi350.html", "part": {"kind": "cpx", "max": 8, "min": 36}},
+{"name": "NVIDIA GB200 186GB (per GPU)", "vram": 186.0, "bw": 8.0, "tflops": 2250.0, "mem": "HBM3e", "arch": "Blackwell (Grace)", "watts": 1200, "cls": "Data Center", "link": "NVLink Gen5", "url": "https://www.nvidia.com/en-us/data-center/gb200-nvl72/", "part": {"kind": "mig", "max": 7, "min": 23}},
+{"name": "Apple M3 Ultra 256GB", "vram": 256.0, "bw": 0.819, "tflops": 28.0, "mem": "Unified LPDDR5", "arch": "Apple M3", "watts": 270, "cls": "Apple Silicon", "link": "—", "url": "https://www.apple.com/mac-studio/", "part": {"kind": "frac"}},
+{"name": "Intel Gaudi 3 128GB", "vram": 128.0, "bw": 3.7, "tflops": 1835.0, "mem": "HBM2e", "arch": "Intel Gaudi 3", "watts": 900, "cls": "Data Center", "link": "RoCE / Ethernet", "url": "https://www.intel.com/content/www/us/en/products/details/processors/ai-accelerators/gaudi3.html", "part": {"kind": "whole"}},
+{"name": "GH200 141GB", "vram": 141.0, "bw": 4.9, "tflops": 989.0, "mem": "HBM3e", "arch": "Grace Hopper", "watts": 1000, "cls": "Data Center", "link": "NVLink-C2C", "url": "https://www.nvidia.com/en-us/data-center/grace-hopper-superchip/", "part": {"kind": "mig", "max": 7, "min": 18}},
+{"name": "GB300 288GB (per GPU)", "vram": 288.0, "bw": 8.0, "tflops": 2250.0, "mem": "HBM3e", "arch": "Blackwell Ultra", "watts": 1400, "cls": "Data Center", "link": "NVLink Gen5", "url": "https://www.nvidia.com/en-us/data-center/gb300-nvl72/", "part": {"kind": "mig", "max": 7, "min": 35}},
+{"name": "AMD Instinct MI350X 288GB", "vram": 288.0, "bw": 8.0, "tflops": 2300.0, "mem": "HBM3E", "arch": "CDNA 4", "watts": 1000, "cls": "Data Center", "link": "Infinity Fabric", "url": "https://www.amd.com/en/products/accelerators/instinct/mi350.html", "part": {"kind": "cpx", "max": 8, "min": 36}},
+{"name": "AMD Instinct MI455X 432GB", "vram": 432.0, "bw": 19.6, "tflops": 5000.0, "mem": "HBM4", "arch": "CDNA 5", "watts": 2000, "cls": "Data Center (H2 2026)", "link": "IF + UALink", "url": "https://www.amd.com/en/products/accelerators/instinct.html", "part": {"kind": "cpx", "max": 8, "min": 54}},
+{"name": "NVIDIA Rubin VR200 288GB", "vram": 288.0, "bw": 20.5, "tflops": 8300.0, "mem": "HBM4", "arch": "Rubin", "watts": 1800, "cls": "Data Center (H2 2026)", "link": "NVLink Gen6", "url": "https://www.nvidia.com/en-us/data-center/vera-rubin/", "part": {"kind": "mig", "max": 7, "min": 36}},
+{"name": "NVIDIA DGX Spark 128GB (GB10)", "vram": 128.0, "bw": 0.273, "tflops": 125.0, "mem": "Unified LPDDR5x", "arch": "Grace Blackwell", "watts": 240, "cls": "Desktop", "link": "NVLink-C2C", "url": "https://www.nvidia.com/en-us/products/workstations/dgx-spark/", "part": {"kind": "frac"}},
+{"name": "Apple M3 Ultra 512GB", "vram": 512.0, "bw": 0.819, "tflops": 28.0, "mem": "Unified LPDDR5", "arch": "Apple M3", "watts": 270, "cls": "Apple Silicon", "link": "—", "url": "https://www.apple.com/mac-studio/", "part": {"kind": "frac"}},
 ];
 // GPUscale.net · weight quantization tiers (bytes per parameter)
 // One entry per line. Field reference: docs/DATA.md
@@ -910,27 +930,61 @@ window.GPUSCALE_DATA.quants = [
 // One entry per line. Field reference: docs/DATA.md
 window.GPUSCALE_DATA = window.GPUSCALE_DATA || {};
 window.GPUSCALE_DATA.cases = [
-{"name":"Custom (manual inputs)","resident":0,"reasoning":"None","visibleOut":0,"ttftTarget":0,"tpsTarget":0,"p95Target":0,"note":"Set all values manually; preset auto-populate disabled."},
-{"name":"Simple chatbot","resident":4096,"reasoning":"None","visibleOut":400,"ttftTarget":500,"tpsTarget":25,"p95Target":15,"note":"Short chat: greeting, FAQ, basic Q&A. ~4K context, ~400 tok answers."},
-{"name":"Simple RAG","resident":8192,"reasoning":"None","visibleOut":700,"ttftTarget":600,"tpsTarget":25,"p95Target":20,"note":"Single-pass RAG: 4-6 retrieved chunks (~6K) + query, 1 LLM call."},
-{"name":"Advanced RAG","resident":32768,"reasoning":"None","visibleOut":1500,"ttftTarget":1500,"tpsTarget":25,"p95Target":45,"note":"Multi-hop RAG: large context (16-32K), tool calls, reranking, longer answers."},
-{"name":"Internal GPT / Copilot","resident":16384,"reasoning":"None","visibleOut":800,"ttftTarget":1000,"tpsTarget":25,"p95Target":30,"note":"Enterprise assistant w/ doc retrieval, multi-turn. ~16K context, 800 tok answers."},
-{"name":"Document Q&A","resident":32768,"reasoning":"None","visibleOut":1000,"ttftTarget":1500,"tpsTarget":20,"p95Target":45,"note":"Long doc loaded into context, factoid questions. 32K typical."},
-{"name":"Document generation","resident":8192,"reasoning":"None","visibleOut":3000,"ttftTarget":2000,"tpsTarget":30,"p95Target":120,"note":"Long-form drafting (reports, emails, articles). Latency-tolerant, big output."},
-{"name":"Code generation","resident":8192,"reasoning":"None","visibleOut":1500,"ttftTarget":1500,"tpsTarget":30,"p95Target":60,"note":"Code completion / refactor. Mid-context, mid-output, latency matters."},
-{"name":"Code agent (Cline/Cursor-style)","resident":65536,"reasoning":"Light reasoning","visibleOut":2000,"ttftTarget":2000,"tpsTarget":30,"p95Target":180,"note":"Repo-aware coding agent: large context, light reasoning, multi-tool."},
-{"name":"Voice agent (real-time)","resident":4096,"reasoning":"None","visibleOut":200,"ttftTarget":300,"tpsTarget":50,"p95Target":3,"note":"Voice/IVR. TTFT < 300ms is hard requirement. Short answers."},
-{"name":"Reasoning agent (light)","resident":8192,"reasoning":"Light reasoning","visibleOut":800,"ttftTarget":800,"tpsTarget":30,"p95Target":60,"note":"Simple agentic flow with chain-of-thought (~2K reasoning tokens)."},
-{"name":"Reasoning agent (heavy)","resident":16384,"reasoning":"Heavy reasoning","visibleOut":1500,"ttftTarget":1000,"tpsTarget":30,"p95Target":240,"note":"Math / coding / research. ~8K reasoning tokens. Latency-tolerant."},
-{"name":"Video summarization","resident":65536,"reasoning":"None","visibleOut":2000,"ttftTarget":3000,"tpsTarget":25,"p95Target":180,"note":"Long input (frames as tokens), big summary. Throughput-oriented."},
-{"name":"Long-doc analysis (legal/financial)","resident":65536,"reasoning":"Light reasoning","visibleOut":2500,"ttftTarget":3000,"tpsTarget":25,"p95Target":240,"note":"Long contracts/filings + reasoning. Quality > latency."},
-{"name":"Offline batch / extract","resident":4096,"reasoning":"None","visibleOut":500,"ttftTarget":0,"tpsTarget":0,"p95Target":0,"note":"Batch jobs (extraction, classification). No interactive SLOs."},
-{"name":"Deep research agent (async)","resident":65536,"reasoning":"Heavy reasoning","visibleOut":4000,"ttftTarget":3000,"tpsTarget":25,"p95Target":600,"note":"Multi-step autonomous research: many tool calls, big synthesis. Size as a background load class, not interactive."},
+{"name": "Custom (manual inputs)", "resident": 0, "reasoning": "None", "visibleOut": 0, "ttftTarget": 0, "tpsTarget": 0, "p95Target": 0, "note": "Set all values manually; preset auto-populate disabled.", "supports": []},
+{"name": "Simple chatbot", "resident": 4096, "reasoning": "None", "visibleOut": 400, "ttftTarget": 500, "tpsTarget": 25, "p95Target": 15, "note": "Short chat: greeting, FAQ, basic Q&A. ~4K context, ~400 tok answers.", "supports": ["guard"]},
+{"name": "Simple RAG", "resident": 8192, "reasoning": "None", "visibleOut": 700, "ttftTarget": 600, "tpsTarget": 25, "p95Target": 20, "note": "Single-pass RAG: 4-6 retrieved chunks (~6K) + query, 1 LLM call.", "supports": ["embed", "rerank"]},
+{"name": "Advanced RAG", "resident": 32768, "reasoning": "None", "visibleOut": 1500, "ttftTarget": 1500, "tpsTarget": 25, "p95Target": 45, "note": "Multi-hop RAG: large context (16-32K), tool calls, reranking, longer answers.", "supports": ["embed", "rerank"]},
+{"name": "Internal GPT / Copilot", "resident": 16384, "reasoning": "None", "visibleOut": 800, "ttftTarget": 1000, "tpsTarget": 25, "p95Target": 30, "note": "Enterprise assistant w/ doc retrieval, multi-turn. ~16K context, 800 tok answers.", "supports": ["embed", "rerank"]},
+{"name": "Document Q&A", "resident": 32768, "reasoning": "None", "visibleOut": 1000, "ttftTarget": 1500, "tpsTarget": 20, "p95Target": 45, "note": "Long doc loaded into context, factoid questions. 32K typical.", "supports": ["ocr", "embed", "rerank"]},
+{"name": "Document generation", "resident": 8192, "reasoning": "None", "visibleOut": 3000, "ttftTarget": 2000, "tpsTarget": 30, "p95Target": 120, "note": "Long-form drafting (reports, emails, articles). Latency-tolerant, big output.", "supports": []},
+{"name": "Code generation", "resident": 8192, "reasoning": "None", "visibleOut": 1500, "ttftTarget": 1500, "tpsTarget": 30, "p95Target": 60, "note": "Code completion / refactor. Mid-context, mid-output, latency matters.", "supports": ["embed"]},
+{"name": "Code agent (Cline/Cursor-style)", "resident": 65536, "reasoning": "Light reasoning", "visibleOut": 2000, "ttftTarget": 2000, "tpsTarget": 30, "p95Target": 180, "note": "Repo-aware coding agent: large context, light reasoning, multi-tool.", "supports": ["embed"]},
+{"name": "Voice agent (real-time)", "resident": 4096, "reasoning": "None", "visibleOut": 200, "ttftTarget": 300, "tpsTarget": 50, "p95Target": 3, "note": "Voice/IVR. TTFT < 300ms is hard requirement. Short answers.", "supports": ["asr", "tts"]},
+{"name": "Reasoning agent (light)", "resident": 8192, "reasoning": "Light reasoning", "visibleOut": 800, "ttftTarget": 800, "tpsTarget": 30, "p95Target": 60, "note": "Simple agentic flow with chain-of-thought (~2K reasoning tokens).", "supports": []},
+{"name": "Reasoning agent (heavy)", "resident": 16384, "reasoning": "Heavy reasoning", "visibleOut": 1500, "ttftTarget": 1000, "tpsTarget": 30, "p95Target": 240, "note": "Math / coding / research. ~8K reasoning tokens. Latency-tolerant.", "supports": []},
+{"name": "Video summarization", "resident": 65536, "reasoning": "None", "visibleOut": 2000, "ttftTarget": 3000, "tpsTarget": 25, "p95Target": 180, "note": "Long input (frames as tokens), big summary. Throughput-oriented.", "supports": ["asr"]},
+{"name": "Long-doc analysis (legal/financial)", "resident": 65536, "reasoning": "Light reasoning", "visibleOut": 2500, "ttftTarget": 3000, "tpsTarget": 25, "p95Target": 240, "note": "Long contracts/filings + reasoning. Quality > latency.", "supports": ["ocr"]},
+{"name": "Offline batch / extract", "resident": 4096, "reasoning": "None", "visibleOut": 500, "ttftTarget": 0, "tpsTarget": 0, "p95Target": 0, "note": "Batch jobs (extraction, classification). No interactive SLOs.", "supports": ["ocr"]},
+{"name": "Deep research agent (async)", "resident": 65536, "reasoning": "Heavy reasoning", "visibleOut": 4000, "ttftTarget": 3000, "tpsTarget": 25, "p95Target": 600, "note": "Multi-step autonomous research: many tool calls, big synthesis. Size as a background load class, not interactive.", "supports": ["embed", "rerank"]},
 ];
+// GPUscale.net · supporting-model library (auto-attached per use case)
+// vram = GB one serving instance needs; cap = concurrent calls one instance absorbs
+// (planning allowances from published benchmarks, not guarantees). Field reference: docs/DATA.md
+window.GPUSCALE_DATA = window.GPUSCALE_DATA || {};
+window.GPUSCALE_DATA.support = {
+kinds: [
+{"key":"embed","label":"Embeddings","role":"turns text into vectors for retrieval"},
+{"key":"rerank","label":"Reranker","role":"re-orders retrieved chunks by relevance"},
+{"key":"asr","label":"ASR","role":"speech to text"},
+{"key":"tts","label":"TTS","role":"text to speech"},
+{"key":"ocr","label":"OCR","role":"documents and scans to text"},
+{"key":"guard","label":"Guard","role":"input/output safety screening"}
+],
+models: [
+{"kind":"embed","name":"BGE-M3","params":0.568,"vram":2.5,"cap":400,"default":true,"note":"Multilingual dense+sparse retrieval; ~60k tokens/s per instance","url":"https://huggingface.co/BAAI/bge-m3"},
+{"kind":"embed","name":"Qwen3-Embedding 0.6B","params":0.6,"vram":1.5,"cap":400,"note":"Lightweight MTEB top-tier","url":"https://huggingface.co/Qwen/Qwen3-Embedding-0.6B"},
+{"kind":"embed","name":"Qwen3-Embedding 8B","params":8.0,"vram":16.0,"cap":400,"note":"MTEB multilingual leader; needs a large slice","url":"https://huggingface.co/Qwen/Qwen3-Embedding-8B"},
+{"kind":"embed","name":"nomic-embed-text v1.5","params":0.137,"vram":0.8,"cap":400,"note":"Smallest footprint; CPU-viable","url":"https://huggingface.co/nomic-ai/nomic-embed-text-v1.5"},
+{"kind":"rerank","name":"bge-reranker-v2-m3","params":0.568,"vram":2.5,"cap":50,"default":true,"note":"Cross-encoder; ~150-250 ms per top-50 rerank","url":"https://huggingface.co/BAAI/bge-reranker-v2-m3"},
+{"kind":"rerank","name":"Qwen3-Reranker 0.6B","params":0.6,"vram":1.5,"cap":50,"note":"Lightweight cross-encoder","url":"https://huggingface.co/Qwen/Qwen3-Reranker-0.6B"},
+{"kind":"rerank","name":"Qwen3-Reranker 8B","params":8.0,"vram":16.0,"cap":120,"note":"~31 req/s under vLLM; needs a large slice","url":"https://huggingface.co/Qwen/Qwen3-Reranker-8B"},
+{"kind":"asr","name":"Whisper large-v3-turbo","params":0.809,"vram":1.6,"cap":4,"default":true,"note":"~130x real-time; the serving default","url":"https://huggingface.co/openai/whisper-large-v3-turbo"},
+{"kind":"asr","name":"Parakeet-TDT 0.6B v3","params":0.6,"vram":1.0,"cap":8,"note":"Batch-throughput champion (RTFx ~3,300)","url":"https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3"},
+{"kind":"asr","name":"Canary-1B v2","params":1.0,"vram":6.4,"cap":6,"note":"Adds speech translation","url":"https://huggingface.co/nvidia/canary-1b-v2"},
+{"kind":"tts","name":"Kokoro-82M","params":0.082,"vram":1.0,"cap":10,"default":true,"note":"~15x real-time; Apache license","url":"https://huggingface.co/hexgrad/Kokoro-82M"},
+{"kind":"tts","name":"Orpheus-3B","params":3.0,"vram":6.0,"cap":8,"note":"Streaming, expressive; Apache license","url":"https://huggingface.co/canopylabs/orpheus-3b-0.1-ft"},
+{"kind":"ocr","name":"PaddleOCR PP-OCRv5","params":0.05,"vram":2.0,"cap":8,"default":true,"note":"~190 pages/min per instance; plain text","url":"https://github.com/PaddlePaddle/PaddleOCR"},
+{"kind":"ocr","name":"dots.ocr 3B","params":3.0,"vram":8.0,"cap":4,"note":"Layout-aware VLM parser; MIT license","url":"https://github.com/rednote-hilab/dots.ocr"},
+{"kind":"ocr","name":"olmOCR-2 7B","params":7.0,"vram":16.0,"cap":2,"note":"Highest-fidelity document parsing","url":"https://huggingface.co/allenai/olmOCR-2-7B-1025"},
+{"kind":"guard","name":"Llama Guard 3 1B","params":1.0,"vram":2.5,"cap":30,"default":true,"note":"Input/output moderation; CPU-viable","url":"https://huggingface.co/meta-llama/Llama-Guard-3-1B"},
+{"kind":"guard","name":"Llama Guard 3 8B FP8","params":8.0,"vram":10.0,"cap":60,"note":"Higher accuracy; fits a 10 GB slice","url":"https://huggingface.co/meta-llama/Llama-Guard-3-8B"}
+]
+};
 'use strict';
 /* ================= DATA ================= */
 const DATA = window.GPUSCALE_DATA || {};
 const MODELS = DATA.models||[], GPUS = DATA.gpus||[], QUANTS = DATA.quants||[], CASES = DATA.cases||[];
+const SUPPORT = DATA.support||{kinds:[],models:[]};
 if(!MODELS.length || !GPUS.length || !QUANTS.length || !CASES.length){
   document.body.innerHTML = '<div style="font-family:system-ui,sans-serif;max-width:560px;margin:80px auto;padding:0 20px;line-height:1.65;color:#1A2536"><h2 style="margin-bottom:10px">Data files not loaded</h2><p>GPUscale.net could not find its library. Keep <code>index.html</code> together with the <code>data/</code> and <code>assets/</code> folders: the four files <code>data/models.js</code>, <code>data/gpus.js</code>, <code>data/quants.js</code> and <code>data/usecases.js</code> must sit next to this page.</p><p>If you need one portable file instead, use <code>dist/gpuscale_standalone.html</code> or rebuild it with <code>python3 tools/build_single_file.py</code>.</p></div>';
   throw new Error('GPUscale.net data missing');
@@ -1737,6 +1791,9 @@ function render(){
 function applyCase(i){
   if(i<0) return;
   const c=CASES[i];
+  const u=UC[activeUc];
+  if(u){ u.supports=defaultSupports(i);
+    if(u.supports.length) announce('Attached to '+(c.name)+': '+u.supports.map(sp=>(SUP_KIND(sp.kind)||{label:sp.kind}).label+' ('+sp.model+')').join(', ')); }
   if(c.resident) $('inSeq').value=c.resident;
   if(c.visibleOut) $('inOut').value=c.visibleOut;
   $('selReason').value=REASON_TOK.hasOwnProperty(c.reasoning)?c.reasoning:'None';
@@ -1773,27 +1830,95 @@ function ucName(u){ if(u.name) return u.name;
   const ci=+u.f.selCase; if(ci>=0&&CASES[ci]) return CASES[ci].name;
   return ucModelName(u); }
 function ucModelName(u){ return u.f.chkCustom? 'Custom model' : ((MODELS[+u.f.selModel||0]||{}).name||'?'); }
+const SUP_KIND=k=>SUPPORT.kinds.find(x=>x.key===k);
+const SUP_DEFAULT=k=>SUPPORT.models.find(m=>m.kind===k&&m.default)||SUPPORT.models.find(m=>m.kind===k);
+const SUP_MODEL=(k,name)=>SUPPORT.models.find(m=>m.kind===k&&m.name===name)||SUP_DEFAULT(k);
+function defaultSupports(ci){ const c=CASES[ci]; if(!c||!c.supports) return [];
+  return c.supports.map(k=>{ const d=SUP_DEFAULT(k); return d? {kind:k, model:d.name, on:true} : null; }).filter(Boolean); }
+function announce(msg){ const el=$('live'); if(el){ el.textContent=''; setTimeout(()=>{ el.textContent=msg; },30); } }
+function poolKey(u){ const f=u.f;
+  const mk=f.chkCustom? 'custom:'+[f.cusParams,f.cusActive,f.cusHidden,f.cusLayers,f.cusKvh,f.cusHdim].join(',') : 'm'+(+f.selModel||0);
+  return mk+'|q'+(+f.selWQuant||0)+'|k'+(+f.selKQuant||0)+'|p'+(f.selPolicy||''); }
+let renamingUc=null, chipEdit=null;
 function renderUcCards(){ const box=$('ucCards'); if(!box||!UC.length) return; captureUc();
+  const keys=UC.map(poolKey), pooled=k=>keys.filter(x=>x===k).length>1;
   box.innerHTML=UC.map((u,i)=>{ const f=u.f, wq=QUANTS[+f.selWQuant||0]||{};
+    const name = renamingUc===i
+      ? `<input class="uc-rename" data-ren-input="${i}" type="text" maxlength="40" value="${esc(ucName(u))}" aria-label="Use case name">`
+      : `<span class="uc-name">${esc(ucName(u))}</span>`;
+    const pool = pooled(keys[i])? `<span class="uc-pool" title="Same model, precision and KV policy as another use case: served by one shared pooled deployment">pooled</span>` : '';
+    const defs = (CASES[+f.selCase]&&CASES[+f.selCase].supports)||[];
+    const chips = (u.supports||[]).map((sp,ci2)=>{ const kd=SUP_KIND(sp.kind)||{label:sp.kind};
+      return `<span class="chip${chipEdit&&chipEdit.uc===i&&chipEdit.kind===sp.kind?' open':''}" data-chip="${i}:${sp.kind}" role="button" tabindex="0" title="${esc(sp.model||'')} · click to inspect">${esc(kd.label)}<button class="chip-x" data-chipx="${i}:${sp.kind}" type="button" aria-label="Remove ${esc(kd.label)} from ${esc(ucName(u))}">×</button></span>`; }).join('');
+    const ghosts = defs.filter(k=>!(u.supports||[]).some(sp=>sp.kind===k)).map(k=>{ const kd=SUP_KIND(k)||{label:k};
+      return `<span class="chip ghost" data-chipadd="${i}:${k}" role="button" tabindex="0" title="Re-attach ${esc(kd.label)}">+ ${esc(kd.label)}</span>`; }).join('');
+    let editor='';
+    if(chipEdit&&chipEdit.uc===i){ const sp=(u.supports||[]).find(x=>x.kind===chipEdit.kind);
+      if(sp){ const sm=SUP_MODEL(sp.kind,sp.model)||{}; const kd=SUP_KIND(sp.kind)||{label:sp.kind};
+        const opts=SUPPORT.models.filter(m=>m.kind===sp.kind).map(m=>`<option${m.name===sp.model?' selected':''}>${esc(m.name)}</option>`).join('');
+        editor=`<div class="chip-editor"><div class="ce-row adv"><label>${esc(kd.label)} model</label><select data-chipsel="${i}:${sp.kind}">${opts}</select></div><div class="ce-note">${esc(sm.note||'')} · ~${sm.vram} GB per instance, one instance per ~${sm.cap} concurrent</div></div>`; } }
     return `<div class="uc-card${i===activeUc?' active':''}" data-i="${i}" role="listitem" tabindex="0" aria-label="Use case ${esc(ucName(u))}${i===activeUc?', being edited':''}">
-      <div class="uc-line"><span class="uc-name">${esc(ucName(u))}</span>${UC.length>1?`<button class="uc-x" data-x="${i}" type="button" title="Remove this use case" aria-label="Remove ${esc(ucName(u))}">×</button>`:''}</div>
-      <div class="uc-meta">${esc(ucModelName(u))} · ${esc(wq.name||'')} · ${f.inConc||0} concurrent</div></div>`; }).join('');
+      <div class="uc-line">${name}${pool}
+        <button class="uc-tool" data-ren="${i}" type="button" title="Rename" aria-label="Rename ${esc(ucName(u))}"><svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4"/></svg></button>
+        <button class="uc-tool" data-dup="${i}" type="button" title="Duplicate" aria-label="Duplicate ${esc(ucName(u))}"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg></button>
+        ${UC.length>1?`<button class="uc-x" data-x="${i}" type="button" title="Remove this use case" aria-label="Remove ${esc(ucName(u))}">×</button>`:''}</div>
+      <div class="uc-meta">${esc(ucModelName(u))} · ${esc(wq.name||'')} · ${f.inConc||0} concurrent</div>
+      ${chips||ghosts?`<div class="uc-chips">${chips}${ghosts}</div>`:''}${editor}</div>`; }).join('');
+  if(renamingUc!=null){ const inp=box.querySelector('[data-ren-input]'); if(inp){ inp.focus(); inp.select(); } }
   const tag=ucName(UC[activeUc]);
   ['ctxModel','ctxPrec','ctxWork'].forEach(id=>{ const el=$(id); if(el) el.textContent = UC.length>1? tag : ''; }); }
 function selectUc(i){ if(i===activeUc){ return; } captureUc(); loadUc(i); renderUcCards(); render(); }
 function addUc(){ captureUc(); const base=UC[activeUc];
   const u={id:'uc'+(++ucSeq), name:'', f:Object.assign({},base?base.f:{}), supports:[], isolate:false};
-  UC.push(u); loadUc(UC.length-1); renderUcCards(); render();
-  toast('Use case added: edit it in the stations below'); }
+  UC.push(u); loadUc(UC.length-1);
+  const ci=CASES.findIndex(c=>/Simple chatbot/.test(c.name));
+  if(ci>=0){ $('selCase').value=ci; applyCase(ci); }
+  captureUc(); renderUcCards(); render();
+  toast('Use case added: pick its type and model below'); }
+function duplicateUc(i){ captureUc(); const base=UC[i]; if(!base) return;
+  const u={id:'uc'+(++ucSeq), name:(ucName(base)+' copy').slice(0,40),
+    f:Object.assign({},base.f), supports:(base.supports||[]).map(sp=>Object.assign({},sp)), isolate:!!base.isolate};
+  UC.splice(i+1,0,u); loadUc(i+1); renderUcCards(); render();
+  toast('Duplicated: '+ucName(base)); }
 function removeUc(i){ if(UC.length<=1) return; const gone=ucName(UC[i]); UC.splice(i,1);
   if(activeUc>=UC.length) activeUc=UC.length-1; else if(i<activeUc) activeUc--;
   loadUc(activeUc); renderUcCards(); render(); toast('Removed: '+gone); }
+function commitRename(inp){ const i=+inp.dataset.renInput, v=inp.value.trim();
+  if(UC[i]) UC[i].name=v; renamingUc=null; renderUcCards(); }
+function chipAct(e){
+  const cx=e.target.closest('[data-chipx]'); if(cx){ const [i,k]=cx.dataset.chipx.split(':'); const u=UC[+i];
+    u.supports=(u.supports||[]).filter(sp=>sp.kind!==k);
+    if(chipEdit&&chipEdit.uc===+i&&chipEdit.kind===k) chipEdit=null;
+    announce((SUP_KIND(k)||{label:k}).label+' removed from '+ucName(u)); renderUcCards(); render(); return true; }
+  const ca=e.target.closest('[data-chipadd]'); if(ca){ const [i,k]=ca.dataset.chipadd.split(':'); const u=UC[+i];
+    const d=SUP_DEFAULT(k); if(d){ (u.supports=u.supports||[]).push({kind:k, model:d.name, on:true});
+    announce((SUP_KIND(k)||{label:k}).label+' ('+d.name+') attached to '+ucName(u)); }
+    renderUcCards(); render(); return true; }
+  const ch=e.target.closest('[data-chip]'); if(ch){ const [i,k]=ch.dataset.chip.split(':');
+    chipEdit = chipEdit&&chipEdit.uc===+i&&chipEdit.kind===k? null : {uc:+i, kind:k};
+    renderUcCards(); return true; }
+  return false;
+}
 $('ucCards').addEventListener('click',e=>{
-  const x=e.target.closest('.uc-x'); if(x){ e.stopPropagation(); removeUc(+x.dataset.x); return; }
+  const ri=e.target.closest('[data-ren-input]'); if(ri) return;
+  const rn=e.target.closest('[data-ren]'); if(rn){ captureUc(); renamingUc=+rn.dataset.ren; renderUcCards(); return; }
+  const dp=e.target.closest('[data-dup]'); if(dp){ duplicateUc(+dp.dataset.dup); return; }
+  const x=e.target.closest('.uc-x'); if(x){ removeUc(+x.dataset.x); return; }
+  if(chipAct(e)) return;
   const card=e.target.closest('.uc-card'); if(card) selectUc(+card.dataset.i); });
 $('ucCards').addEventListener('keydown',e=>{
+  const ri=e.target.closest('[data-ren-input]');
+  if(ri){ if(e.key==='Enter'){ e.preventDefault(); commitRename(ri); } if(e.key==='Escape'){ renamingUc=null; renderUcCards(); } return; }
   if(e.key!=='Enter'&&e.key!==' ') return;
+  if(e.target.closest('[data-chip],[data-chipadd],[data-chipx]')){ e.preventDefault(); chipAct(e); return; }
   const card=e.target.closest('.uc-card'); if(card){ e.preventDefault(); selectUc(+card.dataset.i); } });
+$('ucCards').addEventListener('focusout',e=>{
+  const ri=e.target.closest&&e.target.closest('[data-ren-input]'); if(ri&&renamingUc!=null) commitRename(ri); });
+$('ucCards').addEventListener('change',e=>{
+  const cs=e.target.closest('[data-chipsel]'); if(!cs) return;
+  const [i,k]=cs.dataset.chipsel.split(':'); const u=UC[+i];
+  const sp=(u.supports||[]).find(x=>x.kind===k); if(sp){ sp.model=cs.value;
+    announce((SUP_KIND(k)||{label:k}).label+' model set to '+cs.value); renderUcCards(); render(); } });
 $('btnAddUc').addEventListener('click',addUc);
 function ucToConfig(u){ const f=u.f;
   const wq=QUANTS[+f.selWQuant||0]||QUANTS[0], kq=KV_QUANTS[+f.selKQuant||0]||KV_QUANTS[0];
@@ -1966,6 +2091,7 @@ function applyConfig(raw){
     applyUcDom(c, snap, notes);
     applyGlobalDom(c, raw, notes);
     captureUc();
+    UC[0].supports=defaultSupports(+UC[0].f.selCase);
   }
   Object.keys(FIELDS).forEach(refreshCtl);
   renderUcCards();

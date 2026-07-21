@@ -2,6 +2,7 @@
 /* ================= DATA ================= */
 const DATA = window.GPUSCALE_DATA || {};
 const MODELS = DATA.models||[], GPUS = DATA.gpus||[], QUANTS = DATA.quants||[], CASES = DATA.cases||[];
+const SUPPORT = DATA.support||{kinds:[],models:[]};
 if(!MODELS.length || !GPUS.length || !QUANTS.length || !CASES.length){
   document.body.innerHTML = '<div style="font-family:system-ui,sans-serif;max-width:560px;margin:80px auto;padding:0 20px;line-height:1.65;color:#1A2536"><h2 style="margin-bottom:10px">Data files not loaded</h2><p>GPUscale.net could not find its library. Keep <code>index.html</code> together with the <code>data/</code> and <code>assets/</code> folders: the four files <code>data/models.js</code>, <code>data/gpus.js</code>, <code>data/quants.js</code> and <code>data/usecases.js</code> must sit next to this page.</p><p>If you need one portable file instead, use <code>dist/gpuscale_standalone.html</code> or rebuild it with <code>python3 tools/build_single_file.py</code>.</p></div>';
   throw new Error('GPUscale.net data missing');
@@ -808,6 +809,9 @@ function render(){
 function applyCase(i){
   if(i<0) return;
   const c=CASES[i];
+  const u=UC[activeUc];
+  if(u){ u.supports=defaultSupports(i);
+    if(u.supports.length) announce('Attached to '+(c.name)+': '+u.supports.map(sp=>(SUP_KIND(sp.kind)||{label:sp.kind}).label+' ('+sp.model+')').join(', ')); }
   if(c.resident) $('inSeq').value=c.resident;
   if(c.visibleOut) $('inOut').value=c.visibleOut;
   $('selReason').value=REASON_TOK.hasOwnProperty(c.reasoning)?c.reasoning:'None';
@@ -844,27 +848,95 @@ function ucName(u){ if(u.name) return u.name;
   const ci=+u.f.selCase; if(ci>=0&&CASES[ci]) return CASES[ci].name;
   return ucModelName(u); }
 function ucModelName(u){ return u.f.chkCustom? 'Custom model' : ((MODELS[+u.f.selModel||0]||{}).name||'?'); }
+const SUP_KIND=k=>SUPPORT.kinds.find(x=>x.key===k);
+const SUP_DEFAULT=k=>SUPPORT.models.find(m=>m.kind===k&&m.default)||SUPPORT.models.find(m=>m.kind===k);
+const SUP_MODEL=(k,name)=>SUPPORT.models.find(m=>m.kind===k&&m.name===name)||SUP_DEFAULT(k);
+function defaultSupports(ci){ const c=CASES[ci]; if(!c||!c.supports) return [];
+  return c.supports.map(k=>{ const d=SUP_DEFAULT(k); return d? {kind:k, model:d.name, on:true} : null; }).filter(Boolean); }
+function announce(msg){ const el=$('live'); if(el){ el.textContent=''; setTimeout(()=>{ el.textContent=msg; },30); } }
+function poolKey(u){ const f=u.f;
+  const mk=f.chkCustom? 'custom:'+[f.cusParams,f.cusActive,f.cusHidden,f.cusLayers,f.cusKvh,f.cusHdim].join(',') : 'm'+(+f.selModel||0);
+  return mk+'|q'+(+f.selWQuant||0)+'|k'+(+f.selKQuant||0)+'|p'+(f.selPolicy||''); }
+let renamingUc=null, chipEdit=null;
 function renderUcCards(){ const box=$('ucCards'); if(!box||!UC.length) return; captureUc();
+  const keys=UC.map(poolKey), pooled=k=>keys.filter(x=>x===k).length>1;
   box.innerHTML=UC.map((u,i)=>{ const f=u.f, wq=QUANTS[+f.selWQuant||0]||{};
+    const name = renamingUc===i
+      ? `<input class="uc-rename" data-ren-input="${i}" type="text" maxlength="40" value="${esc(ucName(u))}" aria-label="Use case name">`
+      : `<span class="uc-name">${esc(ucName(u))}</span>`;
+    const pool = pooled(keys[i])? `<span class="uc-pool" title="Same model, precision and KV policy as another use case: served by one shared pooled deployment">pooled</span>` : '';
+    const defs = (CASES[+f.selCase]&&CASES[+f.selCase].supports)||[];
+    const chips = (u.supports||[]).map((sp,ci2)=>{ const kd=SUP_KIND(sp.kind)||{label:sp.kind};
+      return `<span class="chip${chipEdit&&chipEdit.uc===i&&chipEdit.kind===sp.kind?' open':''}" data-chip="${i}:${sp.kind}" role="button" tabindex="0" title="${esc(sp.model||'')} · click to inspect">${esc(kd.label)}<button class="chip-x" data-chipx="${i}:${sp.kind}" type="button" aria-label="Remove ${esc(kd.label)} from ${esc(ucName(u))}">×</button></span>`; }).join('');
+    const ghosts = defs.filter(k=>!(u.supports||[]).some(sp=>sp.kind===k)).map(k=>{ const kd=SUP_KIND(k)||{label:k};
+      return `<span class="chip ghost" data-chipadd="${i}:${k}" role="button" tabindex="0" title="Re-attach ${esc(kd.label)}">+ ${esc(kd.label)}</span>`; }).join('');
+    let editor='';
+    if(chipEdit&&chipEdit.uc===i){ const sp=(u.supports||[]).find(x=>x.kind===chipEdit.kind);
+      if(sp){ const sm=SUP_MODEL(sp.kind,sp.model)||{}; const kd=SUP_KIND(sp.kind)||{label:sp.kind};
+        const opts=SUPPORT.models.filter(m=>m.kind===sp.kind).map(m=>`<option${m.name===sp.model?' selected':''}>${esc(m.name)}</option>`).join('');
+        editor=`<div class="chip-editor"><div class="ce-row adv"><label>${esc(kd.label)} model</label><select data-chipsel="${i}:${sp.kind}">${opts}</select></div><div class="ce-note">${esc(sm.note||'')} · ~${sm.vram} GB per instance, one instance per ~${sm.cap} concurrent</div></div>`; } }
     return `<div class="uc-card${i===activeUc?' active':''}" data-i="${i}" role="listitem" tabindex="0" aria-label="Use case ${esc(ucName(u))}${i===activeUc?', being edited':''}">
-      <div class="uc-line"><span class="uc-name">${esc(ucName(u))}</span>${UC.length>1?`<button class="uc-x" data-x="${i}" type="button" title="Remove this use case" aria-label="Remove ${esc(ucName(u))}">×</button>`:''}</div>
-      <div class="uc-meta">${esc(ucModelName(u))} · ${esc(wq.name||'')} · ${f.inConc||0} concurrent</div></div>`; }).join('');
+      <div class="uc-line">${name}${pool}
+        <button class="uc-tool" data-ren="${i}" type="button" title="Rename" aria-label="Rename ${esc(ucName(u))}"><svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4"/></svg></button>
+        <button class="uc-tool" data-dup="${i}" type="button" title="Duplicate" aria-label="Duplicate ${esc(ucName(u))}"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg></button>
+        ${UC.length>1?`<button class="uc-x" data-x="${i}" type="button" title="Remove this use case" aria-label="Remove ${esc(ucName(u))}">×</button>`:''}</div>
+      <div class="uc-meta">${esc(ucModelName(u))} · ${esc(wq.name||'')} · ${f.inConc||0} concurrent</div>
+      ${chips||ghosts?`<div class="uc-chips">${chips}${ghosts}</div>`:''}${editor}</div>`; }).join('');
+  if(renamingUc!=null){ const inp=box.querySelector('[data-ren-input]'); if(inp){ inp.focus(); inp.select(); } }
   const tag=ucName(UC[activeUc]);
   ['ctxModel','ctxPrec','ctxWork'].forEach(id=>{ const el=$(id); if(el) el.textContent = UC.length>1? tag : ''; }); }
 function selectUc(i){ if(i===activeUc){ return; } captureUc(); loadUc(i); renderUcCards(); render(); }
 function addUc(){ captureUc(); const base=UC[activeUc];
   const u={id:'uc'+(++ucSeq), name:'', f:Object.assign({},base?base.f:{}), supports:[], isolate:false};
-  UC.push(u); loadUc(UC.length-1); renderUcCards(); render();
-  toast('Use case added: edit it in the stations below'); }
+  UC.push(u); loadUc(UC.length-1);
+  const ci=CASES.findIndex(c=>/Simple chatbot/.test(c.name));
+  if(ci>=0){ $('selCase').value=ci; applyCase(ci); }
+  captureUc(); renderUcCards(); render();
+  toast('Use case added: pick its type and model below'); }
+function duplicateUc(i){ captureUc(); const base=UC[i]; if(!base) return;
+  const u={id:'uc'+(++ucSeq), name:(ucName(base)+' copy').slice(0,40),
+    f:Object.assign({},base.f), supports:(base.supports||[]).map(sp=>Object.assign({},sp)), isolate:!!base.isolate};
+  UC.splice(i+1,0,u); loadUc(i+1); renderUcCards(); render();
+  toast('Duplicated: '+ucName(base)); }
 function removeUc(i){ if(UC.length<=1) return; const gone=ucName(UC[i]); UC.splice(i,1);
   if(activeUc>=UC.length) activeUc=UC.length-1; else if(i<activeUc) activeUc--;
   loadUc(activeUc); renderUcCards(); render(); toast('Removed: '+gone); }
+function commitRename(inp){ const i=+inp.dataset.renInput, v=inp.value.trim();
+  if(UC[i]) UC[i].name=v; renamingUc=null; renderUcCards(); }
+function chipAct(e){
+  const cx=e.target.closest('[data-chipx]'); if(cx){ const [i,k]=cx.dataset.chipx.split(':'); const u=UC[+i];
+    u.supports=(u.supports||[]).filter(sp=>sp.kind!==k);
+    if(chipEdit&&chipEdit.uc===+i&&chipEdit.kind===k) chipEdit=null;
+    announce((SUP_KIND(k)||{label:k}).label+' removed from '+ucName(u)); renderUcCards(); render(); return true; }
+  const ca=e.target.closest('[data-chipadd]'); if(ca){ const [i,k]=ca.dataset.chipadd.split(':'); const u=UC[+i];
+    const d=SUP_DEFAULT(k); if(d){ (u.supports=u.supports||[]).push({kind:k, model:d.name, on:true});
+    announce((SUP_KIND(k)||{label:k}).label+' ('+d.name+') attached to '+ucName(u)); }
+    renderUcCards(); render(); return true; }
+  const ch=e.target.closest('[data-chip]'); if(ch){ const [i,k]=ch.dataset.chip.split(':');
+    chipEdit = chipEdit&&chipEdit.uc===+i&&chipEdit.kind===k? null : {uc:+i, kind:k};
+    renderUcCards(); return true; }
+  return false;
+}
 $('ucCards').addEventListener('click',e=>{
-  const x=e.target.closest('.uc-x'); if(x){ e.stopPropagation(); removeUc(+x.dataset.x); return; }
+  const ri=e.target.closest('[data-ren-input]'); if(ri) return;
+  const rn=e.target.closest('[data-ren]'); if(rn){ captureUc(); renamingUc=+rn.dataset.ren; renderUcCards(); return; }
+  const dp=e.target.closest('[data-dup]'); if(dp){ duplicateUc(+dp.dataset.dup); return; }
+  const x=e.target.closest('.uc-x'); if(x){ removeUc(+x.dataset.x); return; }
+  if(chipAct(e)) return;
   const card=e.target.closest('.uc-card'); if(card) selectUc(+card.dataset.i); });
 $('ucCards').addEventListener('keydown',e=>{
+  const ri=e.target.closest('[data-ren-input]');
+  if(ri){ if(e.key==='Enter'){ e.preventDefault(); commitRename(ri); } if(e.key==='Escape'){ renamingUc=null; renderUcCards(); } return; }
   if(e.key!=='Enter'&&e.key!==' ') return;
+  if(e.target.closest('[data-chip],[data-chipadd],[data-chipx]')){ e.preventDefault(); chipAct(e); return; }
   const card=e.target.closest('.uc-card'); if(card){ e.preventDefault(); selectUc(+card.dataset.i); } });
+$('ucCards').addEventListener('focusout',e=>{
+  const ri=e.target.closest&&e.target.closest('[data-ren-input]'); if(ri&&renamingUc!=null) commitRename(ri); });
+$('ucCards').addEventListener('change',e=>{
+  const cs=e.target.closest('[data-chipsel]'); if(!cs) return;
+  const [i,k]=cs.dataset.chipsel.split(':'); const u=UC[+i];
+  const sp=(u.supports||[]).find(x=>x.kind===k); if(sp){ sp.model=cs.value;
+    announce((SUP_KIND(k)||{label:k}).label+' model set to '+cs.value); renderUcCards(); render(); } });
 $('btnAddUc').addEventListener('click',addUc);
 function ucToConfig(u){ const f=u.f;
   const wq=QUANTS[+f.selWQuant||0]||QUANTS[0], kq=KV_QUANTS[+f.selKQuant||0]||KV_QUANTS[0];
@@ -1037,6 +1109,7 @@ function applyConfig(raw){
     applyUcDom(c, snap, notes);
     applyGlobalDom(c, raw, notes);
     captureUc();
+    UC[0].supports=defaultSupports(+UC[0].f.selCase);
   }
   Object.keys(FIELDS).forEach(refreshCtl);
   renderUcCards();
