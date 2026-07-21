@@ -1,5 +1,23 @@
 # Changelog
 
+## Studio 5.5 (2026-07-21)
+
+Auto-size now sizes for the SLA, and says what it cannot fix.
+
+- After fitting memory, Auto-size keeps adding nodes until the per-user
+  speed and P95 targets pass (smaller batch per replica means faster
+  streams). When a target still fails at batch 1, no fleet size can fix
+  it: the tool says so plainly and points at the real levers (shorter
+  visible output and reasoning, a faster GPU, or a relaxed target).
+- The Summary's findings name the lever per failing metric: first token
+  responds to wider tensor parallel; per-user speed to more nodes, a
+  higher-bandwidth GPU or quantization; P95 to the speed levers plus
+  output length, which becomes the floor at batch 1.
+- Mobile: the inputs and results halves are clearly separated with banner
+  captions and a divider, and the results caption no longer claims the
+  inputs are "on the left".
+
+
 ## Studio 5.4 (2026-07-21)
 
 One report for the whole project, and demand grounded in research.

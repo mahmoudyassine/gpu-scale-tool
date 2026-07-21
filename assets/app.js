@@ -7,7 +7,7 @@ if(!MODELS.length || !GPUS.length || !QUANTS.length || !CASES.length){
   document.body.innerHTML = '<div style="font-family:system-ui,sans-serif;max-width:560px;margin:80px auto;padding:0 20px;line-height:1.65;color:#1A2536"><h2 style="margin-bottom:10px">Data files not loaded</h2><p>GPUscale.net could not find its library. Keep <code>index.html</code> together with the <code>data/</code> and <code>assets/</code> folders: the four files <code>data/models.js</code>, <code>data/gpus.js</code>, <code>data/quants.js</code> and <code>data/usecases.js</code> must sit next to this page.</p><p>If you need one portable file instead, use <code>dist/gpuscale_standalone.html</code> or rebuild it with <code>python3 tools/build_single_file.py</code>.</p></div>';
   throw new Error('GPUscale.net data missing');
 }
-const STUDIO_VERSION = '5.4.0', ENGINE_VERSION = 23;
+const STUDIO_VERSION = '5.5.0', ENGINE_VERSION = 23;
 const PROJ_ID = (()=>{ const L='abcdefghjkmnpqrstuvwxyz', D='0123456789';
   const pick=s=>s[Math.floor(Math.random()*s.length)];
   return 'Project_'+pick(L)+pick(L)+pick(D)+pick(D)+pick(D); })();
@@ -1089,7 +1089,16 @@ function buildProjectSummary(prj){
   const finds=[];
   if(!fleet.fits) finds.push(['bad','The project exceeds GPU memory: see Recommendations.']);
   const failing=pools.flatMap(p=>p.perUc.filter(x=>!x.d.sloAll));
-  if(failing.length) finds.push(['bad',`${failing.length} use case${failing.length>1?'s miss':' misses'} an SLO target (marked above): widen TP for faster first token, raise replicas for speed at batch, or relax the target.`]);
+  if(failing.length){
+    const missT=failing.some(x=>x.s.sloTtft>0&&!x.d.slo.ttft.pass);
+    const missS=failing.some(x=>x.s.sloTps>0&&!x.d.slo.tps.pass);
+    const missP=failing.some(x=>x.s.sloP95>0&&!x.d.slo.p95.pass);
+    const levers=[];
+    if(missT) levers.push('first token: widen tensor parallel (Auto-size does this when the TTFT target demands it)');
+    if(missS) levers.push('per-user speed: run Auto-size deployment (it now adds nodes until the target passes), or pick a higher-bandwidth GPU or a smaller/quantized model');
+    if(missP) levers.push('P95 latency: speed levers above, plus trim visible output and reasoning tokens; if it persists at batch 1, the output length itself is the floor and only shorter outputs or a relaxed target help');
+    finds.push(['bad',`${failing.length} use case${failing.length>1?'s miss':' misses'} an SLO target (marked above). Levers, per metric: ${levers.join('; ')}.`]);
+  }
   pools.forEach(p=>{ if(p.capped) finds.push(['warn',`${esc(p.state.model.name)}: ${p.capped-p.d.replicas} replica${p.capped-p.d.replicas>1?'s':''} beyond demand turned into spare GPUs.`]); });
   pools.forEach(p=>{ if(p.d.kvTotal>p.d.weightsAll) finds.push(['warn',`${esc(p.state.model.name)}: KV cache outweighs the weights; FP8 KV or shorter context pays off most.`]); });
   if(finds.length){ h+='</ul><div class="sum-cap">Findings</div><ul class="sum">';
@@ -2096,7 +2105,7 @@ function solvePool(s){
   const interactive=(s.sloTtft>0||s.sloTps>0||s.sloP95>0);
   const eva=(workers,batch)=>compute({...s, tp, ic, workers, gpus:workers*s.perW, batch});
   let workers, batch, d;
-  let converged=false;
+  let converged=false, sloStuck=null, grewForSlo=0;
   if(interactive){
     // fewest workers that admit the peak concurrency at a batch of at most 64, then grow until it fits
     workers=Math.min(64,Math.max(1,Math.ceil(Math.max(1,Math.ceil(s.concurrent/64))*tp/s.perW)));
@@ -2107,6 +2116,26 @@ function solvePool(s){
       if(d.total<=pack*d.avail){ converged=true; break; }
       if(workers>=64) break;
       workers++;
+    }
+    // SLA growth: per-user speed and P95 both improve as batch-per-replica falls,
+    // so add nodes until the targets pass; if they still fail at batch 1 no amount
+    // of hardware helps (the output length itself is the floor) and we say so.
+    if(converged){
+      const w0=workers;
+      for(let guard=0; guard<80; guard++){
+        d=eva(workers,batch);
+        const missTps = s.sloTps>0 && !d.slo.tps.pass;
+        const missP95 = s.sloP95>0 && !d.slo.p95.pass;
+        if(!(missTps||missP95)) break;
+        if(batch<=1 || workers>=64){
+          sloStuck=(missTps?'per-user speed':'')+(missTps&&missP95?' and ':'')+(missP95?'P95':'');
+          break;
+        }
+        workers++;
+        const reps2=Math.max(1,Math.floor(workers*s.perW/tp));
+        batch=Math.min(64,Math.max(1,Math.ceil(s.concurrent/reps2)));
+      }
+      grewForSlo=workers-w0;
     }
   } else {
     // offline: queueing is fine, so keep hardware minimal and pick the largest batch that fits
@@ -2122,7 +2151,7 @@ function solvePool(s){
   }
   if(!converged) return {ok:false, packPct,
     reason:`Could not fit ${s.model.name} at TP${tp} within the ${packPct}% memory target even at 64 workers: quantize the weights, raise the target, or pick a higher-VRAM GPU`};
-  return {ok:true, tp, tpFit, widened, crossed, workers, batch, packPct, weights, actGB};
+  return {ok:true, tp, tpFit, widened, crossed, workers, batch, packPct, weights, actGB, sloStuck, grewForSlo};
 }
 function autoSizeProject(quiet){
   captureUc();
@@ -2134,7 +2163,7 @@ function autoSizeProject(quiet){
     anyCrossed=anyCrossed||r.crossed;
     p.members.forEach(mi=>{ const f=UC[mi].f; f.inTp=r.tp; f.inWorkers=r.workers; f.inBatch=r.batch; });
     const names=p.members.map(mi=>ucName(UC[mi])).join(' + ');
-    lines.push(`${p.state.model.name} ${p.state.wq.name} (${names}): TP${r.tp} · ${r.workers} worker${r.workers>1?'s':''} · batch ${r.batch} for ${p.state.concurrent} pooled calls${r.widened?', TP widened for the TTFT target':''}${r.crossed?', one copy spans workers':''}.`);
+    lines.push(`${p.state.model.name} ${p.state.wq.name} (${names}): TP${r.tp} · ${r.workers} worker${r.workers>1?'s':''} · batch ${r.batch} for ${p.state.concurrent} pooled calls${r.widened?', TP widened for the TTFT target':''}${r.grewForSlo?`, ${r.grewForSlo} node${r.grewForSlo>1?'s':''} added to meet speed/P95 targets`:''}${r.sloStuck?`; the ${r.sloStuck} target stays unmet even at batch 1: not solvable with more hardware, trim output/reasoning tokens or relax the target`:''}${r.crossed?', one copy spans workers':''}.`);
   });
   if(anyCrossed&&+$('inIc').value>0.7){ $('inIc').value=0.7; refreshCtl('inIc'); }
   loadUc(activeUc); renderUcCards(); render();
@@ -2168,6 +2197,8 @@ function autoSize(quiet){
     ? `Trade-off: one copy spans ${Math.ceil(tp/s.perW)} workers, so decode pays a network penalty (interconnect set to 0.7) and real prefill will be slower than shown. ${qAlt?`To stay inside one worker instead, switch weights to ${qAlt.name} in the Precision station (${fmt(s.params*qAlt.bytes)} GB fits TP${s.perW}). `:''}`
     : `One copy stays inside a single worker's NVLink island: no network penalty. `;
   why+=`${workers} worker${workers>1?'s':''} give ${df.replicas} cop${df.replicas>1?'ies':'y'} serving ${df.active} of ${s.concurrent} calls at batch ${batch}. `;
+  if(r.grewForSlo) why+=`${r.grewForSlo} of those worker${r.grewForSlo>1?'s were':' was'} added purely to hit the speed/P95 targets. `;
+  if(r.sloStuck) why+=`The ${r.sloStuck} target stays unmet even at batch 1: no fleet size fixes it; shorten visible output or reasoning tokens, pick a faster GPU, or relax the target. `;
   why+= df.fits? (df.sloAll? 'Result: fits, and every SLO target passes. ' : 'Result: memory fits, but an SLO target still fails. Hardware alone cannot fix that one: see Recommendations below. ') : 'Result: still exceeds VRAM, see Recommendations. ';
   if(df.fits){
     const u=df.total/df.avail*100;

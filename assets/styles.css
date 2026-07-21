@@ -236,6 +236,9 @@ ul.sum li.bad .ri{color:var(--red)}
 /* ============ LAYOUT ============ */
 .console{display:grid;grid-template-columns:368px minmax(0,1fr);gap:20px;align-items:start}
 @media(max-width:1020px){.console{grid-template-columns:1fr}
+  .readout{margin-top:10px;padding-top:16px;border-top:2px solid var(--line)}
+  .readout > .col-cap:first-child{display:block !important;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:8px 12px;text-align:center;margin-bottom:4px}
+  .rail > .col-cap{display:block;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:8px 12px;text-align:center}
   header.top{align-items:stretch}
   .top-right{width:100%;align-items:flex-start}}
 .rail{display:flex;flex-direction:column;gap:14px;counter-reset:station}
