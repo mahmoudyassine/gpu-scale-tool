@@ -9,10 +9,11 @@
 
 # GPUscale.net
 
-**Plan self-hosted LLM deployments in your browser.** Pick a model, precision,
-workload and hardware; get memory fit, latency, throughput, SLO compliance and
-a resilient worker topology. Free, open source, and fully static: no backend,
-no build step, nothing uploaded.
+**Plan self-hosted LLM deployments in your browser.** Build a project from one
+or many use cases (RAG copilot, voice agent, document intake), pick hardware
+once, and get memory fit, latency, SLO compliance, a resilient topology and a
+fleet map of every model on every GPU, supporting models included. Free, open
+source, and fully static: no backend, no build step, nothing uploaded.
 
 **▶ Try it now: https://gpuscale.net/**
 
@@ -20,12 +21,16 @@ no build step, nothing uploaded.
 
 ## ✨ Features
 
+- 🗂️ **Projects with multiple use cases**: each card has its own workload, concurrency, SLOs and model; same model + precision is served by one shared pooled deployment, sized for the combined load
+- 🤝 **Supporting models auto-attach**: embeddings and rerankers for RAG, ASR and TTS for voice, OCR for documents, guard models for public chat; placed on MIG slices, AMD partitions or fractional GPUs with honest footprints
+- 🗺️ **Fleet map**: every node and GPU drawn with its assignment: replicas, support slices, spares and standby nodes, plus a screen-reader text form
+- 🎚️ **Two modes**: Normal asks for people at peak and derives the rest; Advanced exposes every control
 - 🧮 **Memory fit**: weights, KV cache, activations and overhead per replica, against real fleet capacity
 - ⚡ **Performance**: time to first token, per-user tok/s, aggregate throughput, latency anatomy
 - 🎯 **SLO compliance**: set TTFT / TPS / P95 targets and see pass or fail as you tune
 - 🏗️ **Resilient topology**: N, N+1, N+2, N+N, DR (full or half-size), Active/Active and N+N+DR, with guaranteed-vs-normal-day economics and workers/GPUs/kW roll-ups
 - 🔒 **Private by design**: everything runs in your browser; nothing you enter is saved, uploaded or tracked
-- 📚 **Library**: 94 models (GQA, MoE, MLA, SSM hybrids, Arabic/GCC sovereign set) and 38 GPUs, one line each
+- 📚 **Library**: 94 models (GQA, MoE, MLA, SSM hybrids, Arabic/GCC sovereign set), 37 GPUs with partitioning profiles, and 17 supporting models, one line each
 - 📤 **Exports**: JSON configs, an Excel template with live formulas, and a print-ready PDF report
 - 🪄 **Auto-size**: one click picks the TP that fits one copy of the model and the workers that admit your peak load
 - 🌓 **Polished**: light and dark themes, mobile friendly, installable, keyboard accessible

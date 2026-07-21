@@ -91,3 +91,29 @@ A GPU needs the dense (not sparsity) tensor TFLOPS:
  "arch":"MyArch","watts":700,"cls":"Data Center","link":"PCIe 5.0",
  "url":"https://example.com/datasheet"},
 ```
+
+## data/support.js · supporting models
+
+`window.GPUSCALE_DATA.support = {kinds, models}`. Each model:
+`{kind, name, params, vram, cap, default?, note, url}` where `vram` is GB one
+serving instance needs and `cap` is the concurrent calls one instance absorbs
+(a planning allowance from published benchmarks, not a guarantee). Instances
+per kind+model = `ceil(summed peak demand / cap)`, shared across use cases.
+Use-case presets in `data/usecases.js` carry a `supports` array of kind keys
+that auto-attach when the preset is chosen.
+
+## data/gpus.js · `part` field (partitioning)
+
+`part:{kind, max, min}`. `kind`: `mig` (NVIDIA MIG), `cpx` (AMD compute
+partitions), `frac` (time-slice/MPS, no isolation), `whole` (no partitioning,
+Gaudi). `max` = partitions per GPU, `min` = smallest partition in GB. The
+support allocator packs one slice unit per `min` GB: a model larger than one
+unit takes `ceil(vram/min)` units; smaller models co-host
+`floor(min/vram)` instances per unit.
+
+## JSON schema gpuscale.net/5
+
+A v5 file is a v4 file plus a `project` block: `{active, usecases:[{id, name,
+isolate, supports, config, snapshot}], results}`. The top-level `config` and
+`snapshot` still describe the active use case in v4 shape, so v4-era
+importers read v5 files. Import accepts v3, v4 and v5.

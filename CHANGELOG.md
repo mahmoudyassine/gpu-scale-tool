@@ -1,5 +1,42 @@
 # Changelog
 
+## Studio 5.0 (2026-07-21)
+
+Major release: scenarios become projects, and a project can hold several
+use cases served by one fleet.
+
+- Use cases: the new first station holds cards (add, duplicate, rename,
+  remove, up to any mix). Each card carries its own workload shape,
+  concurrency, SLOs, model and precision; the stations below edit the
+  selected card.
+- Pooling: use cases that pick the same model, weight and KV precision and
+  KV policy are served by one shared pooled deployment, sized for the
+  combined load. Cards show a "pooled" badge; per-use-case latency
+  envelopes are evaluated at the pool's batch.
+- Supporting models attach automatically per use case type: embeddings and
+  reranker for RAG, ASR and TTS for voice, OCR for document work, a guard
+  model for public chat. Chips on each card announce them; each is
+  removable, and Advanced mode can swap the model (17-model library with
+  honest per-instance footprints and capacity allowances).
+- GPU partitioning: supporting models land on MIG slices (per-GPU profile
+  matrix for A100 through GB300), AMD CPX partitions, fractional sharing
+  (with a no-isolation note) or whole cards on Gaudi, packed by VRAM.
+  Spare pool GPUs are used before new hardware is added.
+- Fleet map: every node and GPU drawn with its assignment, replica shading,
+  MIG mosaics for support slices, dashed standby nodes from the resilience
+  pattern, a legend, tooltips, and a text form for screen readers.
+- Two modes: Normal shows the minimum (people at peak instead of
+  concurrency via a silent Little's-law derivation, three plain resilience
+  choices, auto-size runs by itself); Advanced keeps every control.
+- Mobile: a sticky mini-results bar (GPUs, kW, verdict) stays visible while
+  editing; tap it to jump to results.
+- Exports: JSON schema v5 with the full use-case list plus per-pool and
+  support results (v3 and v4 files still import; the top-level config stays
+  v4-shaped so old importers read v5 files); the Excel workbook gains a
+  Project sheet with use cases, pools, supporting placements and the node
+  map; print output leads with the project fleet.
+
+
 ## Studio 4.16 (2026-07-20)
 
 - New "In plain words" panel at the top of the results: a generated narrative
