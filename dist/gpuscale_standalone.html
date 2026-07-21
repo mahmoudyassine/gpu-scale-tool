@@ -97,6 +97,20 @@ header.top{display:flex;align-items:center;justify-content:space-between;gap:16p
 html[data-theme="dark"] .mode-seg button[aria-pressed="true"]{color:#0C1322}
 .mode-seg button:focus-visible{outline:2px solid var(--teal);outline-offset:-2px}
 html[data-ux-mode="normal"] .adv{display:none !important}
+html[data-ux-mode="advanced"] .nrm{display:none !important}
+.mini-bar{display:none}
+@media(max-width:1020px){
+  .mini-bar{position:fixed;left:12px;right:12px;bottom:10px;z-index:80;display:flex;align-items:center;gap:9px;
+    background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-lg);
+    padding:10px 14px;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px));
+    font-family:var(--mono);font-size:11.5px;font-weight:600;color:var(--text);cursor:pointer;text-align:left}
+  .mini-bar:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+  body{padding-bottom:64px}
+}
+.mb-lamp{width:10px;height:10px;border-radius:50%;background:var(--teal-strong);flex:none}
+.mini-bar.warn .mb-lamp{background:var(--amber-border)}
+.mini-bar.bad .mb-lamp{background:var(--red)}
+.cc-derived{font-family:var(--mono);font-size:10.5px;color:var(--teal-strong);margin-top:5px}
 
 /* ============ USE-CASE CARDS ============ */
 .st-spacer{flex:1}
@@ -425,7 +439,7 @@ footer.foot .mono{font-family:var(--mono);color:var(--text)}
 @media print{
   @page{margin:14mm}
   body{background:#fff !important;font-size:12px}
-  .top-right,.drawer,.info,#toast{display:none !important}
+  .top-right,.drawer,.info,#toast,.mini-bar{display:none !important}
   .console{display:block}
   .rail{display:none}
   .print-config{display:block;font-family:var(--mono);font-size:10px;color:#334;border:1px solid #ccd;border-radius:8px;padding:8px 12px;margin-bottom:10px;line-height:1.7}
@@ -481,6 +495,9 @@ footer.foot .mono{font-family:var(--mono);color:var(--text)}
 <body>
 <div class="wrap">
 <div id="live" class="sr-only" aria-live="polite"></div>
+<button class="mini-bar" id="miniBar" type="button" aria-live="polite" title="Jump to results">
+  <span class="mb-lamp" id="mbLamp"></span><span id="mbText">—</span>
+</button>
 
 <header class="top">
   <div class="brand">
@@ -574,19 +591,24 @@ footer.foot .mono{font-family:var(--mono);color:var(--text)}
     </div>
     <div id="m_inSeq"></div>
     <div id="m_inOut"></div>
-    <div class="field">
+    <div class="field adv">
       <div class="f-head"><label for="selReason">Reasoning mode</label><button class="info" data-help="hReason" aria-expanded="false" type="button">i</button></div>
       <select id="selReason">
         <option>None</option><option>Light reasoning</option><option>Heavy reasoning</option><option>Custom</option>
       </select>
       <div class="f-help" id="hReason">Thinking tokens generated before the visible answer. They add decode time and, if the toggle below is on, extend the KV footprint too.<span class="typ">Light ≈ 2,000 tok · Heavy ≈ 8,000 tok</span></div>
     </div>
-    <div id="m_inReasonTok"></div>
-    <div class="toggle-row" style="margin-bottom:12px"><input type="checkbox" id="chkExtend" checked><label for="chkExtend">Reasoning tokens extend the KV cache</label><button class="info" data-help="hExtend" aria-expanded="false" type="button">i</button></div>
+    <div id="m_inReasonTok" class="adv"></div>
+    <div class="toggle-row adv" style="margin-bottom:12px"><input type="checkbox" id="chkExtend" checked><label for="chkExtend">Reasoning tokens extend the KV cache</label><button class="info" data-help="hExtend" aria-expanded="false" type="button">i</button></div>
     <div class="f-help" id="hExtend" style="margin-top:-6px;margin-bottom:10px">On for standard serving (thinking stays in context). Off if the engine discards reasoning traces from the cache after each call.</div>
-    <div id="m_inConc"></div>
+    <div class="field nrm"><div class="f-head"><label for="nrmUsers">People using this at peak</label><button class="info" data-help="hNrmU" aria-expanded="false" type="button">i</button></div>
+      <input type="number" id="nrmUsers" value="200" min="1" max="2000000">
+      <div class="cc-derived" id="nrmDerived"></div>
+      <div class="f-help" id="hNrmU">Headcount actively using this workload in the busiest hour. The concurrent-call figure the sizing runs on is derived with Little&rsquo;s law (6 interactions/hour each, 1.5&times; burst margin) and shown underneath. Switch to Advanced mode to set concurrency and traffic shape directly.<span class="typ">demand</span></div>
+    </div>
+    <div id="m_inConc" class="adv"></div>
     <div id="m_inBatch" class="adv"></div>
-    <div class="field">
+    <div class="field adv">
       <div class="f-head"><label for="selPolicy">KV residency policy</label><button class="info" data-help="hPolicy" aria-expanded="false" type="button">i</button></div>
       <select id="selPolicy">
         <option value="running">Running batch only (vLLM-style admission)</option>
@@ -594,14 +616,14 @@ footer.foot .mono{font-family:var(--mono);color:var(--text)}
       </select>
       <div class="f-help" id="hPolicy">Running batch: only admitted sequences hold KV and the rest queue (the modern default). All sessions: every concurrent call keeps its cache resident (lowest latency variance, far more memory).</div>
     </div>
-    <div class="f-head" style="margin:4px 0 6px"><label>SLO targets</label><button class="info" data-help="hSlo" aria-expanded="false" type="button">i</button></div>
+    <div class="f-head adv" style="margin:4px 0 6px"><label>SLO targets</label><button class="info" data-help="hSlo" aria-expanded="false" type="button">i</button></div>
     <div class="f-help" id="hSlo">Pass/fail thresholds for the compliance panel. A target of 0 disables that check. Presets refill these with workload-appropriate values.</div>
-    <div class="grid3">
+    <div class="adv grid3">
       <div class="field"><div class="f-head"><label>TTFT &le;</label><span class="unit">ms</span></div><input type="number" id="sloTtft" value="300" min="0"></div>
       <div class="field"><div class="f-head"><label>TPS &ge;</label><span class="unit">tok/s</span></div><input type="number" id="sloTps" value="50" min="0"></div>
       <div class="field"><div class="f-head"><label>P95 &le;</label><span class="unit">s</span></div><input type="number" id="sloP95" value="3" min="0"></div>
     </div>
-    <details class="drawer">
+    <details class="drawer adv">
       <summary>Concurrency estimator · Little's law</summary>
       <div class="drawer-body">
         <div class="grid2">
@@ -625,8 +647,16 @@ footer.foot .mono{font-family:var(--mono);color:var(--text)}
       <select id="selGpu"></select>
       <div class="f-help" id="hGpu">Bandwidth sets decode speed, dense FP16 Tensor-Core TFLOPS sets prefill speed, VRAM sets what fits. 2026 parts (VR200, MI455X) carry pre-launch estimates.</div>
     </div>
-    <div id="m_inPerW"></div>
-    <div class="field">
+    <div id="m_inPerW" class="adv"></div>
+    <div class="field nrm"><div class="f-head"><label for="selResilSimple">Failure protection</label><button class="info" data-help="hResilS" aria-expanded="false" type="button">i</button></div>
+      <select id="selResilSimple">
+        <option value="n">None · capacity only</option>
+        <option value="n1">Survives a server failure</option>
+        <option value="dr">Survives a site outage</option>
+      </select>
+      <div class="f-help" id="hResilS">What the fleet must keep serving through. Advanced mode offers the full set of patterns (N+2, mirrors, active/active splits) with their economics.<span class="typ">resilience</span></div>
+    </div>
+    <div class="field adv">
       <div class="f-head"><label for="selResil">Resilience model</label><button class="info" data-help="hResil" aria-expanded="false" type="button">i</button></div>
       <select id="selResil">
         <optgroup label="No redundancy">
@@ -656,7 +686,7 @@ footer.foot .mono{font-family:var(--mono);color:var(--text)}
     </div>
     <div class="field adv"><div class="f-head"><label for="autoUtil">Auto-size memory target</label><button class="info" data-help="hAutoUtil" aria-expanded="false" type="button">i</button><span class="spacer"></span><span class="unit">%</span></div><input type="number" id="autoUtil" value="80" min="50" max="95" step="5"></div>
     <div class="f-help" id="hAutoUtil">How full Auto-size may pack the serving GPUs. 80% leaves industry-standard growth headroom; 90 to 95% packs tighter at the cost of burst and growth margin (the thin-headroom warning starts at 92%). Manual sliders are never limited by this.</div>
-    <button class="btn primary apply" id="btnAuto" type="button" title="Solve TP, workers and batch from everything chosen above"><svg viewBox="0 0 24 24"><path d="M13 2 4.5 14H11l-1 8 8.5-12H12l1-8z"/></svg>Auto-size TP · workers · batch</button>
+    <button class="btn primary apply adv" id="btnAuto" type="button" title="Solve TP, workers and batch from everything chosen above"><svg viewBox="0 0 24 24"><path d="M13 2 4.5 14H11l-1 8 8.5-12H12l1-8z"/></svg>Auto-size TP · workers · batch</button>
     <div class="f-help" id="hAuto" style="display:block;margin-bottom:10px">Uses everything above: model, precision, workload, SLO targets, GPU and node size. Picks the smallest Tensor parallel that fits one copy of the model (widened if the TTFT target demands it), then the fewest workers and the batch that admit the peak concurrent calls. No SLO targets means offline: minimal hardware, largest fitting batch, queueing allowed.</div>
     <div class="auto-result" id="autoResult" aria-live="polite"></div>
     <div class="fine-cap adv">Fine-tune · Auto-size sets these, edit freely</div>
@@ -1805,6 +1835,18 @@ function render(){
   $('wfTotal').textContent=`mean ${fmt(d.latency)} s · p95 ${fmt(d.p95)} s`;
 
   const topoInfo=renderTopology(s,d);
+  window.__lastLat=d.latency;
+  const nd=$('nrmDerived');
+  if(nd){ const users=Math.max(1,+$('nrmUsers').value||1);
+    nd.textContent=`→ ${fmt(s.concurrent)} concurrent calls from ${fmt(users)} people (6 interactions/h · 1.5× burst · ${fmt(Math.min(120,Math.max(5,d.latency)))} s/call)`; }
+  const mb=$('miniBar');
+  if(mb){ const F=window.__prj&&window.__prj.fleet;
+    const fits=F? F.fits : d.fits, sloOk=F? F.sloAll : d.sloAll;
+    const gpus=F? F.procG : topoInfo.procW*s.perW;
+    const kw=F? F.kW : topoInfo.procW*s.perW*g.watts/1000;
+    mb.className='mini-bar '+(fits? (sloOk?'':'warn'):'bad');
+    $('mbLamp').title=fits? (sloOk?'Fits, SLOs met':'An SLO fails'):'Exceeds VRAM';
+    $('mbText').textContent=`${gpus} GPUs · ≈${fmt(kw)} kW · ${fits? (sloOk?'fits · SLOs met':'SLO fails'):'over VRAM'}`; }
 
   const ins=[];
   if(!d.fits) ins.push(['bad',`Memory is the binding constraint: ${(d.total/d.avail*100).toFixed(0)}% of serving VRAM would be needed${d.replicas>1?`, dominated by ${d.replicas} replica copies of the weights (${fmt(d.weightsAll)} GB)`:''}. The Recommendations panel below lists the viable fixes.`]);
@@ -1893,7 +1935,7 @@ function syncReason(){
 const UC_KEYS=['chkCustom','selModel','cusParams','cusActive','cusHidden','cusLayers','cusKvh','cusHdim','cusCtx',
   'selWQuant','selKQuant','selCase','inSeq','inOut','selReason','inReasonTok','chkExtend',
   'inConc','inBatch','selPolicy','sloTtft','sloTps','sloP95',
-  'ccSessions','ccTurns','ccShare','ccCalls','ccBurst','ccDur','inWorkers','inTp'];
+  'ccSessions','ccTurns','ccShare','ccCalls','ccBurst','ccDur','inWorkers','inTp','nrmUsers'];
 const UC_CHECKS={chkCustom:1,chkExtend:1};
 let UC=[], activeUc=0, ucSeq=0;
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -2829,13 +2871,25 @@ async function buildXlsxBytes(){
 }
 
 /* ================= WIRING ================= */
+function applyNrmUsers(){
+  const users=Math.max(1,+$('nrmUsers').value||1);
+  const dur=Math.min(120, Math.max(5, window.__lastLat||20));
+  const conc=Math.max(1, Math.ceil(users*6*dur/3600*1.5));
+  $('inConc').value=conc; refreshCtl('inConc');
+  return conc;
+}
 document.querySelectorAll('input,select').forEach(el=>{
   el.addEventListener('input',()=>{
     if(el.id==='selCase') applyCase(+el.value);
     if(el.id==='selReason') syncReason();
     if(el.id==='chkCustom'){ $('customBox').style.display=el.checked?'block':'none'; $('selModel').disabled=el.checked; }
+    if(el.id==='nrmUsers') applyNrmUsers();
+    if(el.id==='selResilSimple') $('selResil').value=el.value;
+    if(el.id==='selResil'){ const v=el.value, sim=$('selResilSimple');
+      if(sim) sim.value = v==='n'? 'n' : (v==='n1'||v==='n2')? 'n1' : 'dr'; }
     if(el.id==='scenarioName') return;
     render();
+    scheduleAuto();
   });
 });
 $('ccApply').addEventListener('click',()=>{ $('inConc').value=Math.max(1,+$('ccDerived').dataset.cc||1); refreshCtl('inConc'); render(); toast('Concurrency applied'); });
@@ -2879,9 +2933,9 @@ function solvePool(s){
       workers++;
     }
   }
-  return {ok:true, tp, tpFit, widened, crossed, workers, batch, packPct, weights};
+  return {ok:true, tp, tpFit, widened, crossed, workers, batch, packPct, weights, actGB};
 }
-function autoSizeProject(){
+function autoSizeProject(quiet){
   captureUc();
   const prj=computeProject();
   const lines=[]; let anyCrossed=false, allOk=true;
@@ -2900,16 +2954,16 @@ function autoSizeProject(){
     (done.sup.gpus? ` Supporting models need ${done.sup.gpus} shared GPU${done.sup.gpus>1?'s':''}: ${Math.min(done.fleet.spare,done.sup.gpus)} covered by spare pool GPUs, ${done.fleet.supExtraG} added.`:'')+
     ` Fleet: ${done.fleet.servG} serving GPUs across ${done.fleet.servW} workers, ${done.fleet.procG} procured with ${RESIL[done.hw.resil].label} resilience.`;
   const ar=$('autoResult'); if(ar){ ar.textContent=why; ar.classList.add('show'); }
-  toast(allOk? `Auto-sized ${prj.pools.length} pool${prj.pools.length>1?'s':''}: ${done.fleet.servG} serving GPUs, ${done.fleet.procG} procured` : 'Auto-size finished with problems: see the note under the button', !allOk);
+  if(!quiet||!allOk) toast(allOk? `Auto-sized ${prj.pools.length} pool${prj.pools.length>1?'s':''}: ${done.fleet.servG} serving GPUs, ${done.fleet.procG} procured` : 'Auto-size finished with problems: see the note under the Auto-size control', !allOk);
 }
-function autoSize(){
+function autoSize(quiet){
   captureUc();
-  if(UC.length>1) return autoSizeProject();
+  if(UC.length>1) return autoSizeProject(quiet);
   const s=readState();
   const r=solvePool(s);
   if(!r.ok){ toast(r.reason, true); return; }
-  const {tp, tpFit, widened, crossed, workers, batch, packPct}=r;
-  const weights=r.weights;
+  const __quiet=!!quiet;
+  const {tp, tpFit, widened, crossed, workers, batch, packPct, weights, actGB}=r;
   const interactive=(s.sloTtft>0||s.sloTps>0||s.sloP95>0);
   $('inTp').value=tp; refreshCtl('inTp');
   $('inWorkers').value=workers; refreshCtl('inWorkers');
@@ -2929,9 +2983,15 @@ function autoSize(){
     why+=`Memory sits at ${u.toFixed(0)}% against your ${packPct}% target: the smallest whole-GPU fleet that ${interactive?'admits every call in the contract':'fits the model with the largest batch'} within it. The gap below the target is the rounding cost of whole GPUs and power-of-two TP; the gap above it would be your growth and burst margin. Raise the target to pack tighter, lower it for more headroom.`;
   }
   const ar=$('autoResult'); if(ar){ ar.textContent=why; ar.classList.add('show'); }
-  toast(`Auto-sized: TP${tp} · ${df.replicas} replica${df.replicas>1?'s':''} on ${workers} workers · batch ${batch} · ${df.active} of ${s.concurrent} admitted${df.fits? (df.sloAll?'':' · an SLO still fails, see Recommendations') : ' · still over VRAM, see Recommendations'}`);
+  if(!__quiet) toast(`Auto-sized: TP${tp} · ${df.replicas} replica${df.replicas>1?'s':''} on ${workers} workers · batch ${batch} · ${df.active} of ${s.concurrent} admitted${df.fits? (df.sloAll?'':' · an SLO still fails, see Recommendations') : ' · still over VRAM, see Recommendations'}`);
 }
-$('btnAuto').addEventListener('click',autoSize);
+let __autoT=null;
+function scheduleAuto(){
+  if(document.documentElement.dataset.uxMode!=='normal') return;
+  clearTimeout(__autoT); __autoT=setTimeout(()=>autoSize(true), 500);
+}
+$('btnAuto').addEventListener('click',()=>autoSize());
+{ const mb=$('miniBar'); if(mb) mb.addEventListener('click',()=>{ $('verdict').scrollIntoView({behavior:'smooth'}); }); }
 document.querySelectorAll('#modeSeg button').forEach(b=>b.addEventListener('click',()=>{ setUxMode(b.dataset.mode); }));
 $('btnReset').addEventListener('click',()=>location.reload());
 

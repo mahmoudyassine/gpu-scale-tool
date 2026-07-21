@@ -764,6 +764,18 @@ function render(){
   $('wfTotal').textContent=`mean ${fmt(d.latency)} s · p95 ${fmt(d.p95)} s`;
 
   const topoInfo=renderTopology(s,d);
+  window.__lastLat=d.latency;
+  const nd=$('nrmDerived');
+  if(nd){ const users=Math.max(1,+$('nrmUsers').value||1);
+    nd.textContent=`→ ${fmt(s.concurrent)} concurrent calls from ${fmt(users)} people (6 interactions/h · 1.5× burst · ${fmt(Math.min(120,Math.max(5,d.latency)))} s/call)`; }
+  const mb=$('miniBar');
+  if(mb){ const F=window.__prj&&window.__prj.fleet;
+    const fits=F? F.fits : d.fits, sloOk=F? F.sloAll : d.sloAll;
+    const gpus=F? F.procG : topoInfo.procW*s.perW;
+    const kw=F? F.kW : topoInfo.procW*s.perW*g.watts/1000;
+    mb.className='mini-bar '+(fits? (sloOk?'':'warn'):'bad');
+    $('mbLamp').title=fits? (sloOk?'Fits, SLOs met':'An SLO fails'):'Exceeds VRAM';
+    $('mbText').textContent=`${gpus} GPUs · ≈${fmt(kw)} kW · ${fits? (sloOk?'fits · SLOs met':'SLO fails'):'over VRAM'}`; }
 
   const ins=[];
   if(!d.fits) ins.push(['bad',`Memory is the binding constraint: ${(d.total/d.avail*100).toFixed(0)}% of serving VRAM would be needed${d.replicas>1?`, dominated by ${d.replicas} replica copies of the weights (${fmt(d.weightsAll)} GB)`:''}. The Recommendations panel below lists the viable fixes.`]);
@@ -852,7 +864,7 @@ function syncReason(){
 const UC_KEYS=['chkCustom','selModel','cusParams','cusActive','cusHidden','cusLayers','cusKvh','cusHdim','cusCtx',
   'selWQuant','selKQuant','selCase','inSeq','inOut','selReason','inReasonTok','chkExtend',
   'inConc','inBatch','selPolicy','sloTtft','sloTps','sloP95',
-  'ccSessions','ccTurns','ccShare','ccCalls','ccBurst','ccDur','inWorkers','inTp'];
+  'ccSessions','ccTurns','ccShare','ccCalls','ccBurst','ccDur','inWorkers','inTp','nrmUsers'];
 const UC_CHECKS={chkCustom:1,chkExtend:1};
 let UC=[], activeUc=0, ucSeq=0;
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -1788,13 +1800,25 @@ async function buildXlsxBytes(){
 }
 
 /* ================= WIRING ================= */
+function applyNrmUsers(){
+  const users=Math.max(1,+$('nrmUsers').value||1);
+  const dur=Math.min(120, Math.max(5, window.__lastLat||20));
+  const conc=Math.max(1, Math.ceil(users*6*dur/3600*1.5));
+  $('inConc').value=conc; refreshCtl('inConc');
+  return conc;
+}
 document.querySelectorAll('input,select').forEach(el=>{
   el.addEventListener('input',()=>{
     if(el.id==='selCase') applyCase(+el.value);
     if(el.id==='selReason') syncReason();
     if(el.id==='chkCustom'){ $('customBox').style.display=el.checked?'block':'none'; $('selModel').disabled=el.checked; }
+    if(el.id==='nrmUsers') applyNrmUsers();
+    if(el.id==='selResilSimple') $('selResil').value=el.value;
+    if(el.id==='selResil'){ const v=el.value, sim=$('selResilSimple');
+      if(sim) sim.value = v==='n'? 'n' : (v==='n1'||v==='n2')? 'n1' : 'dr'; }
     if(el.id==='scenarioName') return;
     render();
+    scheduleAuto();
   });
 });
 $('ccApply').addEventListener('click',()=>{ $('inConc').value=Math.max(1,+$('ccDerived').dataset.cc||1); refreshCtl('inConc'); render(); toast('Concurrency applied'); });
@@ -1838,9 +1862,9 @@ function solvePool(s){
       workers++;
     }
   }
-  return {ok:true, tp, tpFit, widened, crossed, workers, batch, packPct, weights};
+  return {ok:true, tp, tpFit, widened, crossed, workers, batch, packPct, weights, actGB};
 }
-function autoSizeProject(){
+function autoSizeProject(quiet){
   captureUc();
   const prj=computeProject();
   const lines=[]; let anyCrossed=false, allOk=true;
@@ -1859,16 +1883,16 @@ function autoSizeProject(){
     (done.sup.gpus? ` Supporting models need ${done.sup.gpus} shared GPU${done.sup.gpus>1?'s':''}: ${Math.min(done.fleet.spare,done.sup.gpus)} covered by spare pool GPUs, ${done.fleet.supExtraG} added.`:'')+
     ` Fleet: ${done.fleet.servG} serving GPUs across ${done.fleet.servW} workers, ${done.fleet.procG} procured with ${RESIL[done.hw.resil].label} resilience.`;
   const ar=$('autoResult'); if(ar){ ar.textContent=why; ar.classList.add('show'); }
-  toast(allOk? `Auto-sized ${prj.pools.length} pool${prj.pools.length>1?'s':''}: ${done.fleet.servG} serving GPUs, ${done.fleet.procG} procured` : 'Auto-size finished with problems: see the note under the button', !allOk);
+  if(!quiet||!allOk) toast(allOk? `Auto-sized ${prj.pools.length} pool${prj.pools.length>1?'s':''}: ${done.fleet.servG} serving GPUs, ${done.fleet.procG} procured` : 'Auto-size finished with problems: see the note under the Auto-size control', !allOk);
 }
-function autoSize(){
+function autoSize(quiet){
   captureUc();
-  if(UC.length>1) return autoSizeProject();
+  if(UC.length>1) return autoSizeProject(quiet);
   const s=readState();
   const r=solvePool(s);
   if(!r.ok){ toast(r.reason, true); return; }
-  const {tp, tpFit, widened, crossed, workers, batch, packPct}=r;
-  const weights=r.weights;
+  const __quiet=!!quiet;
+  const {tp, tpFit, widened, crossed, workers, batch, packPct, weights, actGB}=r;
   const interactive=(s.sloTtft>0||s.sloTps>0||s.sloP95>0);
   $('inTp').value=tp; refreshCtl('inTp');
   $('inWorkers').value=workers; refreshCtl('inWorkers');
@@ -1888,9 +1912,15 @@ function autoSize(){
     why+=`Memory sits at ${u.toFixed(0)}% against your ${packPct}% target: the smallest whole-GPU fleet that ${interactive?'admits every call in the contract':'fits the model with the largest batch'} within it. The gap below the target is the rounding cost of whole GPUs and power-of-two TP; the gap above it would be your growth and burst margin. Raise the target to pack tighter, lower it for more headroom.`;
   }
   const ar=$('autoResult'); if(ar){ ar.textContent=why; ar.classList.add('show'); }
-  toast(`Auto-sized: TP${tp} · ${df.replicas} replica${df.replicas>1?'s':''} on ${workers} workers · batch ${batch} · ${df.active} of ${s.concurrent} admitted${df.fits? (df.sloAll?'':' · an SLO still fails, see Recommendations') : ' · still over VRAM, see Recommendations'}`);
+  if(!__quiet) toast(`Auto-sized: TP${tp} · ${df.replicas} replica${df.replicas>1?'s':''} on ${workers} workers · batch ${batch} · ${df.active} of ${s.concurrent} admitted${df.fits? (df.sloAll?'':' · an SLO still fails, see Recommendations') : ' · still over VRAM, see Recommendations'}`);
 }
-$('btnAuto').addEventListener('click',autoSize);
+let __autoT=null;
+function scheduleAuto(){
+  if(document.documentElement.dataset.uxMode!=='normal') return;
+  clearTimeout(__autoT); __autoT=setTimeout(()=>autoSize(true), 500);
+}
+$('btnAuto').addEventListener('click',()=>autoSize());
+{ const mb=$('miniBar'); if(mb) mb.addEventListener('click',()=>{ $('verdict').scrollIntoView({behavior:'smooth'}); }); }
 document.querySelectorAll('#modeSeg button').forEach(b=>b.addEventListener('click',()=>{ setUxMode(b.dataset.mode); }));
 $('btnReset').addEventListener('click',()=>location.reload());
 

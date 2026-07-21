@@ -81,6 +81,20 @@ header.top{display:flex;align-items:center;justify-content:space-between;gap:16p
 html[data-theme="dark"] .mode-seg button[aria-pressed="true"]{color:#0C1322}
 .mode-seg button:focus-visible{outline:2px solid var(--teal);outline-offset:-2px}
 html[data-ux-mode="normal"] .adv{display:none !important}
+html[data-ux-mode="advanced"] .nrm{display:none !important}
+.mini-bar{display:none}
+@media(max-width:1020px){
+  .mini-bar{position:fixed;left:12px;right:12px;bottom:10px;z-index:80;display:flex;align-items:center;gap:9px;
+    background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-lg);
+    padding:10px 14px;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px));
+    font-family:var(--mono);font-size:11.5px;font-weight:600;color:var(--text);cursor:pointer;text-align:left}
+  .mini-bar:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+  body{padding-bottom:64px}
+}
+.mb-lamp{width:10px;height:10px;border-radius:50%;background:var(--teal-strong);flex:none}
+.mini-bar.warn .mb-lamp{background:var(--amber-border)}
+.mini-bar.bad .mb-lamp{background:var(--red)}
+.cc-derived{font-family:var(--mono);font-size:10.5px;color:var(--teal-strong);margin-top:5px}
 
 /* ============ USE-CASE CARDS ============ */
 .st-spacer{flex:1}
@@ -409,7 +423,7 @@ footer.foot .mono{font-family:var(--mono);color:var(--text)}
 @media print{
   @page{margin:14mm}
   body{background:#fff !important;font-size:12px}
-  .top-right,.drawer,.info,#toast{display:none !important}
+  .top-right,.drawer,.info,#toast,.mini-bar{display:none !important}
   .console{display:block}
   .rail{display:none}
   .print-config{display:block;font-family:var(--mono);font-size:10px;color:#334;border:1px solid #ccd;border-radius:8px;padding:8px 12px;margin-bottom:10px;line-height:1.7}
