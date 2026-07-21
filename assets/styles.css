@@ -174,7 +174,7 @@ html[data-theme="dark"]{--pool0:#2DD4BF;--pool1:#8B9CE8;--pool2:#FFC53D;--pool3:
 .fm-gpu .fill{position:absolute;left:1px;right:1px;bottom:1px;border-radius:3px}
 .fm-node.fm-more{display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;color:var(--faint);border-style:dashed;min-height:64px;padding:8px 12px}
 .fm-node{border:1px solid var(--line);border-radius:9px;background:var(--panel);padding:7px 8px 8px;min-width:0}
-.fm-node.standby{border-style:dashed;opacity:.75}
+.fm-node.standby,.fm-node.mirror,.fm-node.drs{border-style:dashed;opacity:.75}
 .fm-node.support .fm-nlab .role{color:var(--amber)}
 .fm-node.fm-active{border-color:var(--teal-strong);box-shadow:0 0 0 1px var(--teal-strong)}
 .fm-nlab{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:9.5px;color:var(--faint);margin-bottom:6px;white-space:nowrap}
@@ -358,7 +358,6 @@ details.drawer .drawer-body{margin-top:10px}
 .wf-legend{display:flex;flex-wrap:wrap;gap:12px 20px;margin-top:11px}
 
 .topo-box{overflow-x:auto}
-.topo-box svg{display:block;width:100%;height:auto}
 .topo-sum{font-size:12px;color:var(--muted);margin-top:12px;line-height:1.65}
 .topo-sum b{color:var(--text);font-weight:600;font-family:var(--mono);font-size:11.5px}
 .topo-legend{display:flex;flex-wrap:wrap;gap:12px 18px;margin-top:11px}

@@ -1,5 +1,34 @@
 # Changelog
 
+## Studio 5.1 (2026-07-21)
+
+One topology view, and honest spare counts.
+
+- The deployment topology and the fleet map are now the same panel: site
+  frames from the resilience pattern (production site, Site A/B, DR site)
+  contain the per-GPU fleet map. Every GPU square fills to its pool's
+  memory use, support slices draw as mosaics, idle nodes are dashed, and
+  the economics strip (guaranteed vs normal-day vs idle vs cost) is
+  computed for the whole project.
+- Additive spares (N+1, N+2, the A/A split spares) are procured once per
+  project, not once per pool: hardware is uniform, so one idle node covers
+  a failure in any pool. Three pools on N+2 now procure 2 spare nodes, not
+  6. Mirrors, DR sites and second active sites still scale per pool, since
+  they must hold each pool's own model copies.
+- Per-site spares (A/A +1/site, A/A N+1) are labeled as site-local: each
+  covers failures in its own site. Second active/active sites are described
+  as live serving capacity, never as idle spares.
+- Support nodes are excluded from the resilience cost ratio, included in
+  every procurement total (verdict, story, mini-bar, print, JSON, Excel),
+  and the Excel Results sheet now says explicitly which rows are pool-scoped
+  with a fleet-total row alongside.
+- Assorted honesty fixes from a 23-agent adversarial review: node labels
+  no longer collide (RS- spares vs SP- support nodes), partially filled
+  support nodes pad to the full node, mirror nodes render dashed, the
+  legend only lists what is actually drawn, bare N no longer claims a
+  covered failure, and the screen-reader text form uses plain role names.
+
+
 ## Studio 5.0 (2026-07-21)
 
 Major release: scenarios become projects, and a project can hold several

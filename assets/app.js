@@ -7,7 +7,7 @@ if(!MODELS.length || !GPUS.length || !QUANTS.length || !CASES.length){
   document.body.innerHTML = '<div style="font-family:system-ui,sans-serif;max-width:560px;margin:80px auto;padding:0 20px;line-height:1.65;color:#1A2536"><h2 style="margin-bottom:10px">Data files not loaded</h2><p>GPUscale.net could not find its library. Keep <code>index.html</code> together with the <code>data/</code> and <code>assets/</code> folders: the four files <code>data/models.js</code>, <code>data/gpus.js</code>, <code>data/quants.js</code> and <code>data/usecases.js</code> must sit next to this page.</p><p>If you need one portable file instead, use <code>dist/gpuscale_standalone.html</code> or rebuild it with <code>python3 tools/build_single_file.py</code>.</p></div>';
   throw new Error('GPUscale.net data missing');
 }
-const STUDIO_VERSION = '5.0.0', ENGINE_VERSION = 23;
+const STUDIO_VERSION = '5.1.0', ENGINE_VERSION = 23;
 const PROJ_ID = (()=>{ const L='abcdefghjkmnpqrstuvwxyz', D='0123456789';
   const pick=s=>s[Math.floor(Math.random()*s.length)];
   return 'Project_'+pick(L)+pick(L)+pick(D)+pick(D)+pick(D); })();
@@ -389,13 +389,28 @@ function buildStory(s,d,m,g){
   P.push(`${d.kvTotal>d.weightsAll?'The cache, not the weights, dominates here: each':'Each'} admitted conversation holds <b>${kvSeq<1? (kvSeq*1000).toFixed(0)+' MB':fmt(kvSeq)+' GB'}</b> of KV cache (${(d.kvTok*1e6).toFixed(1)} KB per token at ${s.kq.name} across ${fmtTok(d.effSeq)} tokens); all ${d.active} together add <b>${fmt(d.kvTotal)} GB</b>${d.kvTotal>d.weightsAll?', more than the weights themselves':`, next to ${fmt(d.weightsAll)} GB of weights`}.`);
   P.push(`The envelope: prefill reads ${fmtTok(s.resident)} tokens and lands the first token in ≈<b>${fmt(d.ttft)} ms</b>; decode streams ≈<b>${fmt(d.tps)} tok/s</b> per user at batch ${fmt(d.batchPerRep)}. ${d.sloAll?'Every enabled SLO passes.':'At least one SLO target fails; see Recommendations.'}`);
   const info=RESIL[s.resil];
-  if(window.__prj && UC.length>1){
-    const F=window.__prj.fleet, nPools=window.__prj.pools.length;
+  {
+    const F=window.__prj&&window.__prj.fleet;
+    const nPools=window.__prj? window.__prj.pools.length : 1;
     const mult=info.mult(s.workers);
-    P.push(`Resilience (<b>${info.long}</b>) ${mult>0||info.add? 'adds '+[mult>0?`${mult} idle worker${mult>1?'s':''} for this pool`:'', info.add?`${info.add} spare node${info.add>1?'s':''} shared across all ${nPools} pools (hardware is uniform, so one spare covers any pool)`:''].filter(Boolean).join(' plus ') : 'adds nothing: a failure removes capacity'}; project procurement totals <b>${F.procW} nodes · ${F.procG} GPUs · ≈${fmt(F.kW)} kW</b> GPU TDP.`);
-  } else {
-    const extraW=info.extraW(s.workers), procW=s.workers+extraW, procG=procW*s.perW;
-    P.push(`Resilience (<b>${info.long}</b>) ${extraW>0?`adds ${extraW} worker${extraW>1?'s':''} that carry no day-to-day load`:'adds nothing: a failure removes capacity'}; procurement totals <b>${procW} workers · ${procG} GPUs · ≈${fmt(procG*g.watts/1000)} kW</b> GPU TDP.`);
+    const secondSite=info.live(1)>1;
+    const multTxt = mult>0
+      ? (secondSite
+        ? `${mult} worker${mult>1?'s':''} at a second live site${nPools>1?' for this pool':''} (they serve traffic; the guarantee is surviving a site loss)`
+        : `${mult} idle worker${mult>1?'s':''}${nPools>1?' for this pool':''}`)
+      : '';
+    const perSite=(s.resil==='aass'||s.resil==='aan1');
+    const addTxt = info.add
+      ? (perSite
+        ? `one idle spare node per site (each covers a node failure in its own site${nPools>1?', any pool':''})`
+        : `${info.add} idle spare node${info.add>1?'s':''}${nPools>1?` shared across all ${nPools} pools (hardware is uniform, so one spare covers any pool)`:''}`)
+      : '';
+    const what = (multTxt||addTxt)? 'adds '+[multTxt,addTxt].filter(Boolean).join(' plus ') : 'adds nothing: a failure removes capacity';
+    const procW=F? F.procW : s.workers+info.extraW(s.workers);
+    const procG=F? F.procG : procW*s.perW;
+    const kW=F? F.kW : procG*g.watts/1000;
+    const supTail=F&&F.supNodes? `, including ${F.supNodes} supporting node${F.supNodes>1?'s':''}` : '';
+    P.push(`Resilience (<b>${info.long}</b>) ${what}; ${nPools>1?'project ':''}procurement totals <b>${procW} nodes · ${procG} GPUs · ≈${fmt(kW)} kW</b> GPU TDP${supTail}.`);
   }
   if(!d.fits)
     P.push(`<b>It does not fit:</b> the fleet needs ${fmt(d.total)} GB against ${fmt(d.avail)} GB of serving memory. The Recommendations panel lists the levers in order of effect.`);
@@ -989,6 +1004,7 @@ function fleetTotals(pools, sup, hw){
 
 /* ================= PROJECT RESULTS (fleet map + per-usecase cards) ================= */
 const KIND_LABEL={embed:'Embeddings',rerank:'Reranker',asr:'ASR',tts:'TTS',ocr:'OCR',guard:'Guard'};
+const ROLE_LABEL={serve:'serving',support:'supporting',standby:'standby',mirror:'mirror',drs:'DR standby'};
 function buildFleetSites(prj){
   const {pools, sup, hw}=prj;
   const r=hw.resil, info=RESIL[r]||RESIL.n;
@@ -1030,14 +1046,16 @@ function buildFleetSites(prj){
     const out=[];
     while(supBins.length){
       const node={label:'SP-'+String(++sp).padStart(2,'0'), cls:'support', gpus:[]};
-      for(let k=0;k<hw.perW&&supBins.length;k++)
-        node.gpus.push({type:'sup', bin:supBins.shift(), tip:`${node.label} · GPU ${k+1} · supporting models`});
+      for(let k=0;k<hw.perW;k++){
+        if(supBins.length) node.gpus.push({type:'sup', bin:supBins.shift(), tip:`${node.label} · GPU ${k+1} · supporting models`});
+        else node.gpus.push({type:'spare', tip:`${node.label} · GPU ${k+1} · unassigned headroom`});
+      }
       out.push(node);
     }
     return out;
   }
   const allServe=(copy)=>pools.flatMap((p,pi)=>serveNodes(p,pi,0,p.state.workers,copy));
-  const shared=(k)=>idleNodes(null,k,'standby','SP-');
+  const shared=(k)=>idleNodes(null,k,'standby','RS-');
   const sites=[];
   const site=(title,icon,nodes)=>{ sites.push({title, icon, nodes}); };
   if(r==='n'||r==='n1'||r==='n2'){
@@ -1053,7 +1071,7 @@ function buildFleetSites(prj){
     sites[sites.length-1].link='async replication';
     const cnt=p=> r==='dr'? p.state.workers : Math.ceil(p.state.workers/2);
     const drNodes=pools.flatMap((p,pi)=>idleNodes(pi,cnt(p),'drs','DR-'));
-    site(r==='dr'? `DR site · standby · N=${N}` : `DR site · half-size standby · ${drNodes.length} worker${drNodes.length>1?'s':''}`,'globe',drNodes);
+    site(r==='dr'? `DR site · standby · N=${N}` : `DR site · half-size standby · ${drNodes.length} node${drNodes.length>1?'s':''}`,'globe',drNodes);
   } else if(r==='aas'||r==='aas1'||r==='aass'){
     const aServe=[], bServe=[];
     pools.forEach((p,pi)=>{ const w=p.state.workers, nA=Math.max(1,Math.ceil(w/2));
@@ -1171,24 +1189,29 @@ function renderFleet(prj){
   }).join('');
   // legend
   $('fmLegend').innerHTML =
-    pools.map((p,pi)=>`<span class="lg-li"><span class="sw" style="background:var(--pool${pi%6})"></span>${esc(short(p.state.model.name))} · ${esc(p.state.wq.name)} · fill = memory used</span>`).join('')+
+    pools.map((p,pi)=>`<span class="lg-li"><span class="sw" style="background:var(--pool${pi%6})"></span>${esc(short(p.state.model.name))} · ${esc(p.state.wq.name)}</span>`).join('')+
     sup.items.map(it=>`<span class="lg-li"><span class="sw" style="background:var(--sup${it.kind})"></span>${KIND_LABEL[it.kind]||it.kind} · ${esc(it.model.name)}</span>`).join('')+
-    (info.add?`<span class="lg-li"><span class="sw dashed" style="border-color:var(--amber-border)"></span>shared spare · covers any pool</span>`:'')+
-    (/nn|dr|aa$|aan1|nndr/.test(hw.resil)?`<span class="lg-li"><span class="sw dashed"></span>mirror / DR / second site</span>`:'')+
-    `<span class="lg-li"><span class="sw dashed"></span>unassigned headroom</span>`;
+    (info.add?`<span class="lg-li"><span class="sw dashed" style="border-color:var(--amber-border)"></span>${(hw.resil==='aass'||hw.resil==='aan1')?'spare · one per site':'shared spare · covers any pool'}</span>`:'')+
+    (sites.some(s2=>s2.nodes.some(n2=>n2.cls==='mirror'))?`<span class="lg-li"><span class="sw dashed"></span>mirror · idle copy</span>`:'')+
+    (sites.some(s2=>s2.nodes.some(n2=>n2.cls==='drs'))?`<span class="lg-li"><span class="sw dashed" style="border-color:var(--violet)"></span>DR standby</span>`:'')+
+    `<span class="lg-li"><span class="sw dashed"></span>unassigned headroom</span>`+
+    `<span class="lg-li">fill height = share of GPU memory used</span>`;
   $('fmTotals').textContent=`${fleet.procW} nodes · ${fleet.procG} GPUs · ≈${fmt(fleet.kW)} kW TDP`;
   // semantic text form
   $('fleetList').innerHTML='<h3>Deployment, text form</h3>'+sites.map(s2=>`<h4>${esc(s2.title)}</h4><ul>`+s2.nodes.map(n2=>{
+    const role=ROLE_LABEL[n2.cls]||n2.cls;
     const parts=n2.gpus.map((g2,k)=>{
       if(g2.type==='pool') return `GPU ${k+1}: ${pools[g2.pool].state.model.name} replica ${g2.rep+1}`;
       if(g2.type==='sup') return `GPU ${k+1}: `+g2.bin.slices.map(sl=>`${KIND_LABEL[sl.kind]||sl.kind} ${sl.model}${sl.inst>1?' ×'+sl.inst:''}`).join(', ');
-      if(g2.type==='idle') return `GPU ${k+1}: ${n2.cls}`;
+      if(g2.type==='idle') return `GPU ${k+1}: ${role}`;
       return `GPU ${k+1}: spare`; });
-    return `<li>${n2.label} (${n2.cls}): ${parts.join('; ')}</li>`; }).join('')+'</ul>').join('');
+    return `<li>${n2.label} (${role}): ${parts.join('; ')}</li>`; }).join('')+'</ul>').join('');
   // note
   const notes=[];
-  if(sup.gpus) notes.push(`Supporting models are placed as ${sup.note}; spare pool GPUs are used before adding hardware`+(sites.length>1?', shown in the primary site (replicate them per site operationally)':'')+'.');
-  if(info.add) notes.push(`The ${info.add} spare node${info.add>1?'s are':' is'} shared across all ${pools.length>1? pools.length+' pools':'pools'}: hardware is uniform, so any spare can take over any failed node.`);
+  if(sup.gpus) notes.push(`Supporting models are placed as ${sup.note}; spare pool GPUs are used before adding hardware`+(sites.length>1?', shown in the first site (replicate them per site operationally)':'')+'.');
+  if(info.add) notes.push((hw.resil==='aass'||hw.resil==='aan1')
+    ? `Each site keeps one idle spare: it covers a node failure in its own site, for any pool (hardware is uniform).`
+    : `The ${info.add} spare node${info.add>1?'s are':' is'} shared${pools.length>1?` across all ${pools.length} pools`:''}: hardware is uniform, so any spare can take over any failed node.`);
   notes.push(`GPU fill height shows each pool's memory use. Hover any GPU for its exact assignment.`);
   $('fmNote').textContent=notes.join(' ');
   // economics, project level
@@ -1198,10 +1221,10 @@ function renderFleet(prj){
   const liveW=(info.live||(n=>n))(N), idleW=Math.max(0, procW-liveW-fleet.supNodes);
   const burst=liveW>N? agg*liveW/N : null;
   $('resilStats').innerHTML=
-    `<div class="rs"><div class="k">Guaranteed at peak</div><div class="v">${fmt(agg)} tok/s · ${active} calls</div><div class="n">${info.degraded?'≈ half of this during a site loss':'held even through the covered failure'}</div></div>`+
+    `<div class="rs"><div class="k">Guaranteed at peak</div><div class="v">${fmt(agg)} tok/s · ${active} calls</div><div class="n">${hw.resil==='n'?'assumes no failures: any node loss removes capacity':info.degraded?'≈ half of this during a site loss':'held even through the covered failure'}</div></div>`+
     `<div class="rs"><div class="k">Normal-day capacity</div><div class="v">${burst?`≈ ${fmt(burst)} tok/s`:`${fmt(agg)} tok/s`}</div><div class="n">${burst?'both sites serving: burst headroom, not a guarantee': idleW>0?'spare hardware idles until a failure':'every worker serves; no reserve beyond N'}</div></div>`+
     `<div class="rs"><div class="k">Idle hardware</div><div class="v">${idleW>0?`${idleW} node${idleW>1?'s':''}`:'none'}</div><div class="n">${idleW>0?'standing by in normal operation':'every node serves traffic'}</div></div>`+
-    `<div class="rs"><div class="k">Cost vs bare N</div><div class="v">${fmt(procW/Math.max(1,N))}×</div><div class="n">${procW} of ${N} load-bearing nodes</div></div>`;
+    `<div class="rs"><div class="k">Cost vs bare N</div><div class="v">${fmt((procW-fleet.supNodes)/Math.max(1,N))}×</div><div class="n">${procW-fleet.supNodes} of ${N} load-bearing nodes${fleet.supNodes?' · support nodes excluded':''}</div></div>`;
   const r=hw.resil;
   const resLine = r==='n'? 'No redundancy: a node failure removes its replicas from service.'
     : r==='n1'? 'One idle standby absorbs a single node failure with no capacity loss after failover.'
@@ -1454,7 +1477,7 @@ function buildXls(){
   res('sloT','SLO check: TTFT','', ()=>`IF(${I('sloTtft')}=0,"—",IF(${R('ttft')}<=${I('sloTtft')},"PASS","FAIL"))`, true);
   res('sloS','SLO check: TPS','', ()=>`IF(${I('sloTps')}=0,"—",IF(${R('tps')}>=${I('sloTps')},"PASS","FAIL"))`, true);
   res('sloP','SLO check: P95','', ()=>`IF(${I('sloP95')}=0,"—",IF(${R('p95')}<=${I('sloP95')},"PASS","FAIL"))`, true);
-  res('procW','Procured workers (with resilience)','', ()=>`${I('workers')}+IF(OR(${I('resil')}=1,${I('resil')}=11),1,IF(OR(${I('resil')}=7,${I('resil')}=10),2,IF(${I('resil')}=4,3*${I('workers')},IF(${I('resil')}=6,${I('workers')}+2,IF(${I('resil')}=8,CEILING(${I('workers')}/2,1),IF(OR(${I('resil')}=2,${I('resil')}=3,${I('resil')}=5),${I('workers')},0))))))`);
+  res('procW','Procured workers (this pool + resilience)','', ()=>`${I('workers')}+IF(OR(${I('resil')}=1,${I('resil')}=11),1,IF(OR(${I('resil')}=7,${I('resil')}=10),2,IF(${I('resil')}=4,3*${I('workers')},IF(${I('resil')}=6,${I('workers')}+2,IF(${I('resil')}=8,CEILING(${I('workers')}/2,1),IF(OR(${I('resil')}=2,${I('resil')}=3,${I('resil')}=5),${I('workers')},0))))))`);
   res('procG','Procured GPUs','', ()=>`${R('procW')}*${I('perW')}`);
   res('power','GPU power (TDP)','kW', ()=>`${R('procG')}*${I('watts')}/1000`);
 
@@ -1615,9 +1638,10 @@ async function buildXlsxBytes(){
   res('sloT','SLO check: TTFT','', ()=>`IF(${I('sloTtft')}=0,"off",IF(${R('ttft')}<=${I('sloTtft')},"PASS","FAIL"))`, s.sloTtft? (d.slo.ttft.pass?'PASS':'FAIL'):'off', true);
   res('sloS','SLO check: TPS','', ()=>`IF(${I('sloTps')}=0,"off",IF(${R('tps')}>=${I('sloTps')},"PASS","FAIL"))`, s.sloTps? (d.slo.tps.pass?'PASS':'FAIL'):'off', true);
   res('sloP','SLO check: P95','', ()=>`IF(${I('sloP95')}=0,"off",IF(${R('p95')}<=${I('sloP95')},"PASS","FAIL"))`, s.sloP95? (d.slo.p95.pass?'PASS':'FAIL'):'off', true);
-  res('procW','Procured workers (with resilience)','', ()=>`${I('workers')}+IF(OR(${I('resil')}=1,${I('resil')}=11),1,IF(OR(${I('resil')}=7,${I('resil')}=10),2,IF(${I('resil')}=4,3*${I('workers')},IF(${I('resil')}=6,${I('workers')}+2,IF(${I('resil')}=8,CEILING(${I('workers')}/2,1),IF(OR(${I('resil')}=2,${I('resil')}=3,${I('resil')}=5),${I('workers')},0))))))`, procW);
-  res('procG','Procured GPUs','', ()=>`${R('procW')}*${I('perW')}`, procG);
-  res('power','GPU power (TDP)','kW', ()=>`${R('procG')}*${I('watts')}/1000`, powerKW);
+  res('procW','Procured workers (this pool + resilience)','', ()=>`${I('workers')}+IF(OR(${I('resil')}=1,${I('resil')}=11),1,IF(OR(${I('resil')}=7,${I('resil')}=10),2,IF(${I('resil')}=4,3*${I('workers')},IF(${I('resil')}=6,${I('workers')}+2,IF(${I('resil')}=8,CEILING(${I('workers')}/2,1),IF(OR(${I('resil')}=2,${I('resil')}=3,${I('resil')}=5),${I('workers')},0))))))`, procW);
+  res('procG','Procured GPUs (this pool)','', ()=>`${R('procW')}*${I('perW')}`, procG);
+  res('power','GPU power (TDP, this pool)','kW', ()=>`${R('procG')}*${I('watts')}/1000`, powerKW);
+  res('fleetG','Fleet procured GPUs (all pools + support nodes)','', ()=>`${prj.fleet.procG}`, prj.fleet.procG);
 
   // ----- curve data -----
   const curveB=[]; const Smax=Math.max(Math.ceil(s.concurrent*1.4), s.batch*d.replicas*2, 16);
@@ -1687,9 +1711,9 @@ async function buildXlsxBytes(){
     const parts=n2.gpus.map((g2,k)=>{
       if(g2.type==='pool') return `GPU${k+1}: ${prj.pools[g2.pool].state.model.name} r${g2.rep+1}`;
       if(g2.type==='sup') return `GPU${k+1}: `+g2.bin.slices.map(sl=>(KIND_LABEL[sl.kind]||sl.kind)+(sl.inst>1?' ×'+sl.inst:'')).join('+');
-      if(g2.type==='idle') return `GPU${k+1}: ${n2.cls}`;
+      if(g2.type==='idle') return `GPU${k+1}: ${ROLE_LABEL[n2.cls]||n2.cls}`;
       return `GPU${k+1}: spare`; });
-    pr(n2.label, s2.title+' · '+n2.cls, parts.join(' · ')); }));
+    pr(n2.label, s2.title+' · '+(ROLE_LABEL[n2.cls]||n2.cls), parts.join(' · ')); }));
 
   const inpRows=[[`<c r="A1" s="5" t="inlineStr"><is><t>${xEsc('GPUscale.net sizing workbook · '+name+(multi? ' · pool: '+s.model.name+' '+s.wq.name:'')+' · Studio '+STUDIO_VERSION+' · engine v'+ENGINE_VERSION)}</t></is></c>`],
     ['<c r="A2" s="1" t="inlineStr"><is><t>Parameter</t></is></c>','<c r="B2" s="1" t="inlineStr"><is><t>Value (edit me)</t></is></c>','<c r="C2" s="1" t="inlineStr"><is><t>Notes</t></is></c>']];
