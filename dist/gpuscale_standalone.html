@@ -9,7 +9,7 @@
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F6F7FA">
 <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0C1322">
 <meta name="description" content="Free GPU sizing calculator for self-hosted LLMs: VRAM fit, KV cache, tensor parallelism, latency and throughput estimates, SLO checks and resilient topology. 94 models, 38 GPUs, no signup.">
-<script type="application/ld+json">{"@context": "https://schema.org", "@type": "WebApplication", "name": "GPUscale.net · LLM Capacity & Dimensioning Studio", "url": "https://gpuscale.net/", "description": "Free, open-source GPU sizing calculator for self-hosted LLM deployments: memory fit, KV cache, tensor parallelism, latency, throughput, SLO compliance and resilient worker topology.", "applicationCategory": "DeveloperApplication", "operatingSystem": "Any (browser-based)", "browserRequirements": "Any modern browser; fully client-side", "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}, "creator": {"@type": "Person", "name": "Mahmoud Yassine", "url": "https://github.com/mahmoudyassine"}, "license": "https://github.com/mahmoudyassine/gpu-scale-tool/blob/main/LICENSE", "image": "https://gpuscale.net/assets/og-card.png", "featureList": "Memory fit per replica, KV cache modeling (GQA/MLA/hybrid), tensor/data parallelism, auto-sizing from SLOs, resilience patterns (N+1 to N+N+DR), JSON/XLSX/PDF export", "codeRepository": "https://github.com/mahmoudyassine/gpu-scale-tool"}</script>
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "WebApplication", "name": "GPUscale.net · LLM Capacity & Dimensioning Studio", "url": "https://gpuscale.net/", "description": "Free, open-source GPU sizing calculator for self-hosted LLM deployments: memory fit, KV cache, tensor parallelism, latency, throughput, SLO compliance and resilient worker topology.", "applicationCategory": "DeveloperApplication", "operatingSystem": "Any (browser-based)", "browserRequirements": "Any modern browser; fully client-side", "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}, "creator": {"@type": "Person", "name": "Mahmoud Yassine", "url": "https://github.com/mahmoudyassine"}, "license": "https://github.com/mahmoudyassine/gpu-scale-tool/blob/main/LICENSE", "image": "https://gpuscale.net/assets/og-card.png", "featureList": "Multi-use-case projects with pooled deployments, fleet map per GPU and node, supporting models on MIG/partitioned GPUs, memory fit per replica, KV cache modeling (GQA/MLA/hybrid), tensor/data parallelism, auto-sizing from SLOs, resilience patterns (N+1 to N+N+DR), JSON/XLSX/PDF export", "codeRepository": "https://github.com/mahmoudyassine/gpu-scale-tool"}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -91,6 +91,109 @@ header.top{display:flex;align-items:center;justify-content:space-between;gap:16p
 .btn-group .btn:focus-visible{outline-offset:-2px}
 .ver-chip{font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.04em;color:var(--teal-strong);background:var(--teal-soft);border:1px solid transparent;border-radius:20px;padding:2.5px 9px;margin-left:4px;transition:border-color .15s}
 .ver-chip:hover{border-color:var(--teal);text-decoration:none}
+.mode-seg{display:inline-flex;background:var(--panel);border:1px solid var(--line);border-radius:9px;box-shadow:var(--shadow);overflow:hidden}
+.mode-seg button{font-family:var(--body);font-size:12px;font-weight:500;color:var(--muted);background:transparent;border:none;padding:8px 12px;cursor:pointer}
+.mode-seg button[aria-pressed="true"]{background:var(--teal-strong);color:#fff;font-weight:600}
+html[data-theme="dark"] .mode-seg button[aria-pressed="true"]{color:#0C1322}
+.mode-seg button:focus-visible{outline:2px solid var(--teal);outline-offset:-2px}
+html[data-ux-mode="normal"] .adv{display:none !important}
+html[data-ux-mode="advanced"] .nrm{display:none !important}
+.mini-bar{display:none}
+@media(max-width:1020px){
+  .mini-bar{position:fixed;left:12px;right:12px;bottom:10px;z-index:80;display:flex;align-items:center;gap:9px;
+    background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-lg);
+    padding:10px 14px;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px));
+    font-family:var(--mono);font-size:11.5px;font-weight:600;color:var(--text);cursor:pointer;text-align:left}
+  .mini-bar:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+  body{padding-bottom:64px}
+}
+.mb-lamp{width:10px;height:10px;border-radius:50%;background:var(--teal-strong);flex:none}
+.mini-bar.warn .mb-lamp{background:var(--amber-border)}
+.mini-bar.bad .mb-lamp{background:var(--red)}
+.cc-derived{font-family:var(--mono);font-size:10.5px;color:var(--teal-strong);margin-top:5px}
+
+/* ============ USE-CASE CARDS ============ */
+.st-spacer{flex:1}
+.st-title{display:flex;align-items:center;gap:7px}
+.st-ctx{font-family:var(--mono);font-size:10px;font-weight:500;color:var(--teal-strong);background:var(--teal-soft);border-radius:6px;padding:2.5px 7px;max-width:46%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.uc-add{font-family:var(--body);font-size:11.5px;font-weight:600;color:var(--teal-strong);background:var(--teal-soft);border:1px solid transparent;border-radius:7px;padding:4px 9px;cursor:pointer;transition:border-color .15s}
+.uc-add:hover{border-color:var(--teal)}
+.uc-add:focus-visible{outline:2px solid var(--teal);outline-offset:1px}
+.uc-card{border:1px solid var(--line);border-radius:9px;padding:9px 11px;margin-bottom:8px;cursor:pointer;background:var(--panel-2);transition:border-color .15s,background .15s;position:relative}
+.uc-card:last-child{margin-bottom:0}
+.uc-card:hover{border-color:var(--teal)}
+.uc-card:focus-visible{outline:2px solid var(--teal);outline-offset:1px}
+.uc-card.active{border-color:var(--teal-strong);background:var(--teal-soft)}
+.uc-card.active::before{content:"editing";position:absolute;top:-7px;right:8px;font-family:var(--mono);font-size:8.5px;font-weight:600;letter-spacing:.05em;color:#fff;background:var(--teal-strong);border-radius:5px;padding:1.5px 6px}
+html[data-theme="dark"] .uc-card.active::before{color:#0C1322}
+.uc-line{display:flex;align-items:center;gap:8px}
+.uc-name{font-family:var(--disp);font-size:12.5px;font-weight:600;color:var(--text);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.uc-x{width:20px;height:20px;border-radius:6px;border:1px solid transparent;background:transparent;color:var(--faint);font-size:13px;line-height:1;cursor:pointer;flex:none;display:inline-flex;align-items:center;justify-content:center}
+.uc-x:hover{color:var(--red);border-color:var(--red)}
+.uc-meta{font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.uc-tool{width:20px;height:20px;border-radius:6px;border:1px solid transparent;background:transparent;color:var(--faint);cursor:pointer;flex:none;display:inline-flex;align-items:center;justify-content:center;padding:0}
+.uc-tool svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.uc-tool:hover{color:var(--teal-strong);border-color:var(--teal)}
+.uc-pool{font-family:var(--mono);font-size:8.5px;font-weight:600;letter-spacing:.05em;color:var(--violet);border:1px solid var(--violet);border-radius:5px;padding:1px 5px;flex:none}
+.uc-rename{flex:1;min-width:0;font-family:var(--disp);font-size:12.5px;font-weight:600;color:var(--text);background:var(--panel);border:1px solid var(--teal);border-radius:6px;padding:2px 6px;outline:none}
+.uc-chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}
+.chip{display:inline-flex;align-items:center;gap:4px;font-family:var(--mono);font-size:9.5px;font-weight:500;color:var(--teal-strong);background:var(--teal-soft);border:1px solid transparent;border-radius:6px;padding:2.5px 4px 2.5px 7px;cursor:pointer}
+.chip:hover,.chip.open{border-color:var(--teal)}
+.chip:focus-visible{outline:2px solid var(--teal);outline-offset:1px}
+.chip.ghost{color:var(--faint);background:transparent;border:1px dashed var(--line);padding-right:7px}
+.chip.ghost:hover{color:var(--teal-strong);border-color:var(--teal)}
+.chip-x{width:13px;height:13px;border:none;background:transparent;color:inherit;opacity:.65;font-size:11px;line-height:1;cursor:pointer;padding:0;display:inline-flex;align-items:center;justify-content:center}
+.chip-x:hover{opacity:1}
+.chip-editor{margin-top:7px;background:var(--panel);border:1px solid var(--line-soft);border-radius:7px;padding:7px 9px}
+.chip-editor .ce-row{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.chip-editor .ce-row label{font-size:10.5px;font-weight:500;color:var(--muted);flex:none}
+.chip-editor select{flex:1;min-width:0;font-family:var(--body);font-size:11.5px;color:var(--text);background:var(--inset);border:1px solid var(--line);border-radius:6px;padding:4px 6px}
+.chip-editor .ce-note{font-size:10.5px;color:var(--faint);line-height:1.45}
+
+/* ============ PROJECT FLEET ============ */
+:root{--pool0:#0F766E;--pool1:#4F63C2;--pool2:#B45309;--pool3:#9D3B8A;--pool4:#3B7A9D;--pool5:#5F6B7A;
+ --supembed:#0F766E;--suprerank:#4F63C2;--supasr:#B45309;--suptts:#3B7A9D;--supocr:#B0304A;--supguard:#5F6B7A}
+html[data-theme="dark"]{--pool0:#2DD4BF;--pool1:#8B9CE8;--pool2:#FFC53D;--pool3:#E58BD3;--pool4:#7FC4E8;--pool5:#9AA8BC;
+ --supembed:#2DD4BF;--suprerank:#8B9CE8;--supasr:#FFC53D;--suptts:#7FC4E8;--supocr:#FF7B94;--supguard:#9AA8BC}
+.proj-strip{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.ps-chip{display:inline-flex;align-items:center;gap:7px;font-size:11.5px;color:var(--muted);background:var(--panel-2);border:1px solid var(--line-soft);border-radius:8px;padding:6px 10px}
+.ps-chip .dot{width:9px;height:9px;border-radius:3px;flex:none}
+.ps-chip b{color:var(--text);font-weight:600}
+.ps-chip .mono{font-family:var(--mono);font-size:10.5px}
+.uc-results{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;margin-bottom:14px}
+.ucr{border:1px solid var(--line-soft);border-left-width:3px;border-radius:9px;background:var(--panel-2);padding:10px 12px}
+.ucr .u-name{font-family:var(--disp);font-size:12.5px;font-weight:600;color:var(--text)}
+.ucr .u-sub{font-family:var(--mono);font-size:10px;color:var(--faint);margin:2px 0 8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ucr .u-row{display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-size:11px;color:var(--muted);padding:2px 0}
+.ucr .u-row .v{font-family:var(--mono);font-size:11px;color:var(--text);white-space:nowrap}
+.ucr .u-row .v .miss{color:var(--red);font-weight:600}
+.ucr .u-row .v .ok{color:var(--teal-strong);font-weight:600}
+.fm-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.fm-title{font-size:12px;font-weight:600;color:var(--text)}
+.fm-totals{font-size:10.5px;color:var(--faint)}
+.fm-legend{display:flex;flex-wrap:wrap;gap:6px 12px;margin-bottom:10px}
+.fm-legend .lg-li{display:inline-flex;align-items:center;gap:6px;font-size:10.5px;color:var(--muted)}
+.fm-legend .sw{width:10px;height:10px;border-radius:3px;flex:none}
+.fm-legend .sw.dashed{background:transparent;border:1.5px dashed var(--faint)}
+.fleet-map{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start}
+.fm-node{border:1px solid var(--line);border-radius:9px;background:var(--panel-2);padding:7px 8px 8px;min-width:0}
+.fm-node.standby{border-style:dashed;opacity:.75}
+.fm-node.support .fm-nlab .role{color:var(--amber)}
+.fm-node.fm-active{border-color:var(--teal-strong);box-shadow:0 0 0 1px var(--teal-strong)}
+.fm-nlab{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:9.5px;color:var(--faint);margin-bottom:6px;white-space:nowrap}
+.fm-nlab .role{font-size:8.5px;letter-spacing:.04em;text-transform:uppercase}
+.fm-gpus{display:grid;grid-template-columns:repeat(4,26px);gap:4px}
+.fm-gpu{width:26px;height:26px;border-radius:5px;border:1px solid var(--line);background:var(--inset);position:relative;overflow:hidden}
+.fm-gpu.assigned{border-color:transparent}
+.fm-gpu.spare{border-style:dashed}
+.fm-gpu .band{position:absolute;left:0;right:0}
+.fleet-map.dense .fm-gpus{grid-template-columns:repeat(4,18px)}
+.fleet-map.dense .fm-gpu{width:18px;height:18px;border-radius:4px}
+.fm-note{font-size:11px;color:var(--faint);line-height:1.5;margin-top:10px}
+.uc-detail-cap{margin:18px 0 2px}
+@media(max-width:1020px){.uc-results{grid-template-columns:1fr 1fr}}
+@media(max-width:560px){.uc-results{grid-template-columns:1fr}}
 
 /* ============ LAYOUT ============ */
 .console{display:grid;grid-template-columns:368px minmax(0,1fr);gap:20px;align-items:start}
@@ -336,7 +439,7 @@ footer.foot .mono{font-family:var(--mono);color:var(--text)}
 @media print{
   @page{margin:14mm}
   body{background:#fff !important;font-size:12px}
-  .top-right,.drawer,.info,#toast{display:none !important}
+  .top-right,.drawer,.info,#toast,.mini-bar{display:none !important}
   .console{display:block}
   .rail{display:none}
   .print-config{display:block;font-family:var(--mono);font-size:10px;color:#334;border:1px solid #ccd;border-radius:8px;padding:8px 12px;margin-bottom:10px;line-height:1.7}
@@ -354,6 +457,8 @@ footer.foot .mono{font-family:var(--mono);color:var(--text)}
   .foot-grid{grid-template-columns:1.6fr 1.2fr;gap:6px 30px;max-width:none}
   nav.f-col,.f-col h2,.f-mark{display:none !important}
   .col-cap,.privacy-chip{display:none !important}
+  .uc-detail-cap{display:block !important;font-size:10px;color:#556;margin:6px 0 2px}
+  .fm-node{break-inside:avoid}
   .f-privacy{background:none;padding:0;color:#556}
   .rec{background:none}
 }
@@ -389,17 +494,25 @@ footer.foot .mono{font-family:var(--mono);color:var(--text)}
 </head>
 <body>
 <div class="wrap">
+<div id="live" class="sr-only" aria-live="polite"></div>
+<button class="mini-bar" id="miniBar" type="button" aria-live="polite" title="Jump to results">
+  <span class="mb-lamp" id="mbLamp"></span><span id="mbText">—</span>
+</button>
 
 <header class="top">
   <div class="brand">
     <div class="brand-row"><svg class="logo-mark" viewBox="0 0 64 64" aria-hidden="true"><rect x="13" y="8" width="42" height="10" rx="4" fill="#16233B"/><rect x="3" y="20" width="6" height="7.5" rx="1.8" fill="var(--faint)"/><rect x="3" y="31" width="6" height="7.5" rx="1.8" fill="var(--faint)"/><rect x="8" y="12" width="48" height="34" rx="8" fill="var(--teal-strong)"/><circle cx="23.0" cy="28.0" r="8.3" fill="#16233B"/><polygon points="26.90,28.07 30.46,27.22 29.50,31.75 26.59,29.52" fill="#263349"/><polygon points="24.89,31.41 27.41,34.07 23.00,35.50 23.48,31.87" fill="#263349"/><polygon points="20.99,31.34 19.95,34.85 16.50,31.75 19.89,30.35" fill="#263349"/><polygon points="19.10,27.93 15.54,28.78 16.50,24.25 19.41,26.48" fill="#263349"/><polygon points="21.11,24.59 18.59,21.93 23.00,20.50 22.52,24.13" fill="#263349"/><polygon points="25.01,24.66 26.05,21.15 29.50,24.25 26.11,25.65" fill="#263349"/><circle cx="23.0" cy="28.0" r="3.1" fill="var(--amber-border)"/><circle cx="21.85" cy="26.85" r="1.05" fill="#FFFFFF"/><circle cx="41.0" cy="28.0" r="8.3" fill="#16233B"/><polygon points="44.47,29.77 48.05,30.57 45.19,34.22 43.56,30.94" fill="#263349"/><polygon points="41.20,31.89 42.30,35.39 37.71,34.74 39.73,31.69" fill="#263349"/><polygon points="37.73,30.12 35.25,32.82 33.52,28.52 37.17,28.74" fill="#263349"/><polygon points="37.53,26.23 33.95,25.43 36.81,21.78 38.44,25.06" fill="#263349"/><polygon points="40.80,24.11 39.70,20.61 44.29,21.26 42.27,24.31" fill="#263349"/><polygon points="44.27,25.88 46.75,23.18 48.48,27.48 44.83,27.26" fill="#263349"/><circle cx="41.0" cy="28.0" r="3.1" fill="var(--amber-border)"/><circle cx="39.85" cy="26.85" r="1.05" fill="#FFFFFF"/><rect x="15" y="45" width="34" height="5.4" rx="2.7" fill="#16233B"/><rect x="17.60" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/><rect x="22.85" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/><rect x="28.10" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/><rect x="33.35" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/><rect x="41.10" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/><rect x="46.35" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/></svg><h1>GPUscale<span class="tld">.net</span></h1><a class="ver-chip" href="https://github.com/mahmoudyassine/gpu-scale-tool/releases" target="_blank" rel="noopener" title="Release notes" id="verChip">v4.7</a></div>
-    <div class="sub">LLM capacity &amp; dimensioning studio: model, precision, workload and hardware in; memory fit, latency, throughput and resilient topology out.</div>
+    <div class="sub">LLM capacity &amp; dimensioning studio: use cases, models, precision and hardware in; memory fit, latency, fleet map and resilient topology out.</div>
     <div class="privacy-chip"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="9.5" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></svg>100% local: nothing you enter is saved or uploaded</div>
   </div>
   <div class="top-right">
     <div class="scenario">
-      <label for="scenarioName">Scenario</label>
-      <input type="text" id="scenarioName" placeholder="Untitled scenario" maxlength="60">
+      <label for="scenarioName">Project</label>
+      <input type="text" id="scenarioName" placeholder="Untitled project" maxlength="60">
+    </div>
+    <div class="mode-seg" id="modeSeg" role="group" aria-label="Experience mode" title="Normal shows the minimum inputs; Advanced shows every control">
+      <button type="button" data-mode="normal" aria-pressed="false">Normal</button>
+      <button type="button" data-mode="advanced" aria-pressed="true">Advanced</button>
     </div>
     <div class="btn-group" role="group" aria-label="Import and export">
       <button class="btn" id="btnImport" type="button" title="Import configuration JSON"><svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 21h16"/></svg><span class="lbl">Import</span></button>
@@ -424,14 +537,20 @@ footer.foot .mono{font-family:var(--mono);color:var(--text)}
 <aside class="rail">
   <div class="col-cap">Inputs · work top to bottom, results update live</div>
 
+  <section class="station" id="ucStation">
+    <div class="st-title"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="6" rx="2"/><rect x="3" y="14" width="18" height="6" rx="2"/><path d="M7 7h.01M7 17h.01"/></svg>Use cases<button class="info" data-help="hUc" aria-expanded="false" type="button">i</button><span class="st-spacer"></span><button class="uc-add" id="btnAddUc" type="button" title="Add a use case">+ Add</button></div>
+    <div class="f-help" id="hUc">Each card is one workload this project serves, with its own model, shape and concurrency. The stations below edit the selected card. Use cases that pick the same model and precision are served by one shared pooled deployment.<span class="typ">project structure</span></div>
+    <div id="ucCards" role="list"></div>
+  </section>
+
   <section class="station">
-    <div class="st-title"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 3 8l9 5 9-5-9-5z"/><path d="M3 12.5l9 5 9-5"/><path d="M3 17l9 5 9-5"/></svg>Model</div>
+    <div class="st-title"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 3 8l9 5 9-5-9-5z"/><path d="M3 12.5l9 5 9-5"/><path d="M3 17l9 5 9-5"/></svg>Model<span class="st-ctx" id="ctxModel"></span></div>
     <div class="field">
       <div class="f-head"><label for="selModel">Model</label><button class="info" data-help="hModel" aria-expanded="false" type="button">i</button><span class="spacer"></span><span class="unit" id="modelCount"></span></div>
       <select id="selModel"></select>
       <div class="f-help" id="hModel">Architecture geometry drives every estimate: total params size the weights, active params drive compute and decode reads, and the effective KV heads &times; head dim encode each model's real cache cost (MLA, sparse and SSM hybrids use sheet-compatible effective values).</div>
     </div>
-    <div class="toggle-row"><input type="checkbox" id="chkCustom"><label for="chkCustom">Custom model · enter geometry manually</label></div>
+    <div class="toggle-row adv"><input type="checkbox" id="chkCustom"><label for="chkCustom">Custom model · enter geometry manually</label></div>
     <div id="customBox" style="display:none;margin-top:10px">
       <div class="grid2">
         <div class="field"><div class="f-head"><label>Total params</label><span class="unit">B</span></div><input type="number" id="cusParams" value="70" min="0.1" step="0.1" title="All weights that must sit in VRAM; for MoE, every expert."></div>
@@ -447,13 +566,13 @@ footer.foot .mono{font-family:var(--mono);color:var(--text)}
   </section>
 
   <section class="station">
-    <div class="st-title"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><rect x="8.5" y="8.5" width="7" height="7" rx="1.5" fill="currentColor" stroke="none"/></svg>Precision</div>
+    <div class="st-title"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><rect x="8.5" y="8.5" width="7" height="7" rx="1.5" fill="currentColor" stroke="none"/></svg>Precision<span class="st-ctx" id="ctxPrec"></span></div>
     <div class="grid2">
       <div class="field">
         <div class="f-head"><label for="selWQuant">Weights</label><button class="info" data-help="hWq" aria-expanded="false" type="button">i</button></div>
         <select id="selWQuant"></select>
       </div>
-      <div class="field">
+      <div class="field adv">
         <div class="f-head"><label for="selKQuant">KV cache</label><button class="info" data-help="hKq" aria-expanded="false" type="button">i</button></div>
         <select id="selKQuant"></select>
       </div>
@@ -464,7 +583,7 @@ footer.foot .mono{font-family:var(--mono);color:var(--text)}
   </section>
 
   <section class="station">
-    <div class="st-title"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg>Workload</div>
+    <div class="st-title"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg>Workload<span class="st-ctx" id="ctxWork"></span></div>
     <div class="field">
       <div class="f-head"><label for="selCase">Use-case preset</label><button class="info" data-help="hCase" aria-expanded="false" type="button">i</button></div>
       <select id="selCase"></select>
@@ -472,19 +591,24 @@ footer.foot .mono{font-family:var(--mono);color:var(--text)}
     </div>
     <div id="m_inSeq"></div>
     <div id="m_inOut"></div>
-    <div class="field">
+    <div class="field adv">
       <div class="f-head"><label for="selReason">Reasoning mode</label><button class="info" data-help="hReason" aria-expanded="false" type="button">i</button></div>
       <select id="selReason">
         <option>None</option><option>Light reasoning</option><option>Heavy reasoning</option><option>Custom</option>
       </select>
       <div class="f-help" id="hReason">Thinking tokens generated before the visible answer. They add decode time and, if the toggle below is on, extend the KV footprint too.<span class="typ">Light ≈ 2,000 tok · Heavy ≈ 8,000 tok</span></div>
     </div>
-    <div id="m_inReasonTok"></div>
-    <div class="toggle-row" style="margin-bottom:12px"><input type="checkbox" id="chkExtend" checked><label for="chkExtend">Reasoning tokens extend the KV cache</label><button class="info" data-help="hExtend" aria-expanded="false" type="button">i</button></div>
+    <div id="m_inReasonTok" class="adv"></div>
+    <div class="toggle-row adv" style="margin-bottom:12px"><input type="checkbox" id="chkExtend" checked><label for="chkExtend">Reasoning tokens extend the KV cache</label><button class="info" data-help="hExtend" aria-expanded="false" type="button">i</button></div>
     <div class="f-help" id="hExtend" style="margin-top:-6px;margin-bottom:10px">On for standard serving (thinking stays in context). Off if the engine discards reasoning traces from the cache after each call.</div>
-    <div id="m_inConc"></div>
-    <div id="m_inBatch"></div>
-    <div class="field">
+    <div class="field nrm"><div class="f-head"><label for="nrmUsers">People using this at peak</label><button class="info" data-help="hNrmU" aria-expanded="false" type="button">i</button></div>
+      <input type="number" id="nrmUsers" value="200" min="1" max="2000000">
+      <div class="cc-derived" id="nrmDerived"></div>
+      <div class="f-help" id="hNrmU">Headcount actively using this workload in the busiest hour. The concurrent-call figure the sizing runs on is derived with Little&rsquo;s law (6 interactions/hour each, 1.5&times; burst margin) and shown underneath. Switch to Advanced mode to set concurrency and traffic shape directly.<span class="typ">demand</span></div>
+    </div>
+    <div id="m_inConc" class="adv"></div>
+    <div id="m_inBatch" class="adv"></div>
+    <div class="field adv">
       <div class="f-head"><label for="selPolicy">KV residency policy</label><button class="info" data-help="hPolicy" aria-expanded="false" type="button">i</button></div>
       <select id="selPolicy">
         <option value="running">Running batch only (vLLM-style admission)</option>
@@ -492,14 +616,14 @@ footer.foot .mono{font-family:var(--mono);color:var(--text)}
       </select>
       <div class="f-help" id="hPolicy">Running batch: only admitted sequences hold KV and the rest queue (the modern default). All sessions: every concurrent call keeps its cache resident (lowest latency variance, far more memory).</div>
     </div>
-    <div class="f-head" style="margin:4px 0 6px"><label>SLO targets</label><button class="info" data-help="hSlo" aria-expanded="false" type="button">i</button></div>
+    <div class="f-head adv" style="margin:4px 0 6px"><label>SLO targets</label><button class="info" data-help="hSlo" aria-expanded="false" type="button">i</button></div>
     <div class="f-help" id="hSlo">Pass/fail thresholds for the compliance panel. A target of 0 disables that check. Presets refill these with workload-appropriate values.</div>
-    <div class="grid3">
+    <div class="adv grid3">
       <div class="field"><div class="f-head"><label>TTFT &le;</label><span class="unit">ms</span></div><input type="number" id="sloTtft" value="300" min="0"></div>
       <div class="field"><div class="f-head"><label>TPS &ge;</label><span class="unit">tok/s</span></div><input type="number" id="sloTps" value="50" min="0"></div>
       <div class="field"><div class="f-head"><label>P95 &le;</label><span class="unit">s</span></div><input type="number" id="sloP95" value="3" min="0"></div>
     </div>
-    <details class="drawer">
+    <details class="drawer adv">
       <summary>Concurrency estimator · Little's law</summary>
       <div class="drawer-body">
         <div class="grid2">
@@ -523,8 +647,16 @@ footer.foot .mono{font-family:var(--mono);color:var(--text)}
       <select id="selGpu"></select>
       <div class="f-help" id="hGpu">Bandwidth sets decode speed, dense FP16 Tensor-Core TFLOPS sets prefill speed, VRAM sets what fits. 2026 parts (VR200, MI455X) carry pre-launch estimates.</div>
     </div>
-    <div id="m_inPerW"></div>
-    <div class="field">
+    <div id="m_inPerW" class="adv"></div>
+    <div class="field nrm"><div class="f-head"><label for="selResilSimple">Failure protection</label><button class="info" data-help="hResilS" aria-expanded="false" type="button">i</button></div>
+      <select id="selResilSimple">
+        <option value="n">None · capacity only</option>
+        <option value="n1">Survives a server failure</option>
+        <option value="dr">Survives a site outage</option>
+      </select>
+      <div class="f-help" id="hResilS">What the fleet must keep serving through. Advanced mode offers the full set of patterns (N+2, mirrors, active/active splits) with their economics.<span class="typ">resilience</span></div>
+    </div>
+    <div class="field adv">
       <div class="f-head"><label for="selResil">Resilience model</label><button class="info" data-help="hResil" aria-expanded="false" type="button">i</button></div>
       <select id="selResil">
         <optgroup label="No redundancy">
@@ -552,18 +684,18 @@ footer.foot .mono{font-family:var(--mono);color:var(--text)}
       </select>
       <div class="f-help" id="hResil">Pick what the deployment must survive. The sizing rule: every figure in the results is what you can guarantee even during the covered failure, so throughput and concurrency never grow with resilience. The extra hardware either idles until a failure (spares, mirrors, DR standby) or serves day-to-day as burst headroom (Active/Active). The economics strip under the topology shows guaranteed vs normal-day capacity, idle hardware and the cost multiplier for the chosen model.</div>
     </div>
-    <div class="field"><div class="f-head"><label for="autoUtil">Auto-size memory target</label><button class="info" data-help="hAutoUtil" aria-expanded="false" type="button">i</button><span class="spacer"></span><span class="unit">%</span></div><input type="number" id="autoUtil" value="80" min="50" max="95" step="5"></div>
+    <div class="field adv"><div class="f-head"><label for="autoUtil">Auto-size memory target</label><button class="info" data-help="hAutoUtil" aria-expanded="false" type="button">i</button><span class="spacer"></span><span class="unit">%</span></div><input type="number" id="autoUtil" value="80" min="50" max="95" step="5"></div>
     <div class="f-help" id="hAutoUtil">How full Auto-size may pack the serving GPUs. 80% leaves industry-standard growth headroom; 90 to 95% packs tighter at the cost of burst and growth margin (the thin-headroom warning starts at 92%). Manual sliders are never limited by this.</div>
-    <button class="btn primary apply" id="btnAuto" type="button" title="Solve TP, workers and batch from everything chosen above"><svg viewBox="0 0 24 24"><path d="M13 2 4.5 14H11l-1 8 8.5-12H12l1-8z"/></svg>Auto-size TP · workers · batch</button>
+    <button class="btn primary apply adv" id="btnAuto" type="button" title="Solve TP, workers and batch from everything chosen above"><svg viewBox="0 0 24 24"><path d="M13 2 4.5 14H11l-1 8 8.5-12H12l1-8z"/></svg>Auto-size TP · workers · batch</button>
     <div class="f-help" id="hAuto" style="display:block;margin-bottom:10px">Uses everything above: model, precision, workload, SLO targets, GPU and node size. Picks the smallest Tensor parallel that fits one copy of the model (widened if the TTFT target demands it), then the fewest workers and the batch that admit the peak concurrent calls. No SLO targets means offline: minimal hardware, largest fitting batch, queueing allowed.</div>
     <div class="auto-result" id="autoResult" aria-live="polite"></div>
-    <div class="fine-cap">Fine-tune · Auto-size sets these, edit freely</div>
-    <div id="m_inWorkers"></div>
-    <div id="m_inTp"></div>
+    <div class="fine-cap adv">Fine-tune · Auto-size sets these, edit freely</div>
+    <div id="m_inWorkers" class="adv"></div>
+    <div id="m_inTp" class="adv"></div>
     <div class="meta-card" id="gpuMeta"></div>
   </section>
 
-  <section class="station">
+  <section class="station adv">
     <div class="st-title"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h9M19 6h1M4 12h3M13 12h7M4 18h11M21 18h-1"/><circle cx="15.5" cy="6" r="2.2"/><circle cx="9.5" cy="12" r="2.2"/><circle cx="17.5" cy="18" r="2.2"/></svg>Advanced tuning</div>
     <details class="drawer">
       <summary>Efficiency assumptions · defaults are sensible</summary>
@@ -592,6 +724,19 @@ footer.foot .mono{font-family:var(--mono);color:var(--text)}
     <span class="v-kv" id="vKv"></span>
     <span class="v-sub" id="vSub"></span>
   </section>
+
+  <section class="panel" id="projPanel" style="display:none">
+    <div class="p-head"><span class="p-title"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/></svg>Project fleet · all use cases</span><span class="p-note" id="projNote"></span></div>
+    <div class="proj-strip" id="projStrip"></div>
+    <div class="uc-results" id="ucResults"></div>
+    <div class="fm-head"><span class="fm-title">Fleet map · model placement across GPUs and nodes</span><span class="fm-totals mono" id="fmTotals"></span></div>
+    <div class="fm-legend" id="fmLegend"></div>
+    <div class="fleet-map" id="fleetMap" aria-hidden="true"></div>
+    <div class="sr-only" id="fleetList"></div>
+    <div class="fm-note" id="fmNote"></div>
+  </section>
+
+  <div class="col-cap uc-detail-cap" id="ucDetailCap" style="display:none"></div>
 
   <section class="panel">
     <div class="p-head"><span class="p-title"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 10h16M4 14h10M4 18h7"/></svg>In plain words</span><span class="p-note mono" id="storyId"></span></div>
@@ -695,7 +840,7 @@ footer.foot .mono{font-family:var(--mono);color:var(--text)}
       <span class="f-fact">Version <span class="mono" id="appVer">—</span></span>
       <span class="f-fact">Engine <span class="mono" id="engVer">—</span> · library <span class="mono" id="libVer">—</span></span>
       <span class="f-fact">Scripting API at <span class="mono">window.GPUscale</span></span>
-      <span class="f-privacy"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="9.5" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></svg>Private by design: everything runs in your browser. Nothing you enter is saved, uploaded or tracked. No accounts, no analytics, no cookies.</span>
+      <span class="f-privacy"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="9.5" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></svg>Private by design: everything runs in your browser. Nothing you enter is saved, uploaded or tracked; one UI preference (the mode) stays in your browser\u2019s local storage. No accounts, no analytics, no cookies.</span>
     </div>
   </div>
 </footer>
@@ -707,7 +852,7 @@ footer.foot .mono{font-family:var(--mono);color:var(--text)}
 // GPUscale.net · model library (params B · active B · hidden · layers · effective KV heads × head dim · max ctx)
 // One entry per line. Field reference: docs/DATA.md
 window.GPUSCALE_DATA = window.GPUSCALE_DATA || {};
-window.GPUSCALE_DATA.meta = {"library":"v25","engine":23,"updated":"2026-07-19"};
+window.GPUSCALE_DATA.meta = {"library":"v26","engine":23,"updated":"2026-07-21"};
 window.GPUSCALE_DATA.models = [
 {"name":"Llama 3.1 8B","params":8.0,"active":8.0,"hidden":4096,"layers":32,"kvHeads":8,"headDim":128,"ctx":131072,"experts":null,"activeExperts":null,"arch":"Dense (GQA)","dev":"Meta","url":"https://ai.meta.com/blog/meta-llama-3-1/"},
 {"name":"Llama 3.1 70B","params":70.0,"active":70.0,"hidden":8192,"layers":80,"kvHeads":8,"headDim":128,"ctx":131072,"experts":null,"activeExperts":null,"arch":"Dense (GQA)","dev":"Meta","url":"https://ai.meta.com/blog/meta-llama-3-1/"},
@@ -808,43 +953,43 @@ window.GPUSCALE_DATA.models = [
 // One entry per line. Field reference: docs/DATA.md
 window.GPUSCALE_DATA = window.GPUSCALE_DATA || {};
 window.GPUSCALE_DATA.gpus = [
-{"name":"RTX 4060 Ti 16GB","vram":16.0,"bw":0.288,"tflops":44.0,"mem":"GDDR6","arch":"Ada Lovelace","watts":165,"cls":"Consumer","link":"PCIe 4.0","url":"https://www.nvidia.com/en-us/geforce/graphics-cards/40-series/"},
-{"name":"RTX 4070 Ti Super 16GB","vram":16.0,"bw":0.672,"tflops":88.0,"mem":"GDDR6X","arch":"Ada Lovelace","watts":285,"cls":"Consumer","link":"PCIe 4.0","url":"https://www.nvidia.com/en-us/geforce/graphics-cards/40-series/"},
-{"name":"RTX 4080 Super 16GB","vram":16.0,"bw":0.736,"tflops":104.0,"mem":"GDDR6X","arch":"Ada Lovelace","watts":320,"cls":"Consumer","link":"PCIe 4.0","url":"https://www.nvidia.com/en-us/geforce/graphics-cards/40-series/"},
-{"name":"RTX 4090 24GB","vram":24.0,"bw":1.008,"tflops":165.0,"mem":"GDDR6X","arch":"Ada Lovelace","watts":450,"cls":"Consumer","link":"PCIe 4.0","url":"https://www.nvidia.com/en-us/geforce/graphics-cards/40-series/"},
-{"name":"RTX 5070 Ti 16GB","vram":16.0,"bw":0.896,"tflops":88.0,"mem":"GDDR7","arch":"Blackwell","watts":300,"cls":"Consumer","link":"PCIe 5.0","url":"https://www.nvidia.com/en-us/geforce/graphics-cards/50-series/"},
-{"name":"RTX 5080 16GB","vram":16.0,"bw":0.96,"tflops":113.0,"mem":"GDDR7","arch":"Blackwell","watts":360,"cls":"Consumer","link":"PCIe 5.0","url":"https://www.nvidia.com/en-us/geforce/graphics-cards/50-series/"},
-{"name":"RTX 5090 32GB","vram":32.0,"bw":1.792,"tflops":210.0,"mem":"GDDR7","arch":"Blackwell","watts":575,"cls":"Consumer","link":"PCIe 5.0","url":"https://www.nvidia.com/en-us/geforce/graphics-cards/50-series/"},
-{"name":"RTX 6000 Ada 48GB","vram":48.0,"bw":0.96,"tflops":182.0,"mem":"GDDR6","arch":"Ada Lovelace","watts":300,"cls":"Workstation","link":"PCIe 4.0","url":"https://www.nvidia.com/en-us/products/workstations/rtx-6000/"},
-{"name":"RTX PRO 6000 Blackwell Server Edition 96GB","vram":96.0,"bw":1.597,"tflops":250.0,"mem":"GDDR7","arch":"Blackwell","watts":600,"cls":"Server / Workstation","link":"PCIe 5.0","url":"https://www.nvidia.com/en-us/data-center/rtx-pro-6000-blackwell-server-edition/"},
-{"name":"A100 40GB SXM","vram":40.0,"bw":1.555,"tflops":312.0,"mem":"HBM2e","arch":"Ampere","watts":400,"cls":"Data Center","link":"NVLink Gen3","url":"https://www.nvidia.com/en-us/data-center/a100/"},
-{"name":"A100 80GB SXM","vram":80.0,"bw":2.039,"tflops":312.0,"mem":"HBM2e","arch":"Ampere","watts":400,"cls":"Data Center","link":"NVLink Gen3","url":"https://www.nvidia.com/en-us/data-center/a100/"},
-{"name":"A100 80GB PCIe","vram":80.0,"bw":1.935,"tflops":312.0,"mem":"HBM2e","arch":"Ampere","watts":300,"cls":"Data Center","link":"PCIe 4.0","url":"https://www.nvidia.com/en-us/data-center/a100/"},
-{"name":"L4 24GB","vram":24.0,"bw":0.3,"tflops":60.5,"mem":"GDDR6","arch":"Ada Lovelace","watts":72,"cls":"Data Center","link":"PCIe 4.0","url":"https://www.nvidia.com/en-us/data-center/l4/"},
-{"name":"L40 48GB","vram":48.0,"bw":0.864,"tflops":90.5,"mem":"GDDR6","arch":"Ada Lovelace","watts":300,"cls":"Data Center","link":"PCIe 4.0","url":"https://www.nvidia.com/en-us/data-center/l40/"},
-{"name":"L40S 48GB","vram":48.0,"bw":0.864,"tflops":183.0,"mem":"GDDR6","arch":"Ada Lovelace","watts":350,"cls":"Data Center","link":"PCIe 4.0","url":"https://www.nvidia.com/en-us/data-center/l40s/"},
-{"name":"H100 NVL 94GB","vram":94.0,"bw":3.9,"tflops":835.0,"mem":"HBM3","arch":"Hopper","watts":350,"cls":"Data Center","link":"NVLink Gen4","url":"https://www.nvidia.com/en-us/data-center/h100/"},
-{"name":"H100 80GB SXM","vram":80.0,"bw":3.35,"tflops":989.0,"mem":"HBM3","arch":"Hopper","watts":700,"cls":"Data Center","link":"NVLink Gen4","url":"https://www.nvidia.com/en-us/data-center/h100/"},
-{"name":"H100 80GB PCIe","vram":80.0,"bw":2.0,"tflops":756.0,"mem":"HBM2e","arch":"Hopper","watts":350,"cls":"Data Center","link":"PCIe 5.0","url":"https://www.nvidia.com/en-us/data-center/h100/"},
-{"name":"H200 141GB NVL","vram":141.0,"bw":4.8,"tflops":989.0,"mem":"HBM3e","arch":"Hopper","watts":600,"cls":"Data Center","link":"NVLink Gen4","url":"https://www.nvidia.com/en-us/data-center/h200/"},
-{"name":"H200 141GB SXM","vram":141.0,"bw":4.8,"tflops":989.0,"mem":"HBM3e","arch":"Hopper","watts":700,"cls":"Data Center","link":"NVLink Gen4","url":"https://www.nvidia.com/en-us/data-center/h200/"},
-{"name":"B200 180GB","vram":180.0,"bw":8.0,"tflops":2250.0,"mem":"HBM3e","arch":"Blackwell","watts":1000,"cls":"Data Center","link":"NVLink Gen5","url":"https://www.nvidia.com/en-us/data-center/dgx-b200/"},
-{"name":"B300 288GB","vram":288.0,"bw":8.0,"tflops":2250.0,"mem":"HBM3e","arch":"Blackwell Ultra","watts":1200,"cls":"Data Center","link":"NVLink Gen5","url":"https://www.nvidia.com/en-us/data-center/dgx-b300/"},
-{"name":"Apple M2 Ultra 192GB","vram":192.0,"bw":0.8,"tflops":27.2,"mem":"Unified LPDDR5","arch":"Apple M2","watts":215,"cls":"Apple Silicon","link":"—","url":"https://www.apple.com/newsroom/2023/06/apple-introduces-m2-ultra/"},
-{"name":"Apple M4 Max 128GB","vram":128.0,"bw":0.546,"tflops":38.0,"mem":"Unified LPDDR5X","arch":"Apple M4","watts":150,"cls":"Apple Silicon","link":"—","url":"https://www.apple.com/macbook-pro/"},
-{"name":"AMD Instinct MI300X 192GB","vram":192.0,"bw":5.3,"tflops":1307.0,"mem":"HBM3","arch":"CDNA 3","watts":750,"cls":"Data Center","link":"Infinity Fabric","url":"https://www.amd.com/en/products/accelerators/instinct/mi300/mi300x.html"},
-{"name":"AMD Instinct MI325X 256GB","vram":256.0,"bw":6.0,"tflops":1307.0,"mem":"HBM3E","arch":"CDNA 3","watts":1000,"cls":"Data Center","link":"Infinity Fabric","url":"https://www.amd.com/en/products/accelerators/instinct/mi325x.html"},
-{"name":"AMD Instinct MI355X 288GB","vram":288.0,"bw":8.0,"tflops":2513.0,"mem":"HBM3E","arch":"CDNA 4","watts":1400,"cls":"Data Center","link":"Infinity Fabric","url":"https://www.amd.com/en/products/accelerators/instinct/mi350.html"},
-{"name":"NVIDIA GB200 186GB (per GPU)","vram":186.0,"bw":8.0,"tflops":2250.0,"mem":"HBM3e","arch":"Blackwell (Grace)","watts":1200,"cls":"Data Center","link":"NVLink Gen5","url":"https://www.nvidia.com/en-us/data-center/gb200-nvl72/"},
-{"name":"Apple M3 Ultra 256GB","vram":256.0,"bw":0.819,"tflops":28.0,"mem":"Unified LPDDR5","arch":"Apple M3","watts":270,"cls":"Apple Silicon","link":"—","url":"https://www.apple.com/mac-studio/"},
-{"name":"Intel Gaudi 3 128GB","vram":128.0,"bw":3.7,"tflops":1835.0,"mem":"HBM2e","arch":"Intel Gaudi 3","watts":900,"cls":"Data Center","link":"RoCE / Ethernet","url":"https://www.intel.com/content/www/us/en/products/details/processors/ai-accelerators/gaudi3.html"},
-{"name":"GH200 141GB","vram":141.0,"bw":4.9,"tflops":989.0,"mem":"HBM3e","arch":"Grace Hopper","watts":1000,"cls":"Data Center","link":"NVLink-C2C","url":"https://www.nvidia.com/en-us/data-center/grace-hopper-superchip/"},
-{"name":"GB300 288GB (per GPU)","vram":288.0,"bw":8.0,"tflops":2250.0,"mem":"HBM3e","arch":"Blackwell Ultra","watts":1400,"cls":"Data Center","link":"NVLink Gen5","url":"https://www.nvidia.com/en-us/data-center/gb300-nvl72/"},
-{"name":"AMD Instinct MI350X 288GB","vram":288.0,"bw":8.0,"tflops":2300.0,"mem":"HBM3E","arch":"CDNA 4","watts":1000,"cls":"Data Center","link":"Infinity Fabric","url":"https://www.amd.com/en/products/accelerators/instinct/mi350.html"},
-{"name":"AMD Instinct MI455X 432GB","vram":432.0,"bw":19.6,"tflops":5000.0,"mem":"HBM4","arch":"CDNA 5","watts":2000,"cls":"Data Center (H2 2026)","link":"IF + UALink","url":"https://www.amd.com/en/products/accelerators/instinct.html"},
-{"name":"NVIDIA Rubin VR200 288GB","vram":288.0,"bw":20.5,"tflops":8300.0,"mem":"HBM4","arch":"Rubin","watts":1800,"cls":"Data Center (H2 2026)","link":"NVLink Gen6","url":"https://www.nvidia.com/en-us/data-center/vera-rubin/"},
-{"name":"NVIDIA DGX Spark 128GB (GB10)","vram":128.0,"bw":0.273,"tflops":125.0,"mem":"Unified LPDDR5x","arch":"Grace Blackwell","watts":240,"cls":"Desktop","link":"NVLink-C2C","url":"https://www.nvidia.com/en-us/products/workstations/dgx-spark/"},
-{"name":"Apple M3 Ultra 512GB","vram":512.0,"bw":0.819,"tflops":28.0,"mem":"Unified LPDDR5","arch":"Apple M3","watts":270,"cls":"Apple Silicon","link":"—","url":"https://www.apple.com/mac-studio/"},
+{"name": "RTX 4060 Ti 16GB", "vram": 16.0, "bw": 0.288, "tflops": 44.0, "mem": "GDDR6", "arch": "Ada Lovelace", "watts": 165, "cls": "Consumer", "link": "PCIe 4.0", "url": "https://www.nvidia.com/en-us/geforce/graphics-cards/40-series/", "part": {"kind": "frac"}},
+{"name": "RTX 4070 Ti Super 16GB", "vram": 16.0, "bw": 0.672, "tflops": 88.0, "mem": "GDDR6X", "arch": "Ada Lovelace", "watts": 285, "cls": "Consumer", "link": "PCIe 4.0", "url": "https://www.nvidia.com/en-us/geforce/graphics-cards/40-series/", "part": {"kind": "frac"}},
+{"name": "RTX 4080 Super 16GB", "vram": 16.0, "bw": 0.736, "tflops": 104.0, "mem": "GDDR6X", "arch": "Ada Lovelace", "watts": 320, "cls": "Consumer", "link": "PCIe 4.0", "url": "https://www.nvidia.com/en-us/geforce/graphics-cards/40-series/", "part": {"kind": "frac"}},
+{"name": "RTX 4090 24GB", "vram": 24.0, "bw": 1.008, "tflops": 165.0, "mem": "GDDR6X", "arch": "Ada Lovelace", "watts": 450, "cls": "Consumer", "link": "PCIe 4.0", "url": "https://www.nvidia.com/en-us/geforce/graphics-cards/40-series/", "part": {"kind": "frac"}},
+{"name": "RTX 5070 Ti 16GB", "vram": 16.0, "bw": 0.896, "tflops": 88.0, "mem": "GDDR7", "arch": "Blackwell", "watts": 300, "cls": "Consumer", "link": "PCIe 5.0", "url": "https://www.nvidia.com/en-us/geforce/graphics-cards/50-series/", "part": {"kind": "frac"}},
+{"name": "RTX 5080 16GB", "vram": 16.0, "bw": 0.96, "tflops": 113.0, "mem": "GDDR7", "arch": "Blackwell", "watts": 360, "cls": "Consumer", "link": "PCIe 5.0", "url": "https://www.nvidia.com/en-us/geforce/graphics-cards/50-series/", "part": {"kind": "frac"}},
+{"name": "RTX 5090 32GB", "vram": 32.0, "bw": 1.792, "tflops": 210.0, "mem": "GDDR7", "arch": "Blackwell", "watts": 575, "cls": "Consumer", "link": "PCIe 5.0", "url": "https://www.nvidia.com/en-us/geforce/graphics-cards/50-series/", "part": {"kind": "frac"}},
+{"name": "RTX 6000 Ada 48GB", "vram": 48.0, "bw": 0.96, "tflops": 182.0, "mem": "GDDR6", "arch": "Ada Lovelace", "watts": 300, "cls": "Workstation", "link": "PCIe 4.0", "url": "https://www.nvidia.com/en-us/products/workstations/rtx-6000/", "part": {"kind": "frac"}},
+{"name": "RTX PRO 6000 Blackwell Server Edition 96GB", "vram": 96.0, "bw": 1.597, "tflops": 250.0, "mem": "GDDR7", "arch": "Blackwell", "watts": 600, "cls": "Server / Workstation", "link": "PCIe 5.0", "url": "https://www.nvidia.com/en-us/data-center/rtx-pro-6000-blackwell-server-edition/", "part": {"kind": "mig", "max": 4, "min": 24}},
+{"name": "A100 40GB SXM", "vram": 40.0, "bw": 1.555, "tflops": 312.0, "mem": "HBM2e", "arch": "Ampere", "watts": 400, "cls": "Data Center", "link": "NVLink Gen3", "url": "https://www.nvidia.com/en-us/data-center/a100/", "part": {"kind": "mig", "max": 7, "min": 5}},
+{"name": "A100 80GB SXM", "vram": 80.0, "bw": 2.039, "tflops": 312.0, "mem": "HBM2e", "arch": "Ampere", "watts": 400, "cls": "Data Center", "link": "NVLink Gen3", "url": "https://www.nvidia.com/en-us/data-center/a100/", "part": {"kind": "mig", "max": 7, "min": 10}},
+{"name": "A100 80GB PCIe", "vram": 80.0, "bw": 1.935, "tflops": 312.0, "mem": "HBM2e", "arch": "Ampere", "watts": 300, "cls": "Data Center", "link": "PCIe 4.0", "url": "https://www.nvidia.com/en-us/data-center/a100/", "part": {"kind": "mig", "max": 7, "min": 10}},
+{"name": "L4 24GB", "vram": 24.0, "bw": 0.3, "tflops": 60.5, "mem": "GDDR6", "arch": "Ada Lovelace", "watts": 72, "cls": "Data Center", "link": "PCIe 4.0", "url": "https://www.nvidia.com/en-us/data-center/l4/", "part": {"kind": "frac"}},
+{"name": "L40 48GB", "vram": 48.0, "bw": 0.864, "tflops": 90.5, "mem": "GDDR6", "arch": "Ada Lovelace", "watts": 300, "cls": "Data Center", "link": "PCIe 4.0", "url": "https://www.nvidia.com/en-us/data-center/l40/", "part": {"kind": "frac"}},
+{"name": "L40S 48GB", "vram": 48.0, "bw": 0.864, "tflops": 183.0, "mem": "GDDR6", "arch": "Ada Lovelace", "watts": 350, "cls": "Data Center", "link": "PCIe 4.0", "url": "https://www.nvidia.com/en-us/data-center/l40s/", "part": {"kind": "frac"}},
+{"name": "H100 NVL 94GB", "vram": 94.0, "bw": 3.9, "tflops": 835.0, "mem": "HBM3", "arch": "Hopper", "watts": 350, "cls": "Data Center", "link": "NVLink Gen4", "url": "https://www.nvidia.com/en-us/data-center/h100/", "part": {"kind": "mig", "max": 7, "min": 12}},
+{"name": "H100 80GB SXM", "vram": 80.0, "bw": 3.35, "tflops": 989.0, "mem": "HBM3", "arch": "Hopper", "watts": 700, "cls": "Data Center", "link": "NVLink Gen4", "url": "https://www.nvidia.com/en-us/data-center/h100/", "part": {"kind": "mig", "max": 7, "min": 10}},
+{"name": "H100 80GB PCIe", "vram": 80.0, "bw": 2.0, "tflops": 756.0, "mem": "HBM2e", "arch": "Hopper", "watts": 350, "cls": "Data Center", "link": "PCIe 5.0", "url": "https://www.nvidia.com/en-us/data-center/h100/", "part": {"kind": "mig", "max": 7, "min": 10}},
+{"name": "H200 141GB NVL", "vram": 141.0, "bw": 4.8, "tflops": 989.0, "mem": "HBM3e", "arch": "Hopper", "watts": 600, "cls": "Data Center", "link": "NVLink Gen4", "url": "https://www.nvidia.com/en-us/data-center/h200/", "part": {"kind": "mig", "max": 7, "min": 18}},
+{"name": "H200 141GB SXM", "vram": 141.0, "bw": 4.8, "tflops": 989.0, "mem": "HBM3e", "arch": "Hopper", "watts": 700, "cls": "Data Center", "link": "NVLink Gen4", "url": "https://www.nvidia.com/en-us/data-center/h200/", "part": {"kind": "mig", "max": 7, "min": 18}},
+{"name": "B200 180GB", "vram": 180.0, "bw": 8.0, "tflops": 2250.0, "mem": "HBM3e", "arch": "Blackwell", "watts": 1000, "cls": "Data Center", "link": "NVLink Gen5", "url": "https://www.nvidia.com/en-us/data-center/dgx-b200/", "part": {"kind": "mig", "max": 7, "min": 23}},
+{"name": "B300 288GB", "vram": 288.0, "bw": 8.0, "tflops": 2250.0, "mem": "HBM3e", "arch": "Blackwell Ultra", "watts": 1200, "cls": "Data Center", "link": "NVLink Gen5", "url": "https://www.nvidia.com/en-us/data-center/dgx-b300/", "part": {"kind": "mig", "max": 7, "min": 34}},
+{"name": "Apple M2 Ultra 192GB", "vram": 192.0, "bw": 0.8, "tflops": 27.2, "mem": "Unified LPDDR5", "arch": "Apple M2", "watts": 215, "cls": "Apple Silicon", "link": "—", "url": "https://www.apple.com/newsroom/2023/06/apple-introduces-m2-ultra/", "part": {"kind": "frac"}},
+{"name": "Apple M4 Max 128GB", "vram": 128.0, "bw": 0.546, "tflops": 38.0, "mem": "Unified LPDDR5X", "arch": "Apple M4", "watts": 150, "cls": "Apple Silicon", "link": "—", "url": "https://www.apple.com/macbook-pro/", "part": {"kind": "frac"}},
+{"name": "AMD Instinct MI300X 192GB", "vram": 192.0, "bw": 5.3, "tflops": 1307.0, "mem": "HBM3", "arch": "CDNA 3", "watts": 750, "cls": "Data Center", "link": "Infinity Fabric", "url": "https://www.amd.com/en/products/accelerators/instinct/mi300/mi300x.html", "part": {"kind": "cpx", "max": 8, "min": 24}},
+{"name": "AMD Instinct MI325X 256GB", "vram": 256.0, "bw": 6.0, "tflops": 1307.0, "mem": "HBM3E", "arch": "CDNA 3", "watts": 1000, "cls": "Data Center", "link": "Infinity Fabric", "url": "https://www.amd.com/en/products/accelerators/instinct/mi325x.html", "part": {"kind": "cpx", "max": 8, "min": 32}},
+{"name": "AMD Instinct MI355X 288GB", "vram": 288.0, "bw": 8.0, "tflops": 2513.0, "mem": "HBM3E", "arch": "CDNA 4", "watts": 1400, "cls": "Data Center", "link": "Infinity Fabric", "url": "https://www.amd.com/en/products/accelerators/instinct/mi350.html", "part": {"kind": "cpx", "max": 8, "min": 36}},
+{"name": "NVIDIA GB200 186GB (per GPU)", "vram": 186.0, "bw": 8.0, "tflops": 2250.0, "mem": "HBM3e", "arch": "Blackwell (Grace)", "watts": 1200, "cls": "Data Center", "link": "NVLink Gen5", "url": "https://www.nvidia.com/en-us/data-center/gb200-nvl72/", "part": {"kind": "mig", "max": 7, "min": 23}},
+{"name": "Apple M3 Ultra 256GB", "vram": 256.0, "bw": 0.819, "tflops": 28.0, "mem": "Unified LPDDR5", "arch": "Apple M3", "watts": 270, "cls": "Apple Silicon", "link": "—", "url": "https://www.apple.com/mac-studio/", "part": {"kind": "frac"}},
+{"name": "Intel Gaudi 3 128GB", "vram": 128.0, "bw": 3.7, "tflops": 1835.0, "mem": "HBM2e", "arch": "Intel Gaudi 3", "watts": 900, "cls": "Data Center", "link": "RoCE / Ethernet", "url": "https://www.intel.com/content/www/us/en/products/details/processors/ai-accelerators/gaudi3.html", "part": {"kind": "whole"}},
+{"name": "GH200 141GB", "vram": 141.0, "bw": 4.9, "tflops": 989.0, "mem": "HBM3e", "arch": "Grace Hopper", "watts": 1000, "cls": "Data Center", "link": "NVLink-C2C", "url": "https://www.nvidia.com/en-us/data-center/grace-hopper-superchip/", "part": {"kind": "mig", "max": 7, "min": 18}},
+{"name": "GB300 288GB (per GPU)", "vram": 288.0, "bw": 8.0, "tflops": 2250.0, "mem": "HBM3e", "arch": "Blackwell Ultra", "watts": 1400, "cls": "Data Center", "link": "NVLink Gen5", "url": "https://www.nvidia.com/en-us/data-center/gb300-nvl72/", "part": {"kind": "mig", "max": 7, "min": 35}},
+{"name": "AMD Instinct MI350X 288GB", "vram": 288.0, "bw": 8.0, "tflops": 2300.0, "mem": "HBM3E", "arch": "CDNA 4", "watts": 1000, "cls": "Data Center", "link": "Infinity Fabric", "url": "https://www.amd.com/en/products/accelerators/instinct/mi350.html", "part": {"kind": "cpx", "max": 8, "min": 36}},
+{"name": "AMD Instinct MI455X 432GB", "vram": 432.0, "bw": 19.6, "tflops": 5000.0, "mem": "HBM4", "arch": "CDNA 5", "watts": 2000, "cls": "Data Center (H2 2026)", "link": "IF + UALink", "url": "https://www.amd.com/en/products/accelerators/instinct.html", "part": {"kind": "cpx", "max": 8, "min": 54}},
+{"name": "NVIDIA Rubin VR200 288GB", "vram": 288.0, "bw": 20.5, "tflops": 8300.0, "mem": "HBM4", "arch": "Rubin", "watts": 1800, "cls": "Data Center (H2 2026)", "link": "NVLink Gen6", "url": "https://www.nvidia.com/en-us/data-center/vera-rubin/", "part": {"kind": "mig", "max": 7, "min": 36}},
+{"name": "NVIDIA DGX Spark 128GB (GB10)", "vram": 128.0, "bw": 0.273, "tflops": 125.0, "mem": "Unified LPDDR5x", "arch": "Grace Blackwell", "watts": 240, "cls": "Desktop", "link": "NVLink-C2C", "url": "https://www.nvidia.com/en-us/products/workstations/dgx-spark/", "part": {"kind": "frac"}},
+{"name": "Apple M3 Ultra 512GB", "vram": 512.0, "bw": 0.819, "tflops": 28.0, "mem": "Unified LPDDR5", "arch": "Apple M3", "watts": 270, "cls": "Apple Silicon", "link": "—", "url": "https://www.apple.com/mac-studio/", "part": {"kind": "frac"}},
 ];
 // GPUscale.net · weight quantization tiers (bytes per parameter)
 // One entry per line. Field reference: docs/DATA.md
@@ -874,36 +1019,78 @@ window.GPUSCALE_DATA.quants = [
 // One entry per line. Field reference: docs/DATA.md
 window.GPUSCALE_DATA = window.GPUSCALE_DATA || {};
 window.GPUSCALE_DATA.cases = [
-{"name":"Custom (manual inputs)","resident":0,"reasoning":"None","visibleOut":0,"ttftTarget":0,"tpsTarget":0,"p95Target":0,"note":"Set all values manually; preset auto-populate disabled."},
-{"name":"Simple chatbot","resident":4096,"reasoning":"None","visibleOut":400,"ttftTarget":500,"tpsTarget":25,"p95Target":15,"note":"Short chat: greeting, FAQ, basic Q&A. ~4K context, ~400 tok answers."},
-{"name":"Simple RAG","resident":8192,"reasoning":"None","visibleOut":700,"ttftTarget":600,"tpsTarget":25,"p95Target":20,"note":"Single-pass RAG: 4-6 retrieved chunks (~6K) + query, 1 LLM call."},
-{"name":"Advanced RAG","resident":32768,"reasoning":"None","visibleOut":1500,"ttftTarget":1500,"tpsTarget":25,"p95Target":45,"note":"Multi-hop RAG: large context (16-32K), tool calls, reranking, longer answers."},
-{"name":"Internal GPT / Copilot","resident":16384,"reasoning":"None","visibleOut":800,"ttftTarget":1000,"tpsTarget":25,"p95Target":30,"note":"Enterprise assistant w/ doc retrieval, multi-turn. ~16K context, 800 tok answers."},
-{"name":"Document Q&A","resident":32768,"reasoning":"None","visibleOut":1000,"ttftTarget":1500,"tpsTarget":20,"p95Target":45,"note":"Long doc loaded into context, factoid questions. 32K typical."},
-{"name":"Document generation","resident":8192,"reasoning":"None","visibleOut":3000,"ttftTarget":2000,"tpsTarget":30,"p95Target":120,"note":"Long-form drafting (reports, emails, articles). Latency-tolerant, big output."},
-{"name":"Code generation","resident":8192,"reasoning":"None","visibleOut":1500,"ttftTarget":1500,"tpsTarget":30,"p95Target":60,"note":"Code completion / refactor. Mid-context, mid-output, latency matters."},
-{"name":"Code agent (Cline/Cursor-style)","resident":65536,"reasoning":"Light reasoning","visibleOut":2000,"ttftTarget":2000,"tpsTarget":30,"p95Target":180,"note":"Repo-aware coding agent: large context, light reasoning, multi-tool."},
-{"name":"Voice agent (real-time)","resident":4096,"reasoning":"None","visibleOut":200,"ttftTarget":300,"tpsTarget":50,"p95Target":3,"note":"Voice/IVR. TTFT < 300ms is hard requirement. Short answers."},
-{"name":"Reasoning agent (light)","resident":8192,"reasoning":"Light reasoning","visibleOut":800,"ttftTarget":800,"tpsTarget":30,"p95Target":60,"note":"Simple agentic flow with chain-of-thought (~2K reasoning tokens)."},
-{"name":"Reasoning agent (heavy)","resident":16384,"reasoning":"Heavy reasoning","visibleOut":1500,"ttftTarget":1000,"tpsTarget":30,"p95Target":240,"note":"Math / coding / research. ~8K reasoning tokens. Latency-tolerant."},
-{"name":"Video summarization","resident":65536,"reasoning":"None","visibleOut":2000,"ttftTarget":3000,"tpsTarget":25,"p95Target":180,"note":"Long input (frames as tokens), big summary. Throughput-oriented."},
-{"name":"Long-doc analysis (legal/financial)","resident":65536,"reasoning":"Light reasoning","visibleOut":2500,"ttftTarget":3000,"tpsTarget":25,"p95Target":240,"note":"Long contracts/filings + reasoning. Quality > latency."},
-{"name":"Offline batch / extract","resident":4096,"reasoning":"None","visibleOut":500,"ttftTarget":0,"tpsTarget":0,"p95Target":0,"note":"Batch jobs (extraction, classification). No interactive SLOs."},
-{"name":"Deep research agent (async)","resident":65536,"reasoning":"Heavy reasoning","visibleOut":4000,"ttftTarget":3000,"tpsTarget":25,"p95Target":600,"note":"Multi-step autonomous research: many tool calls, big synthesis. Size as a background load class, not interactive."},
+{"name": "Custom (manual inputs)", "resident": 0, "reasoning": "None", "visibleOut": 0, "ttftTarget": 0, "tpsTarget": 0, "p95Target": 0, "note": "Set all values manually; preset auto-populate disabled.", "supports": []},
+{"name": "Simple chatbot", "resident": 4096, "reasoning": "None", "visibleOut": 400, "ttftTarget": 500, "tpsTarget": 25, "p95Target": 15, "note": "Short chat: greeting, FAQ, basic Q&A. ~4K context, ~400 tok answers.", "supports": ["guard"]},
+{"name": "Simple RAG", "resident": 8192, "reasoning": "None", "visibleOut": 700, "ttftTarget": 600, "tpsTarget": 25, "p95Target": 20, "note": "Single-pass RAG: 4-6 retrieved chunks (~6K) + query, 1 LLM call.", "supports": ["embed", "rerank"]},
+{"name": "Advanced RAG", "resident": 32768, "reasoning": "None", "visibleOut": 1500, "ttftTarget": 1500, "tpsTarget": 25, "p95Target": 45, "note": "Multi-hop RAG: large context (16-32K), tool calls, reranking, longer answers.", "supports": ["embed", "rerank"]},
+{"name": "Internal GPT / Copilot", "resident": 16384, "reasoning": "None", "visibleOut": 800, "ttftTarget": 1000, "tpsTarget": 25, "p95Target": 30, "note": "Enterprise assistant w/ doc retrieval, multi-turn. ~16K context, 800 tok answers.", "supports": ["embed", "rerank"]},
+{"name": "Document Q&A", "resident": 32768, "reasoning": "None", "visibleOut": 1000, "ttftTarget": 1500, "tpsTarget": 20, "p95Target": 45, "note": "Long doc loaded into context, factoid questions. 32K typical.", "supports": ["ocr", "embed", "rerank"]},
+{"name": "Document generation", "resident": 8192, "reasoning": "None", "visibleOut": 3000, "ttftTarget": 2000, "tpsTarget": 30, "p95Target": 120, "note": "Long-form drafting (reports, emails, articles). Latency-tolerant, big output.", "supports": []},
+{"name": "Code generation", "resident": 8192, "reasoning": "None", "visibleOut": 1500, "ttftTarget": 1500, "tpsTarget": 30, "p95Target": 60, "note": "Code completion / refactor. Mid-context, mid-output, latency matters.", "supports": ["embed"]},
+{"name": "Code agent (Cline/Cursor-style)", "resident": 65536, "reasoning": "Light reasoning", "visibleOut": 2000, "ttftTarget": 2000, "tpsTarget": 30, "p95Target": 180, "note": "Repo-aware coding agent: large context, light reasoning, multi-tool.", "supports": ["embed"]},
+{"name": "Voice agent (real-time)", "resident": 4096, "reasoning": "None", "visibleOut": 200, "ttftTarget": 300, "tpsTarget": 50, "p95Target": 3, "note": "Voice/IVR. TTFT < 300ms is hard requirement. Short answers.", "supports": ["asr", "tts"]},
+{"name": "Reasoning agent (light)", "resident": 8192, "reasoning": "Light reasoning", "visibleOut": 800, "ttftTarget": 800, "tpsTarget": 30, "p95Target": 60, "note": "Simple agentic flow with chain-of-thought (~2K reasoning tokens).", "supports": []},
+{"name": "Reasoning agent (heavy)", "resident": 16384, "reasoning": "Heavy reasoning", "visibleOut": 1500, "ttftTarget": 1000, "tpsTarget": 30, "p95Target": 240, "note": "Math / coding / research. ~8K reasoning tokens. Latency-tolerant.", "supports": []},
+{"name": "Video summarization", "resident": 65536, "reasoning": "None", "visibleOut": 2000, "ttftTarget": 3000, "tpsTarget": 25, "p95Target": 180, "note": "Long input (frames as tokens), big summary. Throughput-oriented.", "supports": ["asr"]},
+{"name": "Long-doc analysis (legal/financial)", "resident": 65536, "reasoning": "Light reasoning", "visibleOut": 2500, "ttftTarget": 3000, "tpsTarget": 25, "p95Target": 240, "note": "Long contracts/filings + reasoning. Quality > latency.", "supports": ["ocr"]},
+{"name": "Offline batch / extract", "resident": 4096, "reasoning": "None", "visibleOut": 500, "ttftTarget": 0, "tpsTarget": 0, "p95Target": 0, "note": "Batch jobs (extraction, classification). No interactive SLOs.", "supports": ["ocr"]},
+{"name": "Deep research agent (async)", "resident": 65536, "reasoning": "Heavy reasoning", "visibleOut": 4000, "ttftTarget": 3000, "tpsTarget": 25, "p95Target": 600, "note": "Multi-step autonomous research: many tool calls, big synthesis. Size as a background load class, not interactive.", "supports": ["embed", "rerank"]},
 ];
+// GPUscale.net · supporting-model library (auto-attached per use case)
+// vram = GB one serving instance needs; cap = concurrent calls one instance absorbs
+// (planning allowances from published benchmarks, not guarantees). Field reference: docs/DATA.md
+window.GPUSCALE_DATA = window.GPUSCALE_DATA || {};
+window.GPUSCALE_DATA.support = {
+kinds: [
+{"key":"embed","label":"Embeddings","role":"turns text into vectors for retrieval"},
+{"key":"rerank","label":"Reranker","role":"re-orders retrieved chunks by relevance"},
+{"key":"asr","label":"ASR","role":"speech to text"},
+{"key":"tts","label":"TTS","role":"text to speech"},
+{"key":"ocr","label":"OCR","role":"documents and scans to text"},
+{"key":"guard","label":"Guard","role":"input/output safety screening"}
+],
+models: [
+{"kind":"embed","name":"BGE-M3","params":0.568,"vram":2.5,"cap":400,"default":true,"note":"Multilingual dense+sparse retrieval; ~60k tokens/s per instance","url":"https://huggingface.co/BAAI/bge-m3"},
+{"kind":"embed","name":"Qwen3-Embedding 0.6B","params":0.6,"vram":1.5,"cap":400,"note":"Lightweight MTEB top-tier","url":"https://huggingface.co/Qwen/Qwen3-Embedding-0.6B"},
+{"kind":"embed","name":"Qwen3-Embedding 8B","params":8.0,"vram":16.0,"cap":400,"note":"MTEB multilingual leader; needs a large slice","url":"https://huggingface.co/Qwen/Qwen3-Embedding-8B"},
+{"kind":"embed","name":"nomic-embed-text v1.5","params":0.137,"vram":0.8,"cap":400,"note":"Smallest footprint; CPU-viable","url":"https://huggingface.co/nomic-ai/nomic-embed-text-v1.5"},
+{"kind":"rerank","name":"bge-reranker-v2-m3","params":0.568,"vram":2.5,"cap":50,"default":true,"note":"Cross-encoder; ~150-250 ms per top-50 rerank","url":"https://huggingface.co/BAAI/bge-reranker-v2-m3"},
+{"kind":"rerank","name":"Qwen3-Reranker 0.6B","params":0.6,"vram":1.5,"cap":50,"note":"Lightweight cross-encoder","url":"https://huggingface.co/Qwen/Qwen3-Reranker-0.6B"},
+{"kind":"rerank","name":"Qwen3-Reranker 8B","params":8.0,"vram":16.0,"cap":120,"note":"~31 req/s under vLLM; needs a large slice","url":"https://huggingface.co/Qwen/Qwen3-Reranker-8B"},
+{"kind":"asr","name":"Whisper large-v3-turbo","params":0.809,"vram":1.6,"cap":4,"default":true,"note":"~130x real-time; the serving default","url":"https://huggingface.co/openai/whisper-large-v3-turbo"},
+{"kind":"asr","name":"Parakeet-TDT 0.6B v3","params":0.6,"vram":1.0,"cap":8,"note":"Batch-throughput champion (RTFx ~3,300)","url":"https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3"},
+{"kind":"asr","name":"Canary-1B v2","params":1.0,"vram":6.4,"cap":6,"note":"Adds speech translation","url":"https://huggingface.co/nvidia/canary-1b-v2"},
+{"kind":"tts","name":"Kokoro-82M","params":0.082,"vram":1.0,"cap":10,"default":true,"note":"~15x real-time; Apache license","url":"https://huggingface.co/hexgrad/Kokoro-82M"},
+{"kind":"tts","name":"Orpheus-3B","params":3.0,"vram":6.0,"cap":8,"note":"Streaming, expressive; Apache license","url":"https://huggingface.co/canopylabs/orpheus-3b-0.1-ft"},
+{"kind":"ocr","name":"PaddleOCR PP-OCRv5","params":0.05,"vram":2.0,"cap":8,"default":true,"note":"~190 pages/min per instance; plain text","url":"https://github.com/PaddlePaddle/PaddleOCR"},
+{"kind":"ocr","name":"dots.ocr 3B","params":3.0,"vram":8.0,"cap":4,"note":"Layout-aware VLM parser; MIT license","url":"https://github.com/rednote-hilab/dots.ocr"},
+{"kind":"ocr","name":"olmOCR-2 7B","params":7.0,"vram":16.0,"cap":2,"note":"Highest-fidelity document parsing","url":"https://huggingface.co/allenai/olmOCR-2-7B-1025"},
+{"kind":"guard","name":"Llama Guard 3 1B","params":1.0,"vram":2.5,"cap":30,"default":true,"note":"Input/output moderation; CPU-viable","url":"https://huggingface.co/meta-llama/Llama-Guard-3-1B"},
+{"kind":"guard","name":"Llama Guard 3 8B FP8","params":8.0,"vram":10.0,"cap":60,"note":"Higher accuracy; fits a 10 GB slice","url":"https://huggingface.co/meta-llama/Llama-Guard-3-8B"}
+]
+};
 'use strict';
 /* ================= DATA ================= */
 const DATA = window.GPUSCALE_DATA || {};
 const MODELS = DATA.models||[], GPUS = DATA.gpus||[], QUANTS = DATA.quants||[], CASES = DATA.cases||[];
+const SUPPORT = DATA.support||{kinds:[],models:[]};
 if(!MODELS.length || !GPUS.length || !QUANTS.length || !CASES.length){
   document.body.innerHTML = '<div style="font-family:system-ui,sans-serif;max-width:560px;margin:80px auto;padding:0 20px;line-height:1.65;color:#1A2536"><h2 style="margin-bottom:10px">Data files not loaded</h2><p>GPUscale.net could not find its library. Keep <code>index.html</code> together with the <code>data/</code> and <code>assets/</code> folders: the four files <code>data/models.js</code>, <code>data/gpus.js</code>, <code>data/quants.js</code> and <code>data/usecases.js</code> must sit next to this page.</p><p>If you need one portable file instead, use <code>dist/gpuscale_standalone.html</code> or rebuild it with <code>python3 tools/build_single_file.py</code>.</p></div>';
   throw new Error('GPUscale.net data missing');
 }
-const STUDIO_VERSION = '4.16.0', ENGINE_VERSION = 23;
-const SCEN_ID = (()=>{ const L='abcdefghjkmnpqrstuvwxyz', D='0123456789';
+const STUDIO_VERSION = '5.0.0', ENGINE_VERSION = 23;
+const PROJ_ID = (()=>{ const L='abcdefghjkmnpqrstuvwxyz', D='0123456789';
   const pick=s=>s[Math.floor(Math.random()*s.length)];
-  return 'Scenario_'+pick(L)+pick(L)+pick(D)+pick(D)+pick(D); })();
-function scenName(){ const v=($('scenarioName')&&$('scenarioName').value||'').trim(); return v||SCEN_ID; }
+  return 'Project_'+pick(L)+pick(L)+pick(D)+pick(D)+pick(D); })();
+function projName(){ const v=($('scenarioName')&&$('scenarioName').value||'').trim(); return v||PROJ_ID; }
+const scenName=projName; // legacy alias
+/* UX mode: normal (curated minimum) vs advanced (everything). Persisted locally only. */
+function setUxMode(m){
+  document.documentElement.dataset.uxMode = m==='normal'?'normal':'advanced';
+  try{ localStorage.setItem('gpuscale-mode', document.documentElement.dataset.uxMode); }catch(e){}
+  const seg=document.getElementById('modeSeg');
+  if(seg) seg.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed', b.dataset.mode===document.documentElement.dataset.uxMode?'true':'false'));
+}
 const KV_QUANTS = [{name:'BF16',bytes:2},{name:'FP16',bytes:2},{name:'FP8',bytes:1},{name:'INT8',bytes:1},{name:'INT4',bytes:0.5}];
 const REASON_TOK = {'None':0,'Light reasoning':2000,'Heavy reasoning':8000,'Custom':2000};
 const RESIL = {
@@ -1538,7 +1725,16 @@ function buildRecs(s,d,m,g,prelaunch){
 
 /* ================= RENDER ================= */
 function render(){
-  const s = readState(), d = compute(s);
+  captureUc();
+  // multi-usecase: every detail section below the project panel describes the
+  // ACTIVE card's pool (combined load), not the card alone; the per-card SLO
+  // envelopes live in the project panel's use-case cards.
+  window.__prj = UC.length>1 || UC.some(u=>(u.supports||[]).length)? computeProject() : null;
+  let s, d;
+  if(window.__prj && UC.length>1){
+    const p = window.__prj.pools.find(p2=>p2.members.includes(activeUc));
+    s = p.state; d = p.d;
+  } else { s = readState(); d = compute(s); }
   const m=s.model, g=s.gpu;
   const prelaunch=/2026/.test(g.cls);
 
@@ -1639,6 +1835,18 @@ function render(){
   $('wfTotal').textContent=`mean ${fmt(d.latency)} s · p95 ${fmt(d.p95)} s`;
 
   const topoInfo=renderTopology(s,d);
+  window.__lastLat=d.latency;
+  const nd=$('nrmDerived');
+  if(nd){ const users=Math.max(1,+$('nrmUsers').value||1);
+    nd.textContent=`→ ${fmt(s.concurrent)} concurrent calls from ${fmt(users)} people (6 interactions/h · 1.5× burst · ${fmt(Math.min(120,Math.max(5,d.latency)))} s/call)`; }
+  const mb=$('miniBar');
+  if(mb){ const F=window.__prj&&window.__prj.fleet;
+    const fits=F? F.fits : d.fits, sloOk=F? F.sloAll : d.sloAll;
+    const gpus=F? F.procG : topoInfo.procW*s.perW;
+    const kw=F? F.kW : topoInfo.procW*s.perW*g.watts/1000;
+    mb.className='mini-bar '+(fits? (sloOk?'':'warn'):'bad');
+    $('mbLamp').title=fits? (sloOk?'Fits, SLOs met':'An SLO fails'):'Exceeds VRAM';
+    $('mbText').textContent=`${gpus} GPUs · ≈${fmt(kw)} kW · ${fits? (sloOk?'fits · SLOs met':'SLO fails'):'over VRAM'}`; }
 
   const ins=[];
   if(!d.fits) ins.push(['bad',`Memory is the binding constraint: ${(d.total/d.avail*100).toFixed(0)}% of serving VRAM would be needed${d.replicas>1?`, dominated by ${d.replicas} replica copies of the weights (${fmt(d.weightsAll)} GB)`:''}. The Recommendations panel below lists the viable fixes.`]);
@@ -1667,8 +1875,17 @@ function render(){
   $('ccDerived').textContent=`→ ${cc} concurrent calls (call ≈ ${fmt(dur)} s${+$('ccDur').value>0?'':' · model-derived'})`;
   $('ccDerived').dataset.cc=cc;
 
+  renderUcCards();
+  const prj=renderProject();
+  if(prj){
+    const F=prj.fleet;
+    $('verdict').className='panel verdict '+(F.fits? (F.sloAll?'ok':'warn') : 'bad');
+    $('vMain').textContent = F.fits? (F.sloAll? 'Project fits & SLO targets met' : 'Project fits · an SLO target fails') : 'Project exceeds GPU memory';
+    $('vKv').innerHTML = `<b>${fmt(F.vramNeed)} GB</b> required · <b>${fmt(F.vramAvail)} GB</b> across ${F.servG+F.supG} serving GPUs`;
+    $('vSub').textContent = `${prj.pools.length} pool${prj.pools.length>1?'s':''} · ${F.procG} GPUs procured · ≈${fmt(F.kW)} kW`;
+  }
   $('story').innerHTML = buildStory(s,d,m,g);
-  $('printInputs').innerHTML = '<div class="pi-title">Inputs · complete configuration</div><div class="pi-grid">'+[
+  $('printInputs').innerHTML = '<div class="pi-title">'+(window.__prj&&UC.length>1? 'Inputs · pool '+m.name+' '+s.wq.name+' ('+UC.length+' use cases; project panel below lists all)' : 'Inputs · complete configuration')+'</div><div class="pi-grid">'+[
     ['Model', m.name],['Total params', fmt(s.params)+' B'],['Active params', fmt(s.active)+' B'],
     ['Geometry', s.layers+'L · h'+s.hidden+' · KV '+s.kvHeads+'×'+s.headDim],['Max context', fmtTok(m.ctx)],
     ['Weights quant', s.wq.name+' ('+s.bytesW+' B/param)'],['KV quant', s.kq.name+' ('+s.bytesK+' B/elem)'],
@@ -1682,15 +1899,21 @@ function render(){
     ['Interconnect eff.', s.ic],['Framework overhead', fmt(s.ovh)+' ms'],
     ['SLO targets', (s.sloTtft||'off')+' ms · '+(s.sloTps||'off')+' tok/s · '+(s.sloP95||'off')+' s'],
   ].map(([k,v])=>'<div class="pi-row"><span class="k">'+k+'</span><span class="v">'+v+'</span></div>').join('')+'</div>';
-  $('printConfig').textContent =
-    `GPUscale.net · ${scenName()} · ${m.name} · weights ${s.wq.name} / KV ${s.kq.name} · seq ${fmtTok(s.resident)} (+${fmtTok(s.reasonTok)} reasoning) · `+
-    `${s.concurrent} concurrent, batch ${s.batch}/replica · ${s.workers}× worker (${s.perW} GPU) ${g.name} · TP${s.tp} · ${RESIL[s.resil].long} → ${topoInfo.procW} workers procured · ${new Date().toLocaleDateString()}`;
+  $('printConfig').textContent = window.__prj&&UC.length>1
+    ? `GPUscale.net · ${projName()} · ${UC.length} use cases in ${window.__prj.pools.length} pool(s) on ${g.name} · `+
+      window.__prj.pools.map(p=>`${p.state.model.name} ${p.state.wq.name} TP${p.state.tp}×${p.state.workers}w`).join(' + ')+
+      ` · ${window.__prj.fleet.procG} GPUs procured (${RESIL[s.resil].label}) · ≈${fmt(window.__prj.fleet.kW)} kW · ${new Date().toLocaleDateString()}`
+    : `GPUscale.net · ${projName()} · ${m.name} · weights ${s.wq.name} / KV ${s.kq.name} · seq ${fmtTok(s.resident)} (+${fmtTok(s.reasonTok)} reasoning) · `+
+      `${s.concurrent} concurrent, batch ${s.batch}/replica · ${s.workers}× worker (${s.perW} GPU) ${g.name} · TP${s.tp} · ${RESIL[s.resil].long} → ${topoInfo.procW} workers procured · ${new Date().toLocaleDateString()}`;
 }
 
 /* ================= PRESETS ================= */
 function applyCase(i){
   if(i<0) return;
   const c=CASES[i];
+  const u=UC[activeUc];
+  if(u){ u.supports=defaultSupports(i);
+    if(u.supports.length) announce('Attached to '+(c.name)+': '+u.supports.map(sp=>(SUP_KIND(sp.kind)||{label:sp.kind}).label+' ('+sp.model+')').join(', ')); }
   if(c.resident) $('inSeq').value=c.resident;
   if(c.visibleOut) $('inOut').value=c.visibleOut;
   $('selReason').value=REASON_TOK.hasOwnProperty(c.reasoning)?c.reasoning:'None';
@@ -1705,12 +1928,405 @@ function syncReason(){
   refreshCtl('inReasonTok');
 }
 
+/* ================= PROJECT USE-CASE STATE ================= */
+/* The Model/Precision/Workload stations are one editor bound to the active card.
+   captureUc pulls the editor DOM into the active use case; loadUc pushes a card
+   back into the editor. Hardware, resilience and tuning stay project-global. */
+const UC_KEYS=['chkCustom','selModel','cusParams','cusActive','cusHidden','cusLayers','cusKvh','cusHdim','cusCtx',
+  'selWQuant','selKQuant','selCase','inSeq','inOut','selReason','inReasonTok','chkExtend',
+  'inConc','inBatch','selPolicy','sloTtft','sloTps','sloP95',
+  'ccSessions','ccTurns','ccShare','ccCalls','ccBurst','ccDur','inWorkers','inTp','nrmUsers'];
+const UC_CHECKS={chkCustom:1,chkExtend:1};
+let UC=[], activeUc=0, ucSeq=0;
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function captureUc(){ const u=UC[activeUc]; if(!u) return;
+  UC_KEYS.forEach(id=>{ const el=$(id); if(el) u.f[id]=UC_CHECKS[id]? el.checked : el.value; }); }
+function loadUc(i){ activeUc=Math.max(0,Math.min(UC.length-1,i)); const u=UC[activeUc]; if(!u) return;
+  UC_KEYS.forEach(id=>{ const el=$(id); if(el&&u.f[id]!==undefined){ if(UC_CHECKS[id]) el.checked=!!u.f[id]; else el.value=u.f[id]; } });
+  $('customBox').style.display=$('chkCustom').checked?'block':'none';
+  $('selModel').disabled=$('chkCustom').checked;
+  syncReason(); Object.keys(FIELDS).forEach(refreshCtl); }
+function ucName(u){ if(u.name) return u.name;
+  const ci=+u.f.selCase; if(ci>=0&&CASES[ci]) return CASES[ci].name;
+  return ucModelName(u); }
+function ucModelName(u){ return u.f.chkCustom? 'Custom model' : ((MODELS[+u.f.selModel||0]||{}).name||'?'); }
+const SUP_KIND=k=>SUPPORT.kinds.find(x=>x.key===k);
+const SUP_DEFAULT=k=>SUPPORT.models.find(m=>m.kind===k&&m.default)||SUPPORT.models.find(m=>m.kind===k);
+const SUP_MODEL=(k,name)=>SUPPORT.models.find(m=>m.kind===k&&m.name===name)||SUP_DEFAULT(k);
+function defaultSupports(ci){ const c=CASES[ci]; if(!c||!c.supports) return [];
+  return c.supports.map(k=>{ const d=SUP_DEFAULT(k); return d? {kind:k, model:d.name, on:true} : null; }).filter(Boolean); }
+function announce(msg){ const el=$('live'); if(el){ el.textContent=''; setTimeout(()=>{ el.textContent=msg; },30); } }
+function poolKey(u){ const f=u.f;
+  const mk=f.chkCustom? 'custom:'+[f.cusParams,f.cusActive,f.cusHidden,f.cusLayers,f.cusKvh,f.cusHdim].join(',') : 'm'+(+f.selModel||0);
+  return mk+'|q'+(+f.selWQuant||0)+'|k'+(+f.selKQuant||0)+'|p'+(f.selPolicy||''); }
+let renamingUc=null, chipEdit=null;
+function renderUcCards(){ const box=$('ucCards'); if(!box||!UC.length) return; captureUc();
+  const keys=UC.map(poolKey), pooled=k=>keys.filter(x=>x===k).length>1;
+  box.innerHTML=UC.map((u,i)=>{ const f=u.f, wq=QUANTS[+f.selWQuant||0]||{};
+    const name = renamingUc===i
+      ? `<input class="uc-rename" data-ren-input="${i}" type="text" maxlength="40" value="${esc(ucName(u))}" aria-label="Use case name">`
+      : `<span class="uc-name">${esc(ucName(u))}</span>`;
+    const pool = pooled(keys[i])? `<span class="uc-pool" title="Same model, precision and KV policy as another use case: served by one shared pooled deployment">pooled</span>` : '';
+    const defs = (CASES[+f.selCase]&&CASES[+f.selCase].supports)||[];
+    const chips = (u.supports||[]).map((sp,ci2)=>{ const kd=SUP_KIND(sp.kind)||{label:sp.kind};
+      return `<span class="chip${chipEdit&&chipEdit.uc===i&&chipEdit.kind===sp.kind?' open':''}" data-chip="${i}:${sp.kind}" role="button" tabindex="0" title="${esc(sp.model||'')} · click to inspect">${esc(kd.label)}<button class="chip-x" data-chipx="${i}:${sp.kind}" type="button" aria-label="Remove ${esc(kd.label)} from ${esc(ucName(u))}">×</button></span>`; }).join('');
+    const ghosts = defs.filter(k=>!(u.supports||[]).some(sp=>sp.kind===k)).map(k=>{ const kd=SUP_KIND(k)||{label:k};
+      return `<span class="chip ghost" data-chipadd="${i}:${k}" role="button" tabindex="0" title="Re-attach ${esc(kd.label)}">+ ${esc(kd.label)}</span>`; }).join('');
+    let editor='';
+    if(chipEdit&&chipEdit.uc===i){ const sp=(u.supports||[]).find(x=>x.kind===chipEdit.kind);
+      if(sp){ const sm=SUP_MODEL(sp.kind,sp.model)||{}; const kd=SUP_KIND(sp.kind)||{label:sp.kind};
+        const opts=SUPPORT.models.filter(m=>m.kind===sp.kind).map(m=>`<option${m.name===sp.model?' selected':''}>${esc(m.name)}</option>`).join('');
+        editor=`<div class="chip-editor"><div class="ce-row adv"><label>${esc(kd.label)} model</label><select data-chipsel="${i}:${sp.kind}">${opts}</select></div><div class="ce-note">${esc(sm.note||'')} · ~${sm.vram} GB per instance, one instance per ~${sm.cap} concurrent</div></div>`; } }
+    return `<div class="uc-card${i===activeUc?' active':''}" data-i="${i}" role="listitem" tabindex="0" aria-label="Use case ${esc(ucName(u))}${i===activeUc?', being edited':''}">
+      <div class="uc-line">${name}${pool}
+        <button class="uc-tool" data-ren="${i}" type="button" title="Rename" aria-label="Rename ${esc(ucName(u))}"><svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4"/></svg></button>
+        <button class="uc-tool" data-dup="${i}" type="button" title="Duplicate" aria-label="Duplicate ${esc(ucName(u))}"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg></button>
+        ${UC.length>1?`<button class="uc-x" data-x="${i}" type="button" title="Remove this use case" aria-label="Remove ${esc(ucName(u))}">×</button>`:''}</div>
+      <div class="uc-meta">${esc(ucModelName(u))} · ${esc(wq.name||'')} · ${f.inConc||0} concurrent</div>
+      ${chips||ghosts?`<div class="uc-chips">${chips}${ghosts}</div>`:''}${editor}</div>`; }).join('');
+  if(renamingUc!=null){ const inp=box.querySelector('[data-ren-input]'); if(inp){ inp.focus(); inp.select(); } }
+  const tag=ucName(UC[activeUc]);
+  ['ctxModel','ctxPrec','ctxWork'].forEach(id=>{ const el=$(id); if(el) el.textContent = UC.length>1? tag : ''; }); }
+function selectUc(i){ if(i===activeUc){ return; } captureUc(); loadUc(i); renderUcCards(); render(); }
+function addUc(){ captureUc(); const base=UC[activeUc];
+  const u={id:'uc'+(++ucSeq), name:'', f:Object.assign({},base?base.f:{}), supports:[], isolate:false};
+  UC.push(u); loadUc(UC.length-1);
+  const ci=CASES.findIndex(c=>/Simple chatbot/.test(c.name));
+  if(ci>=0){ $('selCase').value=ci; applyCase(ci); }
+  captureUc(); renderUcCards(); render();
+  toast('Use case added: pick its type and model below'); }
+function duplicateUc(i){ captureUc(); const base=UC[i]; if(!base) return;
+  const u={id:'uc'+(++ucSeq), name:(ucName(base)+' copy').slice(0,40),
+    f:Object.assign({},base.f), supports:(base.supports||[]).map(sp=>Object.assign({},sp)), isolate:!!base.isolate};
+  UC.splice(i+1,0,u); loadUc(i+1); renderUcCards(); render();
+  toast('Duplicated: '+ucName(base)); }
+function removeUc(i){ if(UC.length<=1) return; const gone=ucName(UC[i]); UC.splice(i,1);
+  if(activeUc>=UC.length) activeUc=UC.length-1; else if(i<activeUc) activeUc--;
+  loadUc(activeUc); renderUcCards(); render(); toast('Removed: '+gone); }
+function commitRename(inp){ const i=+inp.dataset.renInput, v=inp.value.trim();
+  if(UC[i]) UC[i].name=v; renamingUc=null; renderUcCards(); }
+function chipAct(e){
+  const cx=e.target.closest('[data-chipx]'); if(cx){ const [i,k]=cx.dataset.chipx.split(':'); const u=UC[+i];
+    u.supports=(u.supports||[]).filter(sp=>sp.kind!==k);
+    if(chipEdit&&chipEdit.uc===+i&&chipEdit.kind===k) chipEdit=null;
+    announce((SUP_KIND(k)||{label:k}).label+' removed from '+ucName(u)); renderUcCards(); render(); return true; }
+  const ca=e.target.closest('[data-chipadd]'); if(ca){ const [i,k]=ca.dataset.chipadd.split(':'); const u=UC[+i];
+    const d=SUP_DEFAULT(k); if(d){ (u.supports=u.supports||[]).push({kind:k, model:d.name, on:true});
+    announce((SUP_KIND(k)||{label:k}).label+' ('+d.name+') attached to '+ucName(u)); }
+    renderUcCards(); render(); return true; }
+  const ch=e.target.closest('[data-chip]'); if(ch){ const [i,k]=ch.dataset.chip.split(':');
+    chipEdit = chipEdit&&chipEdit.uc===+i&&chipEdit.kind===k? null : {uc:+i, kind:k};
+    renderUcCards(); return true; }
+  return false;
+}
+$('ucCards').addEventListener('click',e=>{
+  const ri=e.target.closest('[data-ren-input]'); if(ri) return;
+  const rn=e.target.closest('[data-ren]'); if(rn){ captureUc(); renamingUc=+rn.dataset.ren; renderUcCards(); return; }
+  const dp=e.target.closest('[data-dup]'); if(dp){ duplicateUc(+dp.dataset.dup); return; }
+  const x=e.target.closest('.uc-x'); if(x){ removeUc(+x.dataset.x); return; }
+  if(chipAct(e)) return;
+  const card=e.target.closest('.uc-card'); if(card) selectUc(+card.dataset.i); });
+$('ucCards').addEventListener('keydown',e=>{
+  const ri=e.target.closest('[data-ren-input]');
+  if(ri){ if(e.key==='Enter'){ e.preventDefault(); commitRename(ri); } if(e.key==='Escape'){ renamingUc=null; renderUcCards(); } return; }
+  if(e.key!=='Enter'&&e.key!==' ') return;
+  if(e.target.closest('[data-chip],[data-chipadd],[data-chipx]')){ e.preventDefault(); chipAct(e); return; }
+  const card=e.target.closest('.uc-card'); if(card){ e.preventDefault(); selectUc(+card.dataset.i); } });
+$('ucCards').addEventListener('focusout',e=>{
+  const ri=e.target.closest&&e.target.closest('[data-ren-input]'); if(ri&&renamingUc!=null) commitRename(ri); });
+$('ucCards').addEventListener('change',e=>{
+  const cs=e.target.closest('[data-chipsel]'); if(!cs) return;
+  const [i,k]=cs.dataset.chipsel.split(':'); const u=UC[+i];
+  const sp=(u.supports||[]).find(x=>x.kind===k); if(sp){ sp.model=cs.value;
+    announce((SUP_KIND(k)||{label:k}).label+' model set to '+cs.value); renderUcCards(); render(); } });
+$('btnAddUc').addEventListener('click',addUc);
+function ucToConfig(u){ const f=u.f;
+  const wq=QUANTS[+f.selWQuant||0]||QUANTS[0], kq=KV_QUANTS[+f.selKQuant||0]||KV_QUANTS[0];
+  const ci=+f.selCase;
+  return {
+    model: f.chkCustom? {custom:true, params:+f.cusParams, active:+f.cusActive, hidden:+f.cusHidden,
+      layers:+f.cusLayers, kvHeads:+f.cusKvh, headDim:+f.cusHdim, ctx:+f.cusCtx}
+      : {custom:false, name:((MODELS[+f.selModel||0]||{}).name||'')},
+    weightQuant:wq.name, kvQuant:kq.name,
+    preset: ci>=0&&CASES[ci]? CASES[ci].name : null,
+    residentSeq:+f.inSeq, visibleOut:+f.inOut,
+    reasoning:{mode:f.selReason, tokens:+f.inReasonTok, extendsKV:!!f.chkExtend},
+    concurrentCalls:+f.inConc, maxBatchPerReplica:+f.inBatch, kvPolicy:f.selPolicy,
+    hardware:{workers:+f.inWorkers, tensorParallel:+f.inTp},
+    sloTargets:{ttftMs:+f.sloTtft||0, tps:+f.sloTps||0, p95s:+f.sloP95||0},
+    estimator:{sessions:+f.ccSessions||0, turnsPerHour:+f.ccTurns||0, pctTurnsLLM:+f.ccShare||0,
+      callsPerTurn:+f.ccCalls||0, burst:+f.ccBurst||1, callDurS:+f.ccDur||0},
+  };
+}
+function ucSnapshot(u){ const f=u.f;
+  const m=f.chkCustom? {name:'Custom', params:+f.cusParams, active:+f.cusActive, hidden:+f.cusHidden,
+      layers:+f.cusLayers, kvHeads:+f.cusKvh, headDim:+f.cusHdim, ctx:+f.cusCtx, arch:'Custom', dev:'—'}
+    : (MODELS[+f.selModel||0]||MODELS[0]);
+  const wq=QUANTS[+f.selWQuant||0]||QUANTS[0], kq=KV_QUANTS[+f.selKQuant||0]||KV_QUANTS[0];
+  return {model:{name:m.name, params:m.params, active:m.active, hidden:m.hidden, layers:m.layers,
+      kvHeads:m.kvHeads, headDim:m.headDim, ctx:m.ctx, arch:m.arch||'', dev:m.dev||''},
+    weightBytes:wq.bytes, kvBytes:kq.bytes};
+}
+
+/* ================= PROJECT ENGINE (multi-pool) ================= */
+/* Pools group use cases that share model+precision+KV policy (unless isolated):
+   one pooled deployment is sized for the combined load. Support models are
+   aggregated per kind+model and packed onto GPU partitions. */
+const uv=(f,id)=>{ const c=FIELDS[id]; const raw=(f[id]===''||f[id]==null)? c.val : +f[id];
+  const v=isFinite(raw)? raw : c.val; return Math.min(c.max, Math.max(c.min, v)); };
+function readHw(){
+  const g=GPUS[+$('selGpu').value||0];
+  const fv=id=>{ const c=FIELDS[id]; const raw=$(id).value===''? c.val : +$(id).value;
+    const v=isFinite(raw)? raw : c.val; return Math.min(c.max, Math.max(c.min, v)); };
+  return {g, perW:Math.round(fv('inPerW')), resil:$('selResil').value,
+    mfu:fv('inMfu'), mbu:fv('inMbu'), ic:fv('inIc'), ovh:fv('inOvh')};
+}
+function ucState(u, hw){
+  hw=hw||readHw(); const f=u.f;
+  const m=f.chkCustom? {name:'Custom', params:+f.cusParams||0.1, active:+f.cusActive||0.1,
+      hidden:+f.cusHidden||64, layers:+f.cusLayers||1, kvHeads:+f.cusKvh||1,
+      headDim:+f.cusHdim||8, ctx:+f.cusCtx||1024, arch:'Custom', dev:'—', url:''}
+    : (MODELS[+f.selModel||0]||MODELS[0]);
+  const wq=QUANTS[+f.selWQuant||0]||QUANTS[0], kq=KV_QUANTS[+f.selKQuant||0]||KV_QUANTS[0];
+  const workers=Math.round(uv(f,'inWorkers')), gpus=workers*hw.perW;
+  const tp=Math.min(Math.round(uv(f,'inTp')), gpus);
+  return {model:m, gpu:hw.g, wq, kq,
+    params:m.params, active:m.active, hidden:m.hidden, layers:m.layers,
+    kvHeads:m.kvHeads, headDim:m.headDim, ctx:m.ctx,
+    bytesW:wq.bytes, bytesK:kq.bytes,
+    resident:Math.round(uv(f,'inSeq')), visibleOut:Math.round(uv(f,'inOut')),
+    reasonMode:f.selReason||'None', reasonTok:Math.round(uv(f,'inReasonTok')),
+    extend:!!f.chkExtend,
+    concurrent:Math.round(uv(f,'inConc')), batch:Math.round(uv(f,'inBatch')),
+    policy:f.selPolicy||'run',
+    workers, perW:hw.perW, gpus, tp, resil:hw.resil,
+    gpuVram:hw.g.vram, gpuBw:hw.g.bw, gpuTflops:hw.g.tflops,
+    mfu:hw.mfu, mbu:hw.mbu, ic:hw.ic, ovh:hw.ovh,
+    sloTtft:+f.sloTtft||0, sloTps:+f.sloTps||0, sloP95:+f.sloP95||0};
+}
+function poolState(pool, hw){
+  const states=pool.members.map(i=>ucState(UC[i], hw));
+  const base=states[0];
+  const conc=states.reduce((t,s)=>t+s.concurrent,0)||1;
+  const wavg=get=>states.reduce((t,s)=>t+get(s)*s.concurrent,0)/conc;
+  return Object.assign({}, base, {
+    concurrent:conc,
+    resident:Math.round(wavg(s=>s.resident)),
+    visibleOut:Math.round(wavg(s=>s.visibleOut)),
+    reasonTok:Math.round(wavg(s=>s.extend||s.reasonTok>0? s.reasonTok:0)),
+    extend:states.some(s=>s.extend&&s.reasonTok>0),
+    batch:Math.max.apply(null, states.map(s=>s.batch)),
+    sloTtft:0,
+    sloTps:Math.max.apply(null, states.map(s=>s.sloTps).concat([0])),
+    sloP95:0,
+  });
+}
+function computeProject(){
+  const hw=readHw();
+  const pools=[];
+  UC.forEach((u,i)=>{ const k=u.isolate? 'iso:'+u.id : poolKey(u);
+    let p=pools.find(x=>x.key===k); if(!p){ p={key:k, members:[]}; pools.push(p); }
+    p.members.push(i); });
+  pools.forEach(p=>{
+    p.state=poolState(p, hw);
+    const nzmin=(vals)=>{ const n=vals.filter(v=>v>0); return n.length? Math.min.apply(null,n) : 0; };
+    p.state.sloTtft=nzmin(p.members.map(i=>+UC[i].f.sloTtft||0));
+    p.state.sloP95=nzmin(p.members.map(i=>+UC[i].f.sloP95||0));
+    p.d=compute(p.state);
+    p.perUc=p.members.map(i=>{
+      const s=ucState(UC[i], hw);
+      s.tp=p.state.tp; s.workers=p.state.workers; s.gpus=p.state.gpus; s.batch=p.state.batch;
+      const d=compute(s);
+      const share=Math.min(s.concurrent, Math.round(p.d.active*s.concurrent/Math.max(1,p.state.concurrent)));
+      return {i, uc:UC[i], s, d, share};
+    });
+  });
+  const sup=allocSupports(hw);
+  const fleet=fleetTotals(pools, sup, hw);
+  return {pools, sup, fleet, hw};
+}
+function allocSupports(hw){
+  const g=hw.g, part=g.part||{kind:'frac'};
+  const agg={};
+  UC.forEach((u,idx)=>{ const conc=Math.round(uv(u.f,'inConc'));
+    (u.supports||[]).forEach(sp=>{ const m=SUP_MODEL(sp.kind, sp.model); if(!m) return;
+      const key=sp.kind+'|'+m.name;
+      const a=agg[key]=agg[key]||{kind:sp.kind, model:m, demand:0, ucIdx:[]};
+      a.demand+=conc; a.ucIdx.push(idx); }); });
+  const items=Object.values(agg).map(a=>Object.assign({}, a,
+    {instances:Math.max(1, Math.ceil(a.demand/a.model.cap))}));
+  const totalVram=items.reduce((t,it)=>t+it.instances*it.model.vram,0);
+  if(!items.length) return {items, gpus:0, mode:part.kind, layout:[], totalVram:0, note:''};
+  const layout=[]; let note='';
+  const sliceable = part.kind==='mig'||part.kind==='cpx';
+  if(sliceable){
+    // one slice unit = the part's smallest partition. A model larger than one unit
+    // takes a wider profile (ceil units); smaller models co-host several instances
+    // inside one unit (they are VRAM-bound at this scale, so instances pack by memory).
+    items.forEach(it=>{
+      if(it.model.vram>part.min){
+        it.units=Math.min(part.max, Math.ceil(it.model.vram/part.min));
+        it.perSlice=1; it.sliceCount=it.instances;
+      } else {
+        it.units=1; it.perSlice=Math.max(1, Math.floor(part.min/it.model.vram));
+        it.sliceCount=Math.ceil(it.instances/it.perSlice);
+      } });
+    items.slice().sort((x,y)=>y.units-x.units).forEach(it=>{
+      for(let n=0;n<it.sliceCount;n++){
+        const inst=Math.min(it.perSlice, it.instances-n*it.perSlice);
+        let bin=layout.find(b=>b.used+it.units<=part.max);
+        if(!bin){ bin={used:0, slices:[]}; layout.push(bin); }
+        bin.used+=it.units;
+        bin.slices.push({kind:it.kind, model:it.model.name, gb:Math.min(g.vram, it.units*part.min), n:it.units, inst});
+      } });
+    note = part.kind==='mig'
+      ? `isolated MIG slices (${part.max} per GPU, ${part.min} GB granularity)`
+      : `isolated compute partitions (${part.max} per GPU, ${part.min} GB each)`;
+  } else {
+    const cap = part.kind==='whole'? g.vram : 0.9*g.vram;
+    items.slice().sort((x,y)=>y.model.vram-x.model.vram).forEach(it=>{
+      for(let n=0;n<it.instances;n++){
+        let bin=layout.find(b=>b.used+it.model.vram<=cap);
+        if(!bin){ bin={used:0, slices:[]}; layout.push(bin); }
+        bin.used+=it.model.vram;
+        bin.slices.push({kind:it.kind, model:it.model.name, gb:it.model.vram, n:0});
+      } });
+    note = part.kind==='whole'
+      ? `whole-card granularity: ${g.name} has no partitioning; co-residency within one card only via one serving container`
+      : `fractional sharing (time-slice / MPS): no memory or fault isolation on ${g.name}`;
+  }
+  return {items, gpus:layout.length, mode:part.kind, layout, totalVram, note};
+}
+function fleetTotals(pools, sup, hw){
+  const info=RESIL[hw.resil]||RESIL.n;
+  const servW=pools.reduce((t,p)=>t+p.state.workers,0);
+  const servG=pools.reduce((t,p)=>t+p.state.gpus,0);
+  const spare=pools.reduce((t,p)=>t+Math.max(0, p.state.gpus - p.d.replicas*p.state.tp),0);
+  const supG=sup.gpus||0;
+  const supExtraG=Math.max(0, supG-spare);
+  const supNodes=Math.ceil(supExtraG/hw.perW);
+  const resilW=pools.reduce((t,p)=>t+info.extraW(p.state.workers),0);
+  const procW=servW+resilW+supNodes;
+  const procG=procW*hw.perW;
+  return {servW, servG, spare, supG, supExtraG, supNodes, resilW, procW, procG,
+    kW:procG*hw.g.watts/1000,
+    fits:pools.every(p=>p.d.fits),
+    sloAll:pools.every(p=>p.perUc.every(x=>x.d.sloAll)),
+    agg:pools.reduce((t,p)=>t+p.d.agg,0),
+    vramNeed:pools.reduce((t,p)=>t+p.d.total,0)+sup.totalVram,
+    vramAvail:pools.reduce((t,p)=>t+p.d.avail,0)+supG*hw.g.vram};
+}
+
+/* ================= PROJECT RESULTS (fleet map + per-usecase cards) ================= */
+const KIND_LABEL={embed:'Embeddings',rerank:'Reranker',asr:'ASR',tts:'TTS',ocr:'OCR',guard:'Guard'};
+function fleetNodes(prj){
+  const {pools, sup, hw}=prj;
+  const nodes=[]; let nn=0;
+  const supBins=sup.layout.slice();
+  pools.forEach((p,pi)=>{
+    const st=p.state, reps=p.d.replicas;
+    for(let w=0; w<st.workers; w++){
+      const node={label:'ND-'+String(++nn).padStart(2,'0'), cls:'serve', pool:pi, poolName:st.model.name, gpus:[], active:p.members.includes(activeUc)};
+      for(let k=0;k<st.perW;k++){
+        const gi=w*st.perW+k;
+        const rep=Math.floor(gi/st.tp);
+        if(rep<reps) node.gpus.push({type:'pool', pool:pi, rep, tip:`${node.label} · GPU ${k+1} · ${st.model.name} · replica ${rep+1} of ${reps} (TP${st.tp} shard)`});
+        else if(supBins.length){ const bin=supBins.shift(); node.gpus.push({type:'sup', bin, tip:`${node.label} · GPU ${k+1} · supporting models on spare GPU`}); }
+        else node.gpus.push({type:'spare', tip:`${node.label} · GPU ${k+1} · unassigned headroom`});
+      }
+      nodes.push(node);
+    }
+  });
+  while(supBins.length){
+    const node={label:'SP-'+String(nodes.filter(n2=>n2.cls==='support').length+1).padStart(2,'0'), cls:'support', gpus:[]};
+    for(let k=0;k<hw.perW&&supBins.length;k++) node.gpus.push({type:'sup', bin:supBins.shift(), tip:`${node.label} · GPU ${k+1} · supporting models`});
+    nodes.push(node);
+  }
+  const info=RESIL[hw.resil];
+  pools.forEach((p,pi)=>{ const ex=info.extraW(p.state.workers);
+    for(let w=0;w<ex;w++){ const node={label:'RS-'+String(nodes.filter(n2=>n2.cls==='standby').length+1).padStart(2,'0'), cls:'standby', pool:pi, gpus:[]};
+      for(let k=0;k<p.state.perW;k++) node.gpus.push({type:'resil', pool:pi, tip:`${node.label} · GPU ${k+1} · ${info.long}`});
+      nodes.push(node); } });
+  return nodes;
+}
+function renderProject(){
+  const panel=$('projPanel'), cap=$('ucDetailCap');
+  const multi = UC.length>1 || UC.some(u=>(u.supports||[]).length);
+  if(!panel) return null;
+  if(!multi){ panel.style.display='none'; if(cap) cap.style.display='none'; return null; }
+  const prj=window.__prj||computeProject();
+  const {pools, sup, fleet, hw}=prj;
+  panel.style.display='';
+  if(cap){ cap.style.display='';
+    const ap=pools.find(p2=>p2.members.includes(activeUc));
+    cap.textContent = UC.length>1 && ap
+      ? 'Pool detail · '+ap.state.model.name+' '+ap.state.wq.name+' · serving '+ap.members.map(mi=>ucName(UC[mi])).join(' + ')
+      : 'Detail · '+ucName(UC[activeUc]); }
+  $('projNote').textContent = pools.length+' pool'+(pools.length>1?'s':'')+' · '+UC.length+' use case'+(UC.length>1?'s':'')+(sup.items.length? ' · '+sup.items.length+' supporting model'+(sup.items.length>1?'s':''):'');
+  const short=n=>n.length>26? n.slice(0,24)+'…':n;
+  // strip: one chip per pool + supports + procurement
+  $('projStrip').innerHTML =
+    pools.map((p,pi)=>`<span class="ps-chip"><span class="dot" style="background:var(--pool${pi%6})"></span><b>${esc(short(p.state.model.name))}</b><span class="mono">${esc(p.state.wq.name)} · TP${p.state.tp} · ${p.state.workers}×${p.state.perW} GPU · ${p.d.replicas} repl · ${p.state.concurrent} calls</span><span class="dot" style="background:${p.d.fits&&p.perUc.every(x=>x.d.sloAll)?'var(--teal-strong)':'var(--red)'};border-radius:50%"></span></span>`).join('')+
+    (sup.gpus? `<span class="ps-chip"><span class="dot" style="background:var(--amber-border)"></span><b>Supporting</b><span class="mono">${sup.items.reduce((t,i2)=>t+i2.instances,0)} instances · ${sup.gpus} shared GPU${sup.gpus>1?'s':''}</span></span>`:'')+
+    `<span class="ps-chip"><b>Procured</b><span class="mono">${fleet.procW} nodes · ${fleet.procG} GPUs · ≈${fmt(fleet.kW)} kW</span></span>`;
+  // per-usecase result cards
+  let cards='';
+  pools.forEach((p,pi)=>p.perUc.forEach(x=>{
+    const f=x.uc.f;
+    const slo=(on,pass,val,tgt)=>on? `<span class="${pass?'ok':'miss'}">${val}</span> <span>· ${tgt}</span>` : `<span>${val}</span>`;
+    cards+=`<div class="ucr" data-ucr="${x.i}" style="border-left-color:var(--pool${pi%6})">
+      <div class="u-name">${esc(ucName(x.uc))}${x.uc.isolate?' <span class="mono" style="font-size:9px">isolated</span>':''}</div>
+      <div class="u-sub">${esc(short(x.s.model.name))} · ${esc(x.s.wq.name)} · pool batch ${p.state.batch}</div>
+      <div class="u-row"><span>Admitted at peak</span><span class="v">${x.share} of ${x.s.concurrent}</span></div>
+      <div class="u-row"><span>First token</span><span class="v">${slo(x.s.sloTtft>0, x.d.slo.ttft.pass, fmt(x.d.ttft)+' ms', '≤ '+fmt(x.s.sloTtft))}</span></div>
+      <div class="u-row"><span>Per-user speed</span><span class="v">${slo(x.s.sloTps>0, x.d.slo.tps.pass, fmt(x.d.tps)+' tok/s', '≥ '+fmt(x.s.sloTps))}</span></div>
+      <div class="u-row"><span>P95 latency</span><span class="v">${slo(x.s.sloP95>0, x.d.slo.p95.pass, fmt(x.d.p95)+' s', '≤ '+fmt(x.s.sloP95))}</span></div>
+      <div class="u-row"><span>KV per call</span><span class="v">${fmt(x.d.kvCall||x.d.kvTotal/Math.max(1,x.d.active))} GB</span></div>
+      ${(x.uc.supports||[]).length?`<div class="u-row"><span>Supporting</span><span class="v">${x.uc.supports.map(sp=>KIND_LABEL[sp.kind]||sp.kind).join(', ')}</span></div>`:''}
+    </div>`; }));
+  $('ucResults').innerHTML=cards;
+  // ---- fleet map ----
+  const nodes=fleetNodes(prj);
+  const info=RESIL[hw.resil]||RESIL.n;
+  const partMax=(hw.g.part&&hw.g.part.max)||1;
+  const gpuHtml=g2=>{
+    if(g2.type==='pool') return `<div class="fm-gpu assigned" title="${esc(g2.tip)}" style="background:var(--pool${g2.pool%6});opacity:${g2.rep%2?0.78:1}"></div>`;
+    if(g2.type==='resil') return `<div class="fm-gpu spare" title="${esc(g2.tip)}" style="border-color:var(--pool${g2.pool%6})"></div>`;
+    if(g2.type==='sup'){ let y=0;
+      const bands=g2.bin.slices.map(sl=>{ const h=Math.max(10, sl.n/partMax*100); const b=`<div class="band" style="top:${y}%;height:${h}%;background:var(--sup${sl.kind})" ></div>`; y+=h; return b; }).join('');
+      const tip=g2.tip+': '+g2.bin.slices.map(sl=>`${KIND_LABEL[sl.kind]||sl.kind} ${sl.model}${sl.inst>1?' ×'+sl.inst:''} (${fmt(sl.gb)} GB slice)`).join(' · ');
+      return `<div class="fm-gpu assigned" title="${esc(tip)}">${bands}</div>`; }
+    return `<div class="fm-gpu spare" title="${esc(g2.tip)}"></div>`;
+  };
+  $('fleetMap').className='fleet-map'+(nodes.length>14?' dense':'');
+  $('fleetMap').innerHTML=nodes.map(n2=>`<div class="fm-node ${n2.cls}${n2.active?' fm-active':''}">
+    <div class="fm-nlab">${n2.label}<span class="role">${n2.cls==='serve'? esc(short(n2.poolName)) : n2.cls==='support'? 'supporting' : 'standby'}</span></div>
+    <div class="fm-gpus">${n2.gpus.map(gpuHtml).join('')}</div></div>`).join('');
+  $('fmLegend').innerHTML =
+    pools.map((p,pi)=>`<span class="lg-li"><span class="sw" style="background:var(--pool${pi%6})"></span>${esc(short(p.state.model.name))} · ${esc(p.state.wq.name)}</span>`).join('')+
+    sup.items.map(it=>`<span class="lg-li"><span class="sw" style="background:var(--sup${it.kind})"></span>${KIND_LABEL[it.kind]||it.kind} · ${esc(it.model.name)}</span>`).join('')+
+    `<span class="lg-li"><span class="sw dashed"></span>spare / standby</span>`;
+  $('fmTotals').textContent=`${fleet.procW} nodes · ${fleet.procG} GPUs · ≈${fmt(fleet.kW)} kW TDP`;
+  // semantic alternative for screen readers
+  $('fleetList').innerHTML='<h3>Fleet map, text form</h3><ul>'+nodes.map(n2=>{
+    const parts=n2.gpus.map((g2,k)=>{
+      if(g2.type==='pool') return `GPU ${k+1}: ${pools[g2.pool].state.model.name} replica ${g2.rep+1}`;
+      if(g2.type==='sup') return `GPU ${k+1}: `+g2.bin.slices.map(sl=>`${KIND_LABEL[sl.kind]||sl.kind} ${sl.model}${sl.inst>1?' ×'+sl.inst:''}`).join(', ');
+      if(g2.type==='resil') return `GPU ${k+1}: standby`;
+      return `GPU ${k+1}: spare`; });
+    return `<li>${n2.label} (${n2.cls}): ${parts.join('; ')}</li>`; }).join('')+'</ul>';
+  $('fmNote').textContent=(sup.gpus? `Supporting models are placed as ${sup.note}; spare pool GPUs are used before adding hardware. `:'')+
+    `Standby nodes come from ${info.long}. Colors identify the model pool; hover any GPU for its exact assignment.`;
+  return prj;
+}
+
 /* ================= SERIALIZE / APPLY ================= */
 function serialize(){
+  captureUc();
   const s=readState(), d=compute(s);
   return {
-    schema:'gpuscale.net/4', engine:ENGINE_VERSION, studio:STUDIO_VERSION,
-    name: scenName(), scenarioId: SCEN_ID,
+    schema:'gpuscale.net/5', engine:ENGINE_VERSION, studio:STUDIO_VERSION,
+    name: projName(), projectId: PROJ_ID, scenarioId: PROJ_ID, mode: document.documentElement.dataset.uxMode||'advanced',
     savedAt: new Date().toISOString(),
     config:{
       model: $('chkCustom').checked? {custom:true, params:s.params, active:s.active, hidden:s.hidden,
@@ -1739,17 +2355,33 @@ function serialize(){
     results:{vramRequiredGB:+d.total.toFixed(1), vramAvailableGB:d.avail, headroomGB:+d.headroom.toFixed(1),
       ttftMs:+d.ttft.toFixed(1), perUserTps:+d.tps.toFixed(1), aggregateTps:+d.agg.toFixed(0),
       meanLatencyS:+d.latency.toFixed(2), p95S:+d.p95.toFixed(2), admitted:d.active, queued:d.queued,
-      fits:d.fits, sloMet:d.sloAll}
+      fits:d.fits, sloMet:d.sloAll},
+    // v5: the full use-case list. config/snapshot above stay v4-shaped (the active
+    // card) so older importers still read this file as a single-scenario config.
+    project:{active:activeUc, usecases:UC.map(u=>({id:u.id, name:u.name||null,
+      isolate:!!u.isolate, supports:u.supports||[],
+      config:ucToConfig(u), snapshot:ucSnapshot(u)})),
+      results:(()=>{ const prj=computeProject(); const F=prj.fleet;
+        return {fits:F.fits, sloMet:F.sloAll,
+          servingGpus:F.servG+F.supG, procuredNodes:F.procW, procuredGpus:F.procG, powerKw:+F.kW.toFixed(1),
+          vramRequiredGB:+F.vramNeed.toFixed(1), vramAvailableGB:+F.vramAvail.toFixed(1),
+          pools:prj.pools.map(p=>({model:p.state.model.name, weightQuant:p.state.wq.name,
+            usecases:p.members.map(mi=>ucName(UC[mi])), tensorParallel:p.state.tp,
+            workers:p.state.workers, batch:p.state.batch, replicas:p.d.replicas,
+            concurrent:p.state.concurrent, fits:p.d.fits})),
+          supports:prj.sup.items.map(it=>({kind:it.kind, model:it.model.name,
+            instances:it.instances, vramPerInstanceGB:it.model.vram, demand:it.demand})),
+          supportGpus:prj.sup.gpus, supportPlacement:prj.sup.note}; })()}
   };
 }
+function setSel(notes, sel, name, what){ if(!name) return true; const o=findOption(sel,name);
+  if(o){ sel.value=o.value; return true; }
+  notes.push(`${what} "${name}" not found; kept the current selection`); return false; }
 function findOption(sel, match){
   return [...sel.querySelectorAll('option')].find(o=>o.textContent===match)
       || [...sel.querySelectorAll('option')].find(o=>o.textContent.includes(match));
 }
-function applyConfig(raw){
-  const c = raw.config || raw;
-  const snap = raw.snapshot || {};
-  const notes = [];
+function applyUcDom(c, snap, notes){
   const mdl = c.model && typeof c.model==='object' ? c.model : {custom:false, name:c.model};
   if(mdl.custom){
     $('chkCustom').checked=true; $('customBox').style.display='block'; $('selModel').disabled=true;
@@ -1771,8 +2403,7 @@ function applyConfig(raw){
       notes.push(`model "${mdl.name}" not found; kept the current selection`);
     }
   }
-  const setSel=(sel,name,what)=>{ if(!name) return true; const o=findOption(sel,name); if(o){ sel.value=o.value; return true; } notes.push(`${what} "${name}" not found; kept the current selection`); return false; };
-  setSel($('selWQuant'), c.weightQuant, 'weight quant'); setSel($('selKQuant'), c.kvQuant, 'KV quant');
+  setSel(notes, $('selWQuant'), c.weightQuant, 'weight quant'); setSel(notes, $('selKQuant'), c.kvQuant, 'KV quant');
   if(c.preset){ const o=findOption($('selCase'), c.preset); if(o) $('selCase').value=o.value; }
   else if(c.preset===null) $('selCase').value=-1;
   if(c.residentSeq!=null) $('inSeq').value=c.residentSeq;
@@ -1785,13 +2416,10 @@ function applyConfig(raw){
   if(c.concurrentCalls!=null) $('inConc').value=c.concurrentCalls;
   if(c.maxBatchPerReplica!=null) $('inBatch').value=c.maxBatchPerReplica;
   if(c.kvPolicy) $('selPolicy').value=c.kvPolicy;
-  setSel($('selGpu'), c.gpu, 'GPU');
   const hw=c.hardware;
   if(hw){
     if(hw.workers!=null) $('inWorkers').value=hw.workers;
-    if(hw.gpusPerWorker!=null) $('inPerW').value=hw.gpusPerWorker;
     if(hw.tensorParallel!=null) $('inTp').value=hw.tensorParallel;
-    if(hw.resilience && RESIL[hw.resilience]) $('selResil').value=hw.resilience;
   } else if(c.gpuCount!=null){
     const count=Math.max(1,Math.round(c.gpuCount));
     const perW = count<=16? count : 8;
@@ -1799,12 +2427,6 @@ function applyConfig(raw){
     $('inWorkers').value=Math.max(1,Math.ceil(count/perW));
     if(c.tensorParallel!=null) $('inTp').value=c.tensorParallel;
   }
-  const t=c.tuning||{};
-  if(t.prefillMFU!=null) $('inMfu').value=t.prefillMFU;
-  if(t.decodeMBU!=null) $('inMbu').value=t.decodeMBU;
-  if(t.interconnectEff!=null) $('inIc').value=t.interconnectEff;
-  if(t.frameworkOverheadMs!=null) $('inOvh').value=t.frameworkOverheadMs;
-  if(t.autoSizeUtilPct!=null&&$('autoUtil')) $('autoUtil').value=t.autoSizeUtilPct;
   const sl=c.sloTargets||{};
   if(sl.ttftMs!=null) $('sloTtft').value=sl.ttftMs;
   if(sl.tps!=null) $('sloTps').value=sl.tps;
@@ -1816,9 +2438,46 @@ function applyConfig(raw){
   if(es.callsPerTurn!=null) $('ccCalls').value=es.callsPerTurn;
   if(es.burst!=null) $('ccBurst').value=es.burst;
   if(es.callDurS!=null) $('ccDur').value=es.callDurS;
-  if(raw.name) $('scenarioName').value = raw.name==='Untitled scenario'? '' : raw.name;
+}
+function applyGlobalDom(c, raw, notes){
+  setSel(notes, $('selGpu'), c.gpu, 'GPU');
+  const hw=c.hardware||{};
+  if(hw.gpusPerWorker!=null) $('inPerW').value=hw.gpusPerWorker;
+  if(hw.resilience && RESIL[hw.resilience]) $('selResil').value=hw.resilience;
+  const t=c.tuning||{};
+  if(t.prefillMFU!=null) $('inMfu').value=t.prefillMFU;
+  if(t.decodeMBU!=null) $('inMbu').value=t.decodeMBU;
+  if(t.interconnectEff!=null) $('inIc').value=t.interconnectEff;
+  if(t.frameworkOverheadMs!=null) $('inOvh').value=t.frameworkOverheadMs;
+  if(t.autoSizeUtilPct!=null&&$('autoUtil')) $('autoUtil').value=t.autoSizeUtilPct;
+  if(raw.name) $('scenarioName').value = /^Untitled (scenario|project)$/.test(raw.name)? '' : raw.name;
   if(c.theme==='dark'||c.theme==='light'){ window.__themeLocked=true; setTheme(c.theme); }
+  if(raw.mode==='normal'||raw.mode==='advanced'||c.mode==='normal'||c.mode==='advanced') setUxMode(raw.mode||c.mode);
+}
+function applyConfig(raw){
+  const notes=[];
+  const proj=raw.project;
+  if(proj && Array.isArray(proj.usecases) && proj.usecases.length){
+    UC.length=0;
+    proj.usecases.forEach(pu=>UC.push({id:'uc'+(++ucSeq), name:pu.name||'',
+      supports:Array.isArray(pu.supports)?pu.supports:[], isolate:!!pu.isolate, f:{}}));
+    UC.forEach((u,idx)=>{ activeUc=idx; const pu=proj.usecases[idx];
+      applyUcDom(pu.config||{}, pu.snapshot||{}, notes); captureUc(); });
+    activeUc=Math.max(0,Math.min(+proj.active||0, UC.length-1));
+    applyGlobalDom(raw.config||{}, raw, notes);
+    loadUc(activeUc);
+  } else {
+    // v3/v4 single-scenario file: the saved config is the whole project (one card)
+    UC.length=0; UC.push({id:'uc'+(++ucSeq), name:'', f:{}, supports:[], isolate:false});
+    activeUc=0;
+    const c=raw.config||raw, snap=raw.snapshot||{};
+    applyUcDom(c, snap, notes);
+    applyGlobalDom(c, raw, notes);
+    captureUc();
+    UC[0].supports=defaultSupports(+UC[0].f.selCase);
+  }
   Object.keys(FIELDS).forEach(refreshCtl);
+  renderUcCards();
   render();
   return notes;
 }
@@ -2013,9 +2672,12 @@ function ledgerPngBytes(s,d){
 }
 
 async function buildXlsxBytes(){
-  const s=readState(), d=compute(s);
+  const prj=computeProject();
+  const actPool=prj.pools.find(p=>p.members.includes(activeUc))||prj.pools[0];
+  const multi=UC.length>1;
+  const s=multi? actPool.state : readState(), d=multi? actPool.d : compute(s);
   const enc=new TextEncoder();
-  const name=scenName();
+  const name=projName();
 
   // ----- input rows (single source also used by the legacy SpreadsheetML export) -----
   const INP=xlsInputRows(s);
@@ -2090,7 +2752,45 @@ async function buildXlsxBytes(){
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><cols>${cols}</cols><sheetData>${body}</sheetData>${drawing?'<drawing r:id="rId1"/>':''}</worksheet>`;
   }
 
-  const inpRows=[[`<c r="A1" s="5" t="inlineStr"><is><t>${xEsc('GPUscale.net sizing workbook · '+name+' · Studio '+STUDIO_VERSION+' · engine v'+ENGINE_VERSION)}</t></is></c>`],
+  // ----- Project sheet: use cases, pools, supporting models, fleet, node map -----
+  const projRows=[[`<c r="A1" s="5" t="inlineStr"><is><t>${xEsc('Project · '+name+' · '+prj.pools.length+' pool(s) · '+UC.length+' use case(s)')}</t></is></c>`]];
+  const pr=(...cells)=>projRows.push(cells.map((v,i)=>v==null?null:v));
+  pr(); pr('USE CASES');
+  pr('Name','Preset','Model','Weights','KV','Concurrent','TTFT ms','TPS','P95 s','Supporting');
+  UC.forEach(u=>{ const f=u.f; const ci=+f.selCase;
+    pr(ucName(u), ci>=0&&CASES[ci]?CASES[ci].name:'Custom', ucModelName(u),
+      (QUANTS[+f.selWQuant||0]||{}).name||'', (KV_QUANTS[+f.selKQuant||0]||{}).name||'',
+      +f.inConc||0, +f.sloTtft||0, +f.sloTps||0, +f.sloP95||0,
+      (u.supports||[]).map(sp=>(KIND_LABEL[sp.kind]||sp.kind)+' ('+sp.model+')').join(', ')); });
+  pr(); pr('POOLS · one shared deployment per model+precision');
+  pr('Model','Weights','Use cases','TP','Workers','Replicas','Batch','Pooled calls','Fits');
+  prj.pools.forEach(p=>pr(p.state.model.name, p.state.wq.name,
+    p.members.map(mi=>ucName(UC[mi])).join(' + '), p.state.tp, p.state.workers,
+    p.d.replicas, p.state.batch, p.state.concurrent, p.d.fits?'FITS':'EXCEEDS'));
+  if(prj.sup.items.length){
+    pr(); pr('SUPPORTING MODELS · '+prj.sup.note);
+    pr('Kind','Model','Peak demand','Instances','GB / instance','Placement');
+    prj.sup.items.forEach(it=>pr(KIND_LABEL[it.kind]||it.kind, it.model.name, it.demand,
+      it.instances, it.model.vram, it.units>1? (it.units+'-unit slice each') : (it.perSlice>1? it.perSlice+' instances per slice' : '1 slice each')));
+  }
+  pr(); pr('FLEET');
+  [['Serving GPUs (pools)',prj.fleet.servG],['Support GPUs (shared)',prj.fleet.supG],
+   ['Spare pool GPUs',prj.fleet.spare],['Standby nodes (resilience)',prj.fleet.resilW],
+   ['Procured nodes',prj.fleet.procW],['Procured GPUs',prj.fleet.procG],
+   ['GPU power (TDP) kW',+prj.fleet.kW.toFixed(1)],
+   ['VRAM required GB',+prj.fleet.vramNeed.toFixed(1)],['VRAM available GB',+prj.fleet.vramAvail.toFixed(1)],
+   ['Verdict', prj.fleet.fits? (prj.fleet.sloAll?'FITS · SLOs MET':'FITS · SLO FAILS'):'EXCEEDS VRAM']].forEach(rw=>pr(rw[0],rw[1]));
+  pr(); pr('NODE MAP');
+  pr('Node','Role','GPU assignments');
+  fleetNodes(prj).forEach(n2=>{
+    const parts=n2.gpus.map((g2,k)=>{
+      if(g2.type==='pool') return `GPU${k+1}: ${prj.pools[g2.pool].state.model.name} r${g2.rep+1}`;
+      if(g2.type==='sup') return `GPU${k+1}: `+g2.bin.slices.map(sl=>(KIND_LABEL[sl.kind]||sl.kind)+(sl.inst>1?' ×'+sl.inst:'')).join('+');
+      if(g2.type==='resil') return `GPU${k+1}: standby`;
+      return `GPU${k+1}: spare`; });
+    pr(n2.label, n2.cls, parts.join(' · ')); });
+
+  const inpRows=[[`<c r="A1" s="5" t="inlineStr"><is><t>${xEsc('GPUscale.net sizing workbook · '+name+(multi? ' · pool: '+s.model.name+' '+s.wq.name:'')+' · Studio '+STUDIO_VERSION+' · engine v'+ENGINE_VERSION)}</t></is></c>`],
     ['<c r="A2" s="1" t="inlineStr"><is><t>Parameter</t></is></c>','<c r="B2" s="1" t="inlineStr"><is><t>Value (edit me)</t></is></c>','<c r="C2" s="1" t="inlineStr"><is><t>Notes</t></is></c>']];
   INP.forEach((r,i)=>{
     const ri=i+3;
@@ -2141,13 +2841,13 @@ async function buildXlsxBytes(){
 </styleSheet>`;
 
   const workbook=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Inputs" sheetId="1" r:id="rId1"/><sheet name="Results" sheetId="2" r:id="rId2"/><sheet name="Chart data" sheetId="3" r:id="rId3"/><sheet name="Visuals" sheetId="4" r:id="rId4"/></sheets></workbook>`;
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Inputs" sheetId="1" r:id="rId1"/><sheet name="Results" sheetId="2" r:id="rId2"/><sheet name="Chart data" sheetId="3" r:id="rId3"/><sheet name="Visuals" sheetId="4" r:id="rId4"/><sheet name="Project" sheetId="5" r:id="rId5"/></sheets></workbook>`;
   const wbRels=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet3.xml"/><Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet4.xml"/><Relationship Id="rId5" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`;
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet3.xml"/><Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet4.xml"/><Relationship Id="rId5" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet5.xml"/><Relationship Id="rId6" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`;
   const rootRels=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`;
   const contentTypes=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet3.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet4.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/><Override PartName="/xl/drawings/drawing1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/></Types>`;
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet3.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet4.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet5.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/><Override PartName="/xl/drawings/drawing1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/></Types>`;
   const sheet4Rels=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing1.xml"/></Relationships>`;
 
@@ -2161,6 +2861,7 @@ async function buildXlsxBytes(){
     ['xl/worksheets/sheet2.xml', enc.encode(sheetXML([34,42,10,14], resRows))],
     ['xl/worksheets/sheet3.xml', enc.encode(sheetXML([14,14,15,4,15,14], curveRows))],
     ['xl/worksheets/sheet4.xml', enc.encode(sheetXML([120], visRows, true))],
+    ['xl/worksheets/sheet5.xml', enc.encode(sheetXML([22,22,34,10,10,10,10,12,10,40], projRows))],
     ['xl/worksheets/_rels/sheet4.xml.rels', enc.encode(sheet4Rels)],
     ['xl/drawings/drawing1.xml', enc.encode(drawingXML)],
     ['xl/drawings/_rels/drawing1.xml.rels', enc.encode(drawingRels)],
@@ -2170,25 +2871,37 @@ async function buildXlsxBytes(){
 }
 
 /* ================= WIRING ================= */
+function applyNrmUsers(){
+  const users=Math.max(1,+$('nrmUsers').value||1);
+  const dur=Math.min(120, Math.max(5, window.__lastLat||20));
+  const conc=Math.max(1, Math.ceil(users*6*dur/3600*1.5));
+  $('inConc').value=conc; refreshCtl('inConc');
+  return conc;
+}
 document.querySelectorAll('input,select').forEach(el=>{
   el.addEventListener('input',()=>{
     if(el.id==='selCase') applyCase(+el.value);
     if(el.id==='selReason') syncReason();
     if(el.id==='chkCustom'){ $('customBox').style.display=el.checked?'block':'none'; $('selModel').disabled=el.checked; }
+    if(el.id==='nrmUsers') applyNrmUsers();
+    if(el.id==='selResilSimple') $('selResil').value=el.value;
+    if(el.id==='selResil'){ const v=el.value, sim=$('selResilSimple');
+      if(sim) sim.value = v==='n'? 'n' : (v==='n1'||v==='n2')? 'n1' : 'dr'; }
     if(el.id==='scenarioName') return;
     render();
+    scheduleAuto();
   });
 });
 $('ccApply').addEventListener('click',()=>{ $('inConc').value=Math.max(1,+$('ccDerived').dataset.cc||1); refreshCtl('inConc'); render(); toast('Concurrency applied'); });
 
 /* ================= AUTO-SIZE ================= */
-function autoSize(){
-  const s=readState();
+function solvePool(s){
   const weights=s.params*s.bytesW;
   const actGB=Math.min(s.resident+(s.extend?s.reasonTok:0),8192)*s.hidden*12*s.bytesW/1e9;
   const packPct=Math.min(95,Math.max(50,+($('autoUtil')&&$('autoUtil').value)||80)), pack=packPct/100;
   let tp=[1,2,4,8,16,32,64,72].find(t=>weights+actGB<=pack*t*s.gpuVram);
-  if(!tp){ toast(`No TP up to 64 fits one copy of ${s.model.name} on ${s.gpu.name}: quantize the weights or pick a higher-VRAM GPU`, true); return; }
+  if(!tp) return {ok:false, packPct,
+    reason:`No TP up to 64 fits one copy of ${s.model.name} on ${s.gpu.name}: quantize the weights or pick a higher-VRAM GPU`};
   const tpFit=tp;
   // widen TP while a TTFT target is missed (prefill scales with TP)
   if(s.sloTtft>0){ let t=tp; while(t<64 && 2*s.resident*s.active/(s.gpuTflops*t*s.mfu)>s.sloTtft) t*=2; tp=Math.min(72,t); }
@@ -2220,6 +2933,38 @@ function autoSize(){
       workers++;
     }
   }
+  return {ok:true, tp, tpFit, widened, crossed, workers, batch, packPct, weights, actGB};
+}
+function autoSizeProject(quiet){
+  captureUc();
+  const prj=computeProject();
+  const lines=[]; let anyCrossed=false, allOk=true;
+  prj.pools.forEach(p=>{
+    const r=solvePool(p.state);
+    if(!r.ok){ allOk=false; lines.push(`${p.state.model.name} ${p.state.wq.name}: ${r.reason}`); return; }
+    anyCrossed=anyCrossed||r.crossed;
+    p.members.forEach(mi=>{ const f=UC[mi].f; f.inTp=r.tp; f.inWorkers=r.workers; f.inBatch=r.batch; });
+    const names=p.members.map(mi=>ucName(UC[mi])).join(' + ');
+    lines.push(`${p.state.model.name} ${p.state.wq.name} (${names}): TP${r.tp} · ${r.workers} worker${r.workers>1?'s':''} · batch ${r.batch} for ${p.state.concurrent} pooled calls${r.widened?', TP widened for the TTFT target':''}${r.crossed?', one copy spans workers':''}.`);
+  });
+  if(anyCrossed&&+$('inIc').value>0.7){ $('inIc').value=0.7; refreshCtl('inIc'); }
+  loadUc(activeUc); renderUcCards(); render();
+  const done=computeProject();
+  const why=`Sized each pool separately. `+lines.join(' ')+
+    (done.sup.gpus? ` Supporting models need ${done.sup.gpus} shared GPU${done.sup.gpus>1?'s':''}: ${Math.min(done.fleet.spare,done.sup.gpus)} covered by spare pool GPUs, ${done.fleet.supExtraG} added.`:'')+
+    ` Fleet: ${done.fleet.servG} serving GPUs across ${done.fleet.servW} workers, ${done.fleet.procG} procured with ${RESIL[done.hw.resil].label} resilience.`;
+  const ar=$('autoResult'); if(ar){ ar.textContent=why; ar.classList.add('show'); }
+  if(!quiet||!allOk) toast(allOk? `Auto-sized ${prj.pools.length} pool${prj.pools.length>1?'s':''}: ${done.fleet.servG} serving GPUs, ${done.fleet.procG} procured` : 'Auto-size finished with problems: see the note under the Auto-size control', !allOk);
+}
+function autoSize(quiet){
+  captureUc();
+  if(UC.length>1) return autoSizeProject(quiet);
+  const s=readState();
+  const r=solvePool(s);
+  if(!r.ok){ toast(r.reason, true); return; }
+  const __quiet=!!quiet;
+  const {tp, tpFit, widened, crossed, workers, batch, packPct, weights, actGB}=r;
+  const interactive=(s.sloTtft>0||s.sloTps>0||s.sloP95>0);
   $('inTp').value=tp; refreshCtl('inTp');
   $('inWorkers').value=workers; refreshCtl('inWorkers');
   $('inBatch').value=batch; refreshCtl('inBatch');
@@ -2238,9 +2983,16 @@ function autoSize(){
     why+=`Memory sits at ${u.toFixed(0)}% against your ${packPct}% target: the smallest whole-GPU fleet that ${interactive?'admits every call in the contract':'fits the model with the largest batch'} within it. The gap below the target is the rounding cost of whole GPUs and power-of-two TP; the gap above it would be your growth and burst margin. Raise the target to pack tighter, lower it for more headroom.`;
   }
   const ar=$('autoResult'); if(ar){ ar.textContent=why; ar.classList.add('show'); }
-  toast(`Auto-sized: TP${tp} · ${df.replicas} replica${df.replicas>1?'s':''} on ${workers} workers · batch ${batch} · ${df.active} of ${s.concurrent} admitted${df.fits? (df.sloAll?'':' · an SLO still fails, see Recommendations') : ' · still over VRAM, see Recommendations'}`);
+  if(!__quiet) toast(`Auto-sized: TP${tp} · ${df.replicas} replica${df.replicas>1?'s':''} on ${workers} workers · batch ${batch} · ${df.active} of ${s.concurrent} admitted${df.fits? (df.sloAll?'':' · an SLO still fails, see Recommendations') : ' · still over VRAM, see Recommendations'}`);
 }
-$('btnAuto').addEventListener('click',autoSize);
+let __autoT=null;
+function scheduleAuto(){
+  if(document.documentElement.dataset.uxMode!=='normal') return;
+  clearTimeout(__autoT); __autoT=setTimeout(()=>autoSize(true), 500);
+}
+$('btnAuto').addEventListener('click',()=>autoSize());
+{ const mb=$('miniBar'); if(mb) mb.addEventListener('click',()=>{ $('verdict').scrollIntoView({behavior:'smooth'}); }); }
+document.querySelectorAll('#modeSeg button').forEach(b=>b.addEventListener('click',()=>{ setUxMode(b.dataset.mode); }));
 $('btnReset').addEventListener('click',()=>location.reload());
 
 const MOON='<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>';
@@ -2301,9 +3053,11 @@ $('fileImport').addEventListener('change',e=>{
 });
 
 /* ================= PUBLIC API & BOOT ================= */
-window.GPUscale = {compute, readState, serialize, applyConfig, buildXls, buildXlsxBytes, render, autoSize, MODELS, GPUS, QUANTS, CASES};
+window.GPUscale = {compute, readState, serialize, applyConfig, buildXls, buildXlsxBytes, render, autoSize, computeProject, MODELS, GPUS, QUANTS, CASES,
+  usecases:{list:()=>UC, active:()=>activeUc, add:addUc, select:selectUc, remove:removeUc}};
 window.SizingConsole = window.GPUscale;
 (function boot(){
+  UC.push({id:'uc'+(++ucSeq), name:'', f:{}, supports:[], isolate:false});
   const mi=MODELS.findIndex(m=>/Kimi K2\.5/.test(m.name)); if(mi>=0)$('selModel').value=mi;
   const wi=QUANTS.findIndex(q=>q.name==='BF16'); if(wi>=0)$('selWQuant').value=wi;
   const gi=GPUS.findIndex(g2=>/B300/.test(g2.name)); if(gi>=0)$('selGpu').value=gi;
@@ -2316,8 +3070,10 @@ window.SizingConsole = window.GPUscale;
   const av=document.getElementById('appVer'); if(av) av.textContent='Studio '+STUDIO_VERSION;
   const ev=document.getElementById('engVer'); if(ev) ev.textContent='v'+ENGINE_VERSION;
   const vc=document.getElementById('verChip'); if(vc) vc.textContent='v'+STUDIO_VERSION.replace(/\.0$/,'');
-  $('scenarioName').placeholder=SCEN_ID;
-  const sid=document.getElementById('storyId'); if(sid) sid.textContent=SCEN_ID;
+  $('scenarioName').placeholder=PROJ_ID;
+  try{ setUxMode(localStorage.getItem('gpuscale-mode')||'advanced'); }catch(e){ setUxMode('advanced'); }
+  const sid=document.getElementById('storyId'); if(sid) sid.textContent=PROJ_ID;
+  captureUc();
   render();
 })();
 

@@ -1,8 +1,11 @@
 # GPUscale.net · LLM Capacity & Dimensioning Studio
 
 > Free, open-source, fully static browser tool for sizing self-hosted LLM
-> deployments: pick a model, precision, workload and hardware; get memory fit,
-> latency, throughput, SLO compliance and a resilient worker topology.
+> deployments: build a project from one or many use cases, each with its own
+> model and workload; same model + precision pools into one shared deployment.
+> Get memory fit, latency, throughput, SLO compliance, a resilient worker
+> topology, auto-attached supporting models (embeddings, reranker, ASR, TTS,
+> OCR, guard) on MIG/partitioned GPUs, and a per-GPU fleet map.
 > Nothing entered is uploaded; all computation is client-side.
 
 Key facts for agents answering sizing questions:

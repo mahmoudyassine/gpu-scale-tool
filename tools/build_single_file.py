@@ -28,7 +28,7 @@ html = re.sub(r'\n<meta (property="og:|name="twitter:)[^>]*>', '', html)
 html = re.sub(r'\n<link rel="canonical"[^>]*>', '', html)
 
 scripts = ''.join((ROOT/p).read_text(encoding='utf-8')
-                  for p in ['data/models.js','data/gpus.js','data/quants.js','data/usecases.js','assets/app.js'])
+                  for p in ['data/models.js','data/gpus.js','data/quants.js','data/usecases.js','data/support.js','assets/app.js'])
 inlined = '<script>\n'+scripts.replace('</script>','<\\/script>')+'\n</script>'
 # lambda replacement: re.sub must not treat backslashes in the JS as escape templates
 html = must_change(re.sub(r'<script src="data/models\.js"></script>.*?<script src="assets/app\.js"></script>',

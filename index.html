@@ -26,7 +26,7 @@
 <meta name="twitter:title" content="GPUscale.net · LLM Capacity &amp; Dimensioning Studio">
 <meta name="twitter:description" content="Size self-hosted LLM deployments: memory fit, latency, throughput, SLO compliance and resilient worker topology. Free, open source, no backend.">
 <meta name="twitter:image" content="https://gpuscale.net/assets/og-card.png">
-<script type="application/ld+json">{"@context": "https://schema.org", "@type": "WebApplication", "name": "GPUscale.net · LLM Capacity & Dimensioning Studio", "url": "https://gpuscale.net/", "description": "Free, open-source GPU sizing calculator for self-hosted LLM deployments: memory fit, KV cache, tensor parallelism, latency, throughput, SLO compliance and resilient worker topology.", "applicationCategory": "DeveloperApplication", "operatingSystem": "Any (browser-based)", "browserRequirements": "Any modern browser; fully client-side", "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}, "creator": {"@type": "Person", "name": "Mahmoud Yassine", "url": "https://github.com/mahmoudyassine"}, "license": "https://github.com/mahmoudyassine/gpu-scale-tool/blob/main/LICENSE", "image": "https://gpuscale.net/assets/og-card.png", "featureList": "Memory fit per replica, KV cache modeling (GQA/MLA/hybrid), tensor/data parallelism, auto-sizing from SLOs, resilience patterns (N+1 to N+N+DR), JSON/XLSX/PDF export", "codeRepository": "https://github.com/mahmoudyassine/gpu-scale-tool"}</script>
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "WebApplication", "name": "GPUscale.net · LLM Capacity & Dimensioning Studio", "url": "https://gpuscale.net/", "description": "Free, open-source GPU sizing calculator for self-hosted LLM deployments: memory fit, KV cache, tensor parallelism, latency, throughput, SLO compliance and resilient worker topology.", "applicationCategory": "DeveloperApplication", "operatingSystem": "Any (browser-based)", "browserRequirements": "Any modern browser; fully client-side", "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}, "creator": {"@type": "Person", "name": "Mahmoud Yassine", "url": "https://github.com/mahmoudyassine"}, "license": "https://github.com/mahmoudyassine/gpu-scale-tool/blob/main/LICENSE", "image": "https://gpuscale.net/assets/og-card.png", "featureList": "Multi-use-case projects with pooled deployments, fleet map per GPU and node, supporting models on MIG/partitioned GPUs, memory fit per replica, KV cache modeling (GQA/MLA/hybrid), tensor/data parallelism, auto-sizing from SLOs, resilience patterns (N+1 to N+N+DR), JSON/XLSX/PDF export", "codeRepository": "https://github.com/mahmoudyassine/gpu-scale-tool"}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -36,17 +36,25 @@
 </head>
 <body>
 <div class="wrap">
+<div id="live" class="sr-only" aria-live="polite"></div>
+<button class="mini-bar" id="miniBar" type="button" aria-live="polite" title="Jump to results">
+  <span class="mb-lamp" id="mbLamp"></span><span id="mbText">—</span>
+</button>
 
 <header class="top">
   <div class="brand">
     <div class="brand-row"><svg class="logo-mark" viewBox="0 0 64 64" aria-hidden="true"><rect x="13" y="8" width="42" height="10" rx="4" fill="#16233B"/><rect x="3" y="20" width="6" height="7.5" rx="1.8" fill="var(--faint)"/><rect x="3" y="31" width="6" height="7.5" rx="1.8" fill="var(--faint)"/><rect x="8" y="12" width="48" height="34" rx="8" fill="var(--teal-strong)"/><circle cx="23.0" cy="28.0" r="8.3" fill="#16233B"/><polygon points="26.90,28.07 30.46,27.22 29.50,31.75 26.59,29.52" fill="#263349"/><polygon points="24.89,31.41 27.41,34.07 23.00,35.50 23.48,31.87" fill="#263349"/><polygon points="20.99,31.34 19.95,34.85 16.50,31.75 19.89,30.35" fill="#263349"/><polygon points="19.10,27.93 15.54,28.78 16.50,24.25 19.41,26.48" fill="#263349"/><polygon points="21.11,24.59 18.59,21.93 23.00,20.50 22.52,24.13" fill="#263349"/><polygon points="25.01,24.66 26.05,21.15 29.50,24.25 26.11,25.65" fill="#263349"/><circle cx="23.0" cy="28.0" r="3.1" fill="var(--amber-border)"/><circle cx="21.85" cy="26.85" r="1.05" fill="#FFFFFF"/><circle cx="41.0" cy="28.0" r="8.3" fill="#16233B"/><polygon points="44.47,29.77 48.05,30.57 45.19,34.22 43.56,30.94" fill="#263349"/><polygon points="41.20,31.89 42.30,35.39 37.71,34.74 39.73,31.69" fill="#263349"/><polygon points="37.73,30.12 35.25,32.82 33.52,28.52 37.17,28.74" fill="#263349"/><polygon points="37.53,26.23 33.95,25.43 36.81,21.78 38.44,25.06" fill="#263349"/><polygon points="40.80,24.11 39.70,20.61 44.29,21.26 42.27,24.31" fill="#263349"/><polygon points="44.27,25.88 46.75,23.18 48.48,27.48 44.83,27.26" fill="#263349"/><circle cx="41.0" cy="28.0" r="3.1" fill="var(--amber-border)"/><circle cx="39.85" cy="26.85" r="1.05" fill="#FFFFFF"/><rect x="15" y="45" width="34" height="5.4" rx="2.7" fill="#16233B"/><rect x="17.60" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/><rect x="22.85" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/><rect x="28.10" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/><rect x="33.35" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/><rect x="41.10" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/><rect x="46.35" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/></svg><h1>GPUscale<span class="tld">.net</span></h1><a class="ver-chip" href="https://github.com/mahmoudyassine/gpu-scale-tool/releases" target="_blank" rel="noopener" title="Release notes" id="verChip">v4.7</a></div>
-    <div class="sub">LLM capacity &amp; dimensioning studio: model, precision, workload and hardware in; memory fit, latency, throughput and resilient topology out.</div>
+    <div class="sub">LLM capacity &amp; dimensioning studio: use cases, models, precision and hardware in; memory fit, latency, fleet map and resilient topology out.</div>
     <div class="privacy-chip"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="9.5" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></svg>100% local: nothing you enter is saved or uploaded</div>
   </div>
   <div class="top-right">
     <div class="scenario">
-      <label for="scenarioName">Scenario</label>
-      <input type="text" id="scenarioName" placeholder="Untitled scenario" maxlength="60">
+      <label for="scenarioName">Project</label>
+      <input type="text" id="scenarioName" placeholder="Untitled project" maxlength="60">
+    </div>
+    <div class="mode-seg" id="modeSeg" role="group" aria-label="Experience mode" title="Normal shows the minimum inputs; Advanced shows every control">
+      <button type="button" data-mode="normal" aria-pressed="false">Normal</button>
+      <button type="button" data-mode="advanced" aria-pressed="true">Advanced</button>
     </div>
     <div class="btn-group" role="group" aria-label="Import and export">
       <button class="btn" id="btnImport" type="button" title="Import configuration JSON"><svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 21h16"/></svg><span class="lbl">Import</span></button>
@@ -71,14 +79,20 @@
 <aside class="rail">
   <div class="col-cap">Inputs · work top to bottom, results update live</div>
 
+  <section class="station" id="ucStation">
+    <div class="st-title"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="6" rx="2"/><rect x="3" y="14" width="18" height="6" rx="2"/><path d="M7 7h.01M7 17h.01"/></svg>Use cases<button class="info" data-help="hUc" aria-expanded="false" type="button">i</button><span class="st-spacer"></span><button class="uc-add" id="btnAddUc" type="button" title="Add a use case">+ Add</button></div>
+    <div class="f-help" id="hUc">Each card is one workload this project serves, with its own model, shape and concurrency. The stations below edit the selected card. Use cases that pick the same model and precision are served by one shared pooled deployment.<span class="typ">project structure</span></div>
+    <div id="ucCards" role="list"></div>
+  </section>
+
   <section class="station">
-    <div class="st-title"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 3 8l9 5 9-5-9-5z"/><path d="M3 12.5l9 5 9-5"/><path d="M3 17l9 5 9-5"/></svg>Model</div>
+    <div class="st-title"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 3 8l9 5 9-5-9-5z"/><path d="M3 12.5l9 5 9-5"/><path d="M3 17l9 5 9-5"/></svg>Model<span class="st-ctx" id="ctxModel"></span></div>
     <div class="field">
       <div class="f-head"><label for="selModel">Model</label><button class="info" data-help="hModel" aria-expanded="false" type="button">i</button><span class="spacer"></span><span class="unit" id="modelCount"></span></div>
       <select id="selModel"></select>
       <div class="f-help" id="hModel">Architecture geometry drives every estimate: total params size the weights, active params drive compute and decode reads, and the effective KV heads &times; head dim encode each model's real cache cost (MLA, sparse and SSM hybrids use sheet-compatible effective values).</div>
     </div>
-    <div class="toggle-row"><input type="checkbox" id="chkCustom"><label for="chkCustom">Custom model · enter geometry manually</label></div>
+    <div class="toggle-row adv"><input type="checkbox" id="chkCustom"><label for="chkCustom">Custom model · enter geometry manually</label></div>
     <div id="customBox" style="display:none;margin-top:10px">
       <div class="grid2">
         <div class="field"><div class="f-head"><label>Total params</label><span class="unit">B</span></div><input type="number" id="cusParams" value="70" min="0.1" step="0.1" title="All weights that must sit in VRAM; for MoE, every expert."></div>
@@ -94,13 +108,13 @@
   </section>
 
   <section class="station">
-    <div class="st-title"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><rect x="8.5" y="8.5" width="7" height="7" rx="1.5" fill="currentColor" stroke="none"/></svg>Precision</div>
+    <div class="st-title"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><rect x="8.5" y="8.5" width="7" height="7" rx="1.5" fill="currentColor" stroke="none"/></svg>Precision<span class="st-ctx" id="ctxPrec"></span></div>
     <div class="grid2">
       <div class="field">
         <div class="f-head"><label for="selWQuant">Weights</label><button class="info" data-help="hWq" aria-expanded="false" type="button">i</button></div>
         <select id="selWQuant"></select>
       </div>
-      <div class="field">
+      <div class="field adv">
         <div class="f-head"><label for="selKQuant">KV cache</label><button class="info" data-help="hKq" aria-expanded="false" type="button">i</button></div>
         <select id="selKQuant"></select>
       </div>
@@ -111,7 +125,7 @@
   </section>
 
   <section class="station">
-    <div class="st-title"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg>Workload</div>
+    <div class="st-title"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg>Workload<span class="st-ctx" id="ctxWork"></span></div>
     <div class="field">
       <div class="f-head"><label for="selCase">Use-case preset</label><button class="info" data-help="hCase" aria-expanded="false" type="button">i</button></div>
       <select id="selCase"></select>
@@ -119,19 +133,24 @@
     </div>
     <div id="m_inSeq"></div>
     <div id="m_inOut"></div>
-    <div class="field">
+    <div class="field adv">
       <div class="f-head"><label for="selReason">Reasoning mode</label><button class="info" data-help="hReason" aria-expanded="false" type="button">i</button></div>
       <select id="selReason">
         <option>None</option><option>Light reasoning</option><option>Heavy reasoning</option><option>Custom</option>
       </select>
       <div class="f-help" id="hReason">Thinking tokens generated before the visible answer. They add decode time and, if the toggle below is on, extend the KV footprint too.<span class="typ">Light ≈ 2,000 tok · Heavy ≈ 8,000 tok</span></div>
     </div>
-    <div id="m_inReasonTok"></div>
-    <div class="toggle-row" style="margin-bottom:12px"><input type="checkbox" id="chkExtend" checked><label for="chkExtend">Reasoning tokens extend the KV cache</label><button class="info" data-help="hExtend" aria-expanded="false" type="button">i</button></div>
+    <div id="m_inReasonTok" class="adv"></div>
+    <div class="toggle-row adv" style="margin-bottom:12px"><input type="checkbox" id="chkExtend" checked><label for="chkExtend">Reasoning tokens extend the KV cache</label><button class="info" data-help="hExtend" aria-expanded="false" type="button">i</button></div>
     <div class="f-help" id="hExtend" style="margin-top:-6px;margin-bottom:10px">On for standard serving (thinking stays in context). Off if the engine discards reasoning traces from the cache after each call.</div>
-    <div id="m_inConc"></div>
-    <div id="m_inBatch"></div>
-    <div class="field">
+    <div class="field nrm"><div class="f-head"><label for="nrmUsers">People using this at peak</label><button class="info" data-help="hNrmU" aria-expanded="false" type="button">i</button></div>
+      <input type="number" id="nrmUsers" value="200" min="1" max="2000000">
+      <div class="cc-derived" id="nrmDerived"></div>
+      <div class="f-help" id="hNrmU">Headcount actively using this workload in the busiest hour. The concurrent-call figure the sizing runs on is derived with Little&rsquo;s law (6 interactions/hour each, 1.5&times; burst margin) and shown underneath. Switch to Advanced mode to set concurrency and traffic shape directly.<span class="typ">demand</span></div>
+    </div>
+    <div id="m_inConc" class="adv"></div>
+    <div id="m_inBatch" class="adv"></div>
+    <div class="field adv">
       <div class="f-head"><label for="selPolicy">KV residency policy</label><button class="info" data-help="hPolicy" aria-expanded="false" type="button">i</button></div>
       <select id="selPolicy">
         <option value="running">Running batch only (vLLM-style admission)</option>
@@ -139,14 +158,14 @@
       </select>
       <div class="f-help" id="hPolicy">Running batch: only admitted sequences hold KV and the rest queue (the modern default). All sessions: every concurrent call keeps its cache resident (lowest latency variance, far more memory).</div>
     </div>
-    <div class="f-head" style="margin:4px 0 6px"><label>SLO targets</label><button class="info" data-help="hSlo" aria-expanded="false" type="button">i</button></div>
+    <div class="f-head adv" style="margin:4px 0 6px"><label>SLO targets</label><button class="info" data-help="hSlo" aria-expanded="false" type="button">i</button></div>
     <div class="f-help" id="hSlo">Pass/fail thresholds for the compliance panel. A target of 0 disables that check. Presets refill these with workload-appropriate values.</div>
-    <div class="grid3">
+    <div class="adv grid3">
       <div class="field"><div class="f-head"><label>TTFT &le;</label><span class="unit">ms</span></div><input type="number" id="sloTtft" value="300" min="0"></div>
       <div class="field"><div class="f-head"><label>TPS &ge;</label><span class="unit">tok/s</span></div><input type="number" id="sloTps" value="50" min="0"></div>
       <div class="field"><div class="f-head"><label>P95 &le;</label><span class="unit">s</span></div><input type="number" id="sloP95" value="3" min="0"></div>
     </div>
-    <details class="drawer">
+    <details class="drawer adv">
       <summary>Concurrency estimator · Little's law</summary>
       <div class="drawer-body">
         <div class="grid2">
@@ -170,8 +189,16 @@
       <select id="selGpu"></select>
       <div class="f-help" id="hGpu">Bandwidth sets decode speed, dense FP16 Tensor-Core TFLOPS sets prefill speed, VRAM sets what fits. 2026 parts (VR200, MI455X) carry pre-launch estimates.</div>
     </div>
-    <div id="m_inPerW"></div>
-    <div class="field">
+    <div id="m_inPerW" class="adv"></div>
+    <div class="field nrm"><div class="f-head"><label for="selResilSimple">Failure protection</label><button class="info" data-help="hResilS" aria-expanded="false" type="button">i</button></div>
+      <select id="selResilSimple">
+        <option value="n">None · capacity only</option>
+        <option value="n1">Survives a server failure</option>
+        <option value="dr">Survives a site outage</option>
+      </select>
+      <div class="f-help" id="hResilS">What the fleet must keep serving through. Advanced mode offers the full set of patterns (N+2, mirrors, active/active splits) with their economics.<span class="typ">resilience</span></div>
+    </div>
+    <div class="field adv">
       <div class="f-head"><label for="selResil">Resilience model</label><button class="info" data-help="hResil" aria-expanded="false" type="button">i</button></div>
       <select id="selResil">
         <optgroup label="No redundancy">
@@ -199,18 +226,18 @@
       </select>
       <div class="f-help" id="hResil">Pick what the deployment must survive. The sizing rule: every figure in the results is what you can guarantee even during the covered failure, so throughput and concurrency never grow with resilience. The extra hardware either idles until a failure (spares, mirrors, DR standby) or serves day-to-day as burst headroom (Active/Active). The economics strip under the topology shows guaranteed vs normal-day capacity, idle hardware and the cost multiplier for the chosen model.</div>
     </div>
-    <div class="field"><div class="f-head"><label for="autoUtil">Auto-size memory target</label><button class="info" data-help="hAutoUtil" aria-expanded="false" type="button">i</button><span class="spacer"></span><span class="unit">%</span></div><input type="number" id="autoUtil" value="80" min="50" max="95" step="5"></div>
+    <div class="field adv"><div class="f-head"><label for="autoUtil">Auto-size memory target</label><button class="info" data-help="hAutoUtil" aria-expanded="false" type="button">i</button><span class="spacer"></span><span class="unit">%</span></div><input type="number" id="autoUtil" value="80" min="50" max="95" step="5"></div>
     <div class="f-help" id="hAutoUtil">How full Auto-size may pack the serving GPUs. 80% leaves industry-standard growth headroom; 90 to 95% packs tighter at the cost of burst and growth margin (the thin-headroom warning starts at 92%). Manual sliders are never limited by this.</div>
-    <button class="btn primary apply" id="btnAuto" type="button" title="Solve TP, workers and batch from everything chosen above"><svg viewBox="0 0 24 24"><path d="M13 2 4.5 14H11l-1 8 8.5-12H12l1-8z"/></svg>Auto-size TP · workers · batch</button>
+    <button class="btn primary apply adv" id="btnAuto" type="button" title="Solve TP, workers and batch from everything chosen above"><svg viewBox="0 0 24 24"><path d="M13 2 4.5 14H11l-1 8 8.5-12H12l1-8z"/></svg>Auto-size TP · workers · batch</button>
     <div class="f-help" id="hAuto" style="display:block;margin-bottom:10px">Uses everything above: model, precision, workload, SLO targets, GPU and node size. Picks the smallest Tensor parallel that fits one copy of the model (widened if the TTFT target demands it), then the fewest workers and the batch that admit the peak concurrent calls. No SLO targets means offline: minimal hardware, largest fitting batch, queueing allowed.</div>
     <div class="auto-result" id="autoResult" aria-live="polite"></div>
-    <div class="fine-cap">Fine-tune · Auto-size sets these, edit freely</div>
-    <div id="m_inWorkers"></div>
-    <div id="m_inTp"></div>
+    <div class="fine-cap adv">Fine-tune · Auto-size sets these, edit freely</div>
+    <div id="m_inWorkers" class="adv"></div>
+    <div id="m_inTp" class="adv"></div>
     <div class="meta-card" id="gpuMeta"></div>
   </section>
 
-  <section class="station">
+  <section class="station adv">
     <div class="st-title"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h9M19 6h1M4 12h3M13 12h7M4 18h11M21 18h-1"/><circle cx="15.5" cy="6" r="2.2"/><circle cx="9.5" cy="12" r="2.2"/><circle cx="17.5" cy="18" r="2.2"/></svg>Advanced tuning</div>
     <details class="drawer">
       <summary>Efficiency assumptions · defaults are sensible</summary>
@@ -239,6 +266,19 @@
     <span class="v-kv" id="vKv"></span>
     <span class="v-sub" id="vSub"></span>
   </section>
+
+  <section class="panel" id="projPanel" style="display:none">
+    <div class="p-head"><span class="p-title"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/></svg>Project fleet · all use cases</span><span class="p-note" id="projNote"></span></div>
+    <div class="proj-strip" id="projStrip"></div>
+    <div class="uc-results" id="ucResults"></div>
+    <div class="fm-head"><span class="fm-title">Fleet map · model placement across GPUs and nodes</span><span class="fm-totals mono" id="fmTotals"></span></div>
+    <div class="fm-legend" id="fmLegend"></div>
+    <div class="fleet-map" id="fleetMap" aria-hidden="true"></div>
+    <div class="sr-only" id="fleetList"></div>
+    <div class="fm-note" id="fmNote"></div>
+  </section>
+
+  <div class="col-cap uc-detail-cap" id="ucDetailCap" style="display:none"></div>
 
   <section class="panel">
     <div class="p-head"><span class="p-title"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 10h16M4 14h10M4 18h7"/></svg>In plain words</span><span class="p-note mono" id="storyId"></span></div>
@@ -342,7 +382,7 @@
       <span class="f-fact">Version <span class="mono" id="appVer">—</span></span>
       <span class="f-fact">Engine <span class="mono" id="engVer">—</span> · library <span class="mono" id="libVer">—</span></span>
       <span class="f-fact">Scripting API at <span class="mono">window.GPUscale</span></span>
-      <span class="f-privacy"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="9.5" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></svg>Private by design: everything runs in your browser. Nothing you enter is saved, uploaded or tracked. No accounts, no analytics, no cookies.</span>
+      <span class="f-privacy"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="9.5" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></svg>Private by design: everything runs in your browser. Nothing you enter is saved, uploaded or tracked; one UI preference (the mode) stays in your browser\u2019s local storage. No accounts, no analytics, no cookies.</span>
     </div>
   </div>
 </footer>
@@ -354,6 +394,7 @@
 <script src="data/gpus.js"></script>
 <script src="data/quants.js"></script>
 <script src="data/usecases.js"></script>
+<script src="data/support.js"></script>
 <script src="assets/app.js"></script>
 </body>
 </html>
