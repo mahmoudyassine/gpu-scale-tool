@@ -802,7 +802,7 @@ function render(){
     $('vSub').textContent = `${prj.pools.length} pool${prj.pools.length>1?'s':''} · ${F.procG} GPUs procured · ≈${fmt(F.kW)} kW`;
   }
   $('story').innerHTML = buildStory(s,d,m,g);
-  $('printInputs').innerHTML = '<div class="pi-title">Inputs · complete configuration</div><div class="pi-grid">'+[
+  $('printInputs').innerHTML = '<div class="pi-title">'+(window.__prj&&UC.length>1? 'Inputs · pool '+m.name+' '+s.wq.name+' ('+UC.length+' use cases; project panel below lists all)' : 'Inputs · complete configuration')+'</div><div class="pi-grid">'+[
     ['Model', m.name],['Total params', fmt(s.params)+' B'],['Active params', fmt(s.active)+' B'],
     ['Geometry', s.layers+'L · h'+s.hidden+' · KV '+s.kvHeads+'×'+s.headDim],['Max context', fmtTok(m.ctx)],
     ['Weights quant', s.wq.name+' ('+s.bytesW+' B/param)'],['KV quant', s.kq.name+' ('+s.bytesK+' B/elem)'],
@@ -816,9 +816,12 @@ function render(){
     ['Interconnect eff.', s.ic],['Framework overhead', fmt(s.ovh)+' ms'],
     ['SLO targets', (s.sloTtft||'off')+' ms · '+(s.sloTps||'off')+' tok/s · '+(s.sloP95||'off')+' s'],
   ].map(([k,v])=>'<div class="pi-row"><span class="k">'+k+'</span><span class="v">'+v+'</span></div>').join('')+'</div>';
-  $('printConfig').textContent =
-    `GPUscale.net · ${scenName()} · ${m.name} · weights ${s.wq.name} / KV ${s.kq.name} · seq ${fmtTok(s.resident)} (+${fmtTok(s.reasonTok)} reasoning) · `+
-    `${s.concurrent} concurrent, batch ${s.batch}/replica · ${s.workers}× worker (${s.perW} GPU) ${g.name} · TP${s.tp} · ${RESIL[s.resil].long} → ${topoInfo.procW} workers procured · ${new Date().toLocaleDateString()}`;
+  $('printConfig').textContent = window.__prj&&UC.length>1
+    ? `GPUscale.net · ${projName()} · ${UC.length} use cases in ${window.__prj.pools.length} pool(s) on ${g.name} · `+
+      window.__prj.pools.map(p=>`${p.state.model.name} ${p.state.wq.name} TP${p.state.tp}×${p.state.workers}w`).join(' + ')+
+      ` · ${window.__prj.fleet.procG} GPUs procured (${RESIL[s.resil].label}) · ≈${fmt(window.__prj.fleet.kW)} kW · ${new Date().toLocaleDateString()}`
+    : `GPUscale.net · ${projName()} · ${m.name} · weights ${s.wq.name} / KV ${s.kq.name} · seq ${fmtTok(s.resident)} (+${fmtTok(s.reasonTok)} reasoning) · `+
+      `${s.concurrent} concurrent, batch ${s.batch}/replica · ${s.workers}× worker (${s.perW} GPU) ${g.name} · TP${s.tp} · ${RESIL[s.resil].long} → ${topoInfo.procW} workers procured · ${new Date().toLocaleDateString()}`;
 }
 
 /* ================= PRESETS ================= */
@@ -1133,6 +1136,36 @@ function fleetTotals(pools, sup, hw){
 
 /* ================= PROJECT RESULTS (fleet map + per-usecase cards) ================= */
 const KIND_LABEL={embed:'Embeddings',rerank:'Reranker',asr:'ASR',tts:'TTS',ocr:'OCR',guard:'Guard'};
+function fleetNodes(prj){
+  const {pools, sup, hw}=prj;
+  const nodes=[]; let nn=0;
+  const supBins=sup.layout.slice();
+  pools.forEach((p,pi)=>{
+    const st=p.state, reps=p.d.replicas;
+    for(let w=0; w<st.workers; w++){
+      const node={label:'ND-'+String(++nn).padStart(2,'0'), cls:'serve', pool:pi, poolName:st.model.name, gpus:[], active:p.members.includes(activeUc)};
+      for(let k=0;k<st.perW;k++){
+        const gi=w*st.perW+k;
+        const rep=Math.floor(gi/st.tp);
+        if(rep<reps) node.gpus.push({type:'pool', pool:pi, rep, tip:`${node.label} · GPU ${k+1} · ${st.model.name} · replica ${rep+1} of ${reps} (TP${st.tp} shard)`});
+        else if(supBins.length){ const bin=supBins.shift(); node.gpus.push({type:'sup', bin, tip:`${node.label} · GPU ${k+1} · supporting models on spare GPU`}); }
+        else node.gpus.push({type:'spare', tip:`${node.label} · GPU ${k+1} · unassigned headroom`});
+      }
+      nodes.push(node);
+    }
+  });
+  while(supBins.length){
+    const node={label:'SP-'+String(nodes.filter(n2=>n2.cls==='support').length+1).padStart(2,'0'), cls:'support', gpus:[]};
+    for(let k=0;k<hw.perW&&supBins.length;k++) node.gpus.push({type:'sup', bin:supBins.shift(), tip:`${node.label} · GPU ${k+1} · supporting models`});
+    nodes.push(node);
+  }
+  const info=RESIL[hw.resil];
+  pools.forEach((p,pi)=>{ const ex=info.extraW(p.state.workers);
+    for(let w=0;w<ex;w++){ const node={label:'RS-'+String(nodes.filter(n2=>n2.cls==='standby').length+1).padStart(2,'0'), cls:'standby', pool:pi, gpus:[]};
+      for(let k=0;k<p.state.perW;k++) node.gpus.push({type:'resil', pool:pi, tip:`${node.label} · GPU ${k+1} · ${info.long}`});
+      nodes.push(node); } });
+  return nodes;
+}
 function renderProject(){
   const panel=$('projPanel'), cap=$('ucDetailCap');
   const multi = UC.length>1 || UC.some(u=>(u.supports||[]).length);
@@ -1170,32 +1203,8 @@ function renderProject(){
     </div>`; }));
   $('ucResults').innerHTML=cards;
   // ---- fleet map ----
-  const nodes=[]; let nn=0;
-  const supBins=sup.layout.slice();
-  pools.forEach((p,pi)=>{
-    const st=p.state, reps=p.d.replicas;
-    for(let w=0; w<st.workers; w++){
-      const node={label:'ND-'+String(++nn).padStart(2,'0'), cls:'serve', pool:pi, poolName:st.model.name, gpus:[], active:p.members.includes(activeUc)};
-      for(let k=0;k<st.perW;k++){
-        const gi=w*st.perW+k;
-        const rep=Math.floor(gi/st.tp);
-        if(rep<reps) node.gpus.push({type:'pool', pool:pi, rep, tip:`${node.label} · GPU ${k+1} · ${st.model.name} · replica ${rep+1} of ${reps} (TP${st.tp} shard)`});
-        else if(supBins.length){ const bin=supBins.shift(); node.gpus.push({type:'sup', bin, tip:`${node.label} · GPU ${k+1} · supporting models on spare GPU`}); }
-        else node.gpus.push({type:'spare', tip:`${node.label} · GPU ${k+1} · unassigned headroom`});
-      }
-      nodes.push(node);
-    }
-  });
-  while(supBins.length){
-    const node={label:'SP-'+String(nodes.filter(n2=>n2.cls==='support').length+1).padStart(2,'0'), cls:'support', gpus:[]};
-    for(let k=0;k<hw.perW&&supBins.length;k++) node.gpus.push({type:'sup', bin:supBins.shift(), tip:`${node.label} · GPU ${k+1} · supporting models`});
-    nodes.push(node);
-  }
-  const info=RESIL[hw.resil];
-  pools.forEach((p,pi)=>{ const ex=info.extraW(p.state.workers);
-    for(let w=0;w<ex;w++){ const node={label:'RS-'+String(nodes.filter(n2=>n2.cls==='standby').length+1).padStart(2,'0'), cls:'standby', pool:pi, gpus:[]};
-      for(let k=0;k<p.state.perW;k++) node.gpus.push({type:'resil', pool:pi, tip:`${node.label} · GPU ${k+1} · ${info.long}`});
-      nodes.push(node); } });
+  const nodes=fleetNodes(prj);
+  const info=RESIL[hw.resil]||RESIL.n;
   const partMax=(hw.g.part&&hw.g.part.max)||1;
   const gpuHtml=g2=>{
     if(g2.type==='pool') return `<div class="fm-gpu assigned" title="${esc(g2.tip)}" style="background:var(--pool${g2.pool%6});opacity:${g2.rep%2?0.78:1}"></div>`;
@@ -1268,7 +1277,18 @@ function serialize(){
     // card) so older importers still read this file as a single-scenario config.
     project:{active:activeUc, usecases:UC.map(u=>({id:u.id, name:u.name||null,
       isolate:!!u.isolate, supports:u.supports||[],
-      config:ucToConfig(u), snapshot:ucSnapshot(u)}))}
+      config:ucToConfig(u), snapshot:ucSnapshot(u)})),
+      results:(()=>{ const prj=computeProject(); const F=prj.fleet;
+        return {fits:F.fits, sloMet:F.sloAll,
+          servingGpus:F.servG+F.supG, procuredNodes:F.procW, procuredGpus:F.procG, powerKw:+F.kW.toFixed(1),
+          vramRequiredGB:+F.vramNeed.toFixed(1), vramAvailableGB:+F.vramAvail.toFixed(1),
+          pools:prj.pools.map(p=>({model:p.state.model.name, weightQuant:p.state.wq.name,
+            usecases:p.members.map(mi=>ucName(UC[mi])), tensorParallel:p.state.tp,
+            workers:p.state.workers, batch:p.state.batch, replicas:p.d.replicas,
+            concurrent:p.state.concurrent, fits:p.d.fits})),
+          supports:prj.sup.items.map(it=>({kind:it.kind, model:it.model.name,
+            instances:it.instances, vramPerInstanceGB:it.model.vram, demand:it.demand})),
+          supportGpus:prj.sup.gpus, supportPlacement:prj.sup.note}; })()}
   };
 }
 function setSel(notes, sel, name, what){ if(!name) return true; const o=findOption(sel,name);
@@ -1569,9 +1589,12 @@ function ledgerPngBytes(s,d){
 }
 
 async function buildXlsxBytes(){
-  const s=readState(), d=compute(s);
+  const prj=computeProject();
+  const actPool=prj.pools.find(p=>p.members.includes(activeUc))||prj.pools[0];
+  const multi=UC.length>1;
+  const s=multi? actPool.state : readState(), d=multi? actPool.d : compute(s);
   const enc=new TextEncoder();
-  const name=scenName();
+  const name=projName();
 
   // ----- input rows (single source also used by the legacy SpreadsheetML export) -----
   const INP=xlsInputRows(s);
@@ -1646,7 +1669,45 @@ async function buildXlsxBytes(){
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><cols>${cols}</cols><sheetData>${body}</sheetData>${drawing?'<drawing r:id="rId1"/>':''}</worksheet>`;
   }
 
-  const inpRows=[[`<c r="A1" s="5" t="inlineStr"><is><t>${xEsc('GPUscale.net sizing workbook · '+name+' · Studio '+STUDIO_VERSION+' · engine v'+ENGINE_VERSION)}</t></is></c>`],
+  // ----- Project sheet: use cases, pools, supporting models, fleet, node map -----
+  const projRows=[[`<c r="A1" s="5" t="inlineStr"><is><t>${xEsc('Project · '+name+' · '+prj.pools.length+' pool(s) · '+UC.length+' use case(s)')}</t></is></c>`]];
+  const pr=(...cells)=>projRows.push(cells.map((v,i)=>v==null?null:v));
+  pr(); pr('USE CASES');
+  pr('Name','Preset','Model','Weights','KV','Concurrent','TTFT ms','TPS','P95 s','Supporting');
+  UC.forEach(u=>{ const f=u.f; const ci=+f.selCase;
+    pr(ucName(u), ci>=0&&CASES[ci]?CASES[ci].name:'Custom', ucModelName(u),
+      (QUANTS[+f.selWQuant||0]||{}).name||'', (KV_QUANTS[+f.selKQuant||0]||{}).name||'',
+      +f.inConc||0, +f.sloTtft||0, +f.sloTps||0, +f.sloP95||0,
+      (u.supports||[]).map(sp=>(KIND_LABEL[sp.kind]||sp.kind)+' ('+sp.model+')').join(', ')); });
+  pr(); pr('POOLS · one shared deployment per model+precision');
+  pr('Model','Weights','Use cases','TP','Workers','Replicas','Batch','Pooled calls','Fits');
+  prj.pools.forEach(p=>pr(p.state.model.name, p.state.wq.name,
+    p.members.map(mi=>ucName(UC[mi])).join(' + '), p.state.tp, p.state.workers,
+    p.d.replicas, p.state.batch, p.state.concurrent, p.d.fits?'FITS':'EXCEEDS'));
+  if(prj.sup.items.length){
+    pr(); pr('SUPPORTING MODELS · '+prj.sup.note);
+    pr('Kind','Model','Peak demand','Instances','GB / instance','Placement');
+    prj.sup.items.forEach(it=>pr(KIND_LABEL[it.kind]||it.kind, it.model.name, it.demand,
+      it.instances, it.model.vram, it.units>1? (it.units+'-unit slice each') : (it.perSlice>1? it.perSlice+' instances per slice' : '1 slice each')));
+  }
+  pr(); pr('FLEET');
+  [['Serving GPUs (pools)',prj.fleet.servG],['Support GPUs (shared)',prj.fleet.supG],
+   ['Spare pool GPUs',prj.fleet.spare],['Standby nodes (resilience)',prj.fleet.resilW],
+   ['Procured nodes',prj.fleet.procW],['Procured GPUs',prj.fleet.procG],
+   ['GPU power (TDP) kW',+prj.fleet.kW.toFixed(1)],
+   ['VRAM required GB',+prj.fleet.vramNeed.toFixed(1)],['VRAM available GB',+prj.fleet.vramAvail.toFixed(1)],
+   ['Verdict', prj.fleet.fits? (prj.fleet.sloAll?'FITS · SLOs MET':'FITS · SLO FAILS'):'EXCEEDS VRAM']].forEach(rw=>pr(rw[0],rw[1]));
+  pr(); pr('NODE MAP');
+  pr('Node','Role','GPU assignments');
+  fleetNodes(prj).forEach(n2=>{
+    const parts=n2.gpus.map((g2,k)=>{
+      if(g2.type==='pool') return `GPU${k+1}: ${prj.pools[g2.pool].state.model.name} r${g2.rep+1}`;
+      if(g2.type==='sup') return `GPU${k+1}: `+g2.bin.slices.map(sl=>(KIND_LABEL[sl.kind]||sl.kind)+(sl.inst>1?' ×'+sl.inst:'')).join('+');
+      if(g2.type==='resil') return `GPU${k+1}: standby`;
+      return `GPU${k+1}: spare`; });
+    pr(n2.label, n2.cls, parts.join(' · ')); });
+
+  const inpRows=[[`<c r="A1" s="5" t="inlineStr"><is><t>${xEsc('GPUscale.net sizing workbook · '+name+(multi? ' · pool: '+s.model.name+' '+s.wq.name:'')+' · Studio '+STUDIO_VERSION+' · engine v'+ENGINE_VERSION)}</t></is></c>`],
     ['<c r="A2" s="1" t="inlineStr"><is><t>Parameter</t></is></c>','<c r="B2" s="1" t="inlineStr"><is><t>Value (edit me)</t></is></c>','<c r="C2" s="1" t="inlineStr"><is><t>Notes</t></is></c>']];
   INP.forEach((r,i)=>{
     const ri=i+3;
@@ -1697,13 +1758,13 @@ async function buildXlsxBytes(){
 </styleSheet>`;
 
   const workbook=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Inputs" sheetId="1" r:id="rId1"/><sheet name="Results" sheetId="2" r:id="rId2"/><sheet name="Chart data" sheetId="3" r:id="rId3"/><sheet name="Visuals" sheetId="4" r:id="rId4"/></sheets></workbook>`;
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Inputs" sheetId="1" r:id="rId1"/><sheet name="Results" sheetId="2" r:id="rId2"/><sheet name="Chart data" sheetId="3" r:id="rId3"/><sheet name="Visuals" sheetId="4" r:id="rId4"/><sheet name="Project" sheetId="5" r:id="rId5"/></sheets></workbook>`;
   const wbRels=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet3.xml"/><Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet4.xml"/><Relationship Id="rId5" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`;
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet3.xml"/><Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet4.xml"/><Relationship Id="rId5" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet5.xml"/><Relationship Id="rId6" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`;
   const rootRels=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`;
   const contentTypes=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet3.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet4.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/><Override PartName="/xl/drawings/drawing1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/></Types>`;
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet3.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet4.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet5.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/><Override PartName="/xl/drawings/drawing1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/></Types>`;
   const sheet4Rels=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing1.xml"/></Relationships>`;
 
@@ -1717,6 +1778,7 @@ async function buildXlsxBytes(){
     ['xl/worksheets/sheet2.xml', enc.encode(sheetXML([34,42,10,14], resRows))],
     ['xl/worksheets/sheet3.xml', enc.encode(sheetXML([14,14,15,4,15,14], curveRows))],
     ['xl/worksheets/sheet4.xml', enc.encode(sheetXML([120], visRows, true))],
+    ['xl/worksheets/sheet5.xml', enc.encode(sheetXML([22,22,34,10,10,10,10,12,10,40], projRows))],
     ['xl/worksheets/_rels/sheet4.xml.rels', enc.encode(sheet4Rels)],
     ['xl/drawings/drawing1.xml', enc.encode(drawingXML)],
     ['xl/drawings/_rels/drawing1.xml.rels', enc.encode(drawingRels)],

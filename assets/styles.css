@@ -427,6 +427,8 @@ footer.foot .mono{font-family:var(--mono);color:var(--text)}
   .foot-grid{grid-template-columns:1.6fr 1.2fr;gap:6px 30px;max-width:none}
   nav.f-col,.f-col h2,.f-mark{display:none !important}
   .col-cap,.privacy-chip{display:none !important}
+  .uc-detail-cap{display:block !important;font-size:10px;color:#556;margin:6px 0 2px}
+  .fm-node{break-inside:avoid}
   .f-privacy{background:none;padding:0;color:#556}
   .rec{background:none}
 }
