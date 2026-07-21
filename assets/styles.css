@@ -75,6 +75,11 @@ header.top{display:flex;align-items:center;justify-content:space-between;gap:16p
 .btn-group .btn:focus-visible{outline-offset:-2px}
 .ver-chip{font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.04em;color:var(--teal-strong);background:var(--teal-soft);border:1px solid transparent;border-radius:20px;padding:2.5px 9px;margin-left:4px;transition:border-color .15s}
 .ver-chip:hover{border-color:var(--teal);text-decoration:none}
+.mode-seg{display:inline-flex;background:var(--panel);border:1px solid var(--line);border-radius:9px;box-shadow:var(--shadow);overflow:hidden}
+.mode-seg button{font-family:var(--body);font-size:12px;font-weight:500;color:var(--muted);background:transparent;border:none;padding:8px 12px;cursor:pointer}
+.mode-seg button[aria-pressed="true"]{background:var(--teal-strong);color:#fff;font-weight:600}
+.mode-seg button:focus-visible{outline:2px solid var(--teal);outline-offset:-2px}
+html[data-ux-mode="normal"] .adv{display:none !important}
 
 /* ============ LAYOUT ============ */
 .console{display:grid;grid-template-columns:368px minmax(0,1fr);gap:20px;align-items:start}

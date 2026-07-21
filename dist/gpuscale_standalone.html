@@ -91,6 +91,11 @@ header.top{display:flex;align-items:center;justify-content:space-between;gap:16p
 .btn-group .btn:focus-visible{outline-offset:-2px}
 .ver-chip{font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.04em;color:var(--teal-strong);background:var(--teal-soft);border:1px solid transparent;border-radius:20px;padding:2.5px 9px;margin-left:4px;transition:border-color .15s}
 .ver-chip:hover{border-color:var(--teal);text-decoration:none}
+.mode-seg{display:inline-flex;background:var(--panel);border:1px solid var(--line);border-radius:9px;box-shadow:var(--shadow);overflow:hidden}
+.mode-seg button{font-family:var(--body);font-size:12px;font-weight:500;color:var(--muted);background:transparent;border:none;padding:8px 12px;cursor:pointer}
+.mode-seg button[aria-pressed="true"]{background:var(--teal-strong);color:#fff;font-weight:600}
+.mode-seg button:focus-visible{outline:2px solid var(--teal);outline-offset:-2px}
+html[data-ux-mode="normal"] .adv{display:none !important}
 
 /* ============ LAYOUT ============ */
 .console{display:grid;grid-template-columns:368px minmax(0,1fr);gap:20px;align-items:start}
@@ -398,8 +403,12 @@ footer.foot .mono{font-family:var(--mono);color:var(--text)}
   </div>
   <div class="top-right">
     <div class="scenario">
-      <label for="scenarioName">Scenario</label>
-      <input type="text" id="scenarioName" placeholder="Untitled scenario" maxlength="60">
+      <label for="scenarioName">Project</label>
+      <input type="text" id="scenarioName" placeholder="Untitled project" maxlength="60">
+    </div>
+    <div class="mode-seg" id="modeSeg" role="group" aria-label="Experience mode" title="Normal shows the minimum inputs; Advanced shows every control">
+      <button type="button" data-mode="normal" aria-pressed="false">Normal</button>
+      <button type="button" data-mode="advanced" aria-pressed="true">Advanced</button>
     </div>
     <div class="btn-group" role="group" aria-label="Import and export">
       <button class="btn" id="btnImport" type="button" title="Import configuration JSON"><svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 21h16"/></svg><span class="lbl">Import</span></button>
@@ -431,7 +440,7 @@ footer.foot .mono{font-family:var(--mono);color:var(--text)}
       <select id="selModel"></select>
       <div class="f-help" id="hModel">Architecture geometry drives every estimate: total params size the weights, active params drive compute and decode reads, and the effective KV heads &times; head dim encode each model's real cache cost (MLA, sparse and SSM hybrids use sheet-compatible effective values).</div>
     </div>
-    <div class="toggle-row"><input type="checkbox" id="chkCustom"><label for="chkCustom">Custom model · enter geometry manually</label></div>
+    <div class="toggle-row adv"><input type="checkbox" id="chkCustom"><label for="chkCustom">Custom model · enter geometry manually</label></div>
     <div id="customBox" style="display:none;margin-top:10px">
       <div class="grid2">
         <div class="field"><div class="f-head"><label>Total params</label><span class="unit">B</span></div><input type="number" id="cusParams" value="70" min="0.1" step="0.1" title="All weights that must sit in VRAM; for MoE, every expert."></div>
@@ -453,7 +462,7 @@ footer.foot .mono{font-family:var(--mono);color:var(--text)}
         <div class="f-head"><label for="selWQuant">Weights</label><button class="info" data-help="hWq" aria-expanded="false" type="button">i</button></div>
         <select id="selWQuant"></select>
       </div>
-      <div class="field">
+      <div class="field adv">
         <div class="f-head"><label for="selKQuant">KV cache</label><button class="info" data-help="hKq" aria-expanded="false" type="button">i</button></div>
         <select id="selKQuant"></select>
       </div>
@@ -483,7 +492,7 @@ footer.foot .mono{font-family:var(--mono);color:var(--text)}
     <div class="toggle-row" style="margin-bottom:12px"><input type="checkbox" id="chkExtend" checked><label for="chkExtend">Reasoning tokens extend the KV cache</label><button class="info" data-help="hExtend" aria-expanded="false" type="button">i</button></div>
     <div class="f-help" id="hExtend" style="margin-top:-6px;margin-bottom:10px">On for standard serving (thinking stays in context). Off if the engine discards reasoning traces from the cache after each call.</div>
     <div id="m_inConc"></div>
-    <div id="m_inBatch"></div>
+    <div id="m_inBatch" class="adv"></div>
     <div class="field">
       <div class="f-head"><label for="selPolicy">KV residency policy</label><button class="info" data-help="hPolicy" aria-expanded="false" type="button">i</button></div>
       <select id="selPolicy">
@@ -552,18 +561,18 @@ footer.foot .mono{font-family:var(--mono);color:var(--text)}
       </select>
       <div class="f-help" id="hResil">Pick what the deployment must survive. The sizing rule: every figure in the results is what you can guarantee even during the covered failure, so throughput and concurrency never grow with resilience. The extra hardware either idles until a failure (spares, mirrors, DR standby) or serves day-to-day as burst headroom (Active/Active). The economics strip under the topology shows guaranteed vs normal-day capacity, idle hardware and the cost multiplier for the chosen model.</div>
     </div>
-    <div class="field"><div class="f-head"><label for="autoUtil">Auto-size memory target</label><button class="info" data-help="hAutoUtil" aria-expanded="false" type="button">i</button><span class="spacer"></span><span class="unit">%</span></div><input type="number" id="autoUtil" value="80" min="50" max="95" step="5"></div>
+    <div class="field adv"><div class="f-head"><label for="autoUtil">Auto-size memory target</label><button class="info" data-help="hAutoUtil" aria-expanded="false" type="button">i</button><span class="spacer"></span><span class="unit">%</span></div><input type="number" id="autoUtil" value="80" min="50" max="95" step="5"></div>
     <div class="f-help" id="hAutoUtil">How full Auto-size may pack the serving GPUs. 80% leaves industry-standard growth headroom; 90 to 95% packs tighter at the cost of burst and growth margin (the thin-headroom warning starts at 92%). Manual sliders are never limited by this.</div>
     <button class="btn primary apply" id="btnAuto" type="button" title="Solve TP, workers and batch from everything chosen above"><svg viewBox="0 0 24 24"><path d="M13 2 4.5 14H11l-1 8 8.5-12H12l1-8z"/></svg>Auto-size TP · workers · batch</button>
     <div class="f-help" id="hAuto" style="display:block;margin-bottom:10px">Uses everything above: model, precision, workload, SLO targets, GPU and node size. Picks the smallest Tensor parallel that fits one copy of the model (widened if the TTFT target demands it), then the fewest workers and the batch that admit the peak concurrent calls. No SLO targets means offline: minimal hardware, largest fitting batch, queueing allowed.</div>
     <div class="auto-result" id="autoResult" aria-live="polite"></div>
-    <div class="fine-cap">Fine-tune · Auto-size sets these, edit freely</div>
-    <div id="m_inWorkers"></div>
-    <div id="m_inTp"></div>
+    <div class="fine-cap adv">Fine-tune · Auto-size sets these, edit freely</div>
+    <div id="m_inWorkers" class="adv"></div>
+    <div id="m_inTp" class="adv"></div>
     <div class="meta-card" id="gpuMeta"></div>
   </section>
 
-  <section class="station">
+  <section class="station adv">
     <div class="st-title"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h9M19 6h1M4 12h3M13 12h7M4 18h11M21 18h-1"/><circle cx="15.5" cy="6" r="2.2"/><circle cx="9.5" cy="12" r="2.2"/><circle cx="17.5" cy="18" r="2.2"/></svg>Advanced tuning</div>
     <details class="drawer">
       <summary>Efficiency assumptions · defaults are sensible</summary>
@@ -695,7 +704,7 @@ footer.foot .mono{font-family:var(--mono);color:var(--text)}
       <span class="f-fact">Version <span class="mono" id="appVer">—</span></span>
       <span class="f-fact">Engine <span class="mono" id="engVer">—</span> · library <span class="mono" id="libVer">—</span></span>
       <span class="f-fact">Scripting API at <span class="mono">window.GPUscale</span></span>
-      <span class="f-privacy"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="9.5" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></svg>Private by design: everything runs in your browser. Nothing you enter is saved, uploaded or tracked. No accounts, no analytics, no cookies.</span>
+      <span class="f-privacy"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="9.5" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></svg>Private by design: everything runs in your browser. Nothing you enter is saved, uploaded or tracked; one UI preference (the mode) stays in your browser\u2019s local storage. No accounts, no analytics, no cookies.</span>
     </div>
   </div>
 </footer>
@@ -900,10 +909,18 @@ if(!MODELS.length || !GPUS.length || !QUANTS.length || !CASES.length){
   throw new Error('GPUscale.net data missing');
 }
 const STUDIO_VERSION = '4.16.0', ENGINE_VERSION = 23;
-const SCEN_ID = (()=>{ const L='abcdefghjkmnpqrstuvwxyz', D='0123456789';
+const PROJ_ID = (()=>{ const L='abcdefghjkmnpqrstuvwxyz', D='0123456789';
   const pick=s=>s[Math.floor(Math.random()*s.length)];
-  return 'Scenario_'+pick(L)+pick(L)+pick(D)+pick(D)+pick(D); })();
-function scenName(){ const v=($('scenarioName')&&$('scenarioName').value||'').trim(); return v||SCEN_ID; }
+  return 'Project_'+pick(L)+pick(L)+pick(D)+pick(D)+pick(D); })();
+function projName(){ const v=($('scenarioName')&&$('scenarioName').value||'').trim(); return v||PROJ_ID; }
+const scenName=projName; // legacy alias
+/* UX mode: normal (curated minimum) vs advanced (everything). Persisted locally only. */
+function setUxMode(m){
+  document.documentElement.dataset.uxMode = m==='normal'?'normal':'advanced';
+  try{ localStorage.setItem('gpuscale-mode', document.documentElement.dataset.uxMode); }catch(e){}
+  const seg=document.getElementById('modeSeg');
+  if(seg) seg.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed', b.dataset.mode===document.documentElement.dataset.uxMode?'true':'false'));
+}
 const KV_QUANTS = [{name:'BF16',bytes:2},{name:'FP16',bytes:2},{name:'FP8',bytes:1},{name:'INT8',bytes:1},{name:'INT4',bytes:0.5}];
 const REASON_TOK = {'None':0,'Light reasoning':2000,'Heavy reasoning':8000,'Custom':2000};
 const RESIL = {
@@ -1710,7 +1727,7 @@ function serialize(){
   const s=readState(), d=compute(s);
   return {
     schema:'gpuscale.net/4', engine:ENGINE_VERSION, studio:STUDIO_VERSION,
-    name: scenName(), scenarioId: SCEN_ID,
+    name: projName(), projectId: PROJ_ID, scenarioId: PROJ_ID, mode: document.documentElement.dataset.uxMode||'advanced',
     savedAt: new Date().toISOString(),
     config:{
       model: $('chkCustom').checked? {custom:true, params:s.params, active:s.active, hidden:s.hidden,
@@ -1818,6 +1835,7 @@ function applyConfig(raw){
   if(es.callDurS!=null) $('ccDur').value=es.callDurS;
   if(raw.name) $('scenarioName').value = raw.name==='Untitled scenario'? '' : raw.name;
   if(c.theme==='dark'||c.theme==='light'){ window.__themeLocked=true; setTheme(c.theme); }
+  if(raw.mode==='normal'||raw.mode==='advanced'||c.mode==='normal'||c.mode==='advanced') setUxMode(raw.mode||c.mode);
   Object.keys(FIELDS).forEach(refreshCtl);
   render();
   return notes;
@@ -2241,6 +2259,7 @@ function autoSize(){
   toast(`Auto-sized: TP${tp} · ${df.replicas} replica${df.replicas>1?'s':''} on ${workers} workers · batch ${batch} · ${df.active} of ${s.concurrent} admitted${df.fits? (df.sloAll?'':' · an SLO still fails, see Recommendations') : ' · still over VRAM, see Recommendations'}`);
 }
 $('btnAuto').addEventListener('click',autoSize);
+document.querySelectorAll('#modeSeg button').forEach(b=>b.addEventListener('click',()=>{ setUxMode(b.dataset.mode); }));
 $('btnReset').addEventListener('click',()=>location.reload());
 
 const MOON='<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>';
@@ -2316,8 +2335,9 @@ window.SizingConsole = window.GPUscale;
   const av=document.getElementById('appVer'); if(av) av.textContent='Studio '+STUDIO_VERSION;
   const ev=document.getElementById('engVer'); if(ev) ev.textContent='v'+ENGINE_VERSION;
   const vc=document.getElementById('verChip'); if(vc) vc.textContent='v'+STUDIO_VERSION.replace(/\.0$/,'');
-  $('scenarioName').placeholder=SCEN_ID;
-  const sid=document.getElementById('storyId'); if(sid) sid.textContent=SCEN_ID;
+  $('scenarioName').placeholder=PROJ_ID;
+  try{ setUxMode(localStorage.getItem('gpuscale-mode')||'advanced'); }catch(e){ setUxMode('advanced'); }
+  const sid=document.getElementById('storyId'); if(sid) sid.textContent=PROJ_ID;
   render();
 })();
 

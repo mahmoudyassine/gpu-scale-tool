@@ -7,10 +7,18 @@ if(!MODELS.length || !GPUS.length || !QUANTS.length || !CASES.length){
   throw new Error('GPUscale.net data missing');
 }
 const STUDIO_VERSION = '4.16.0', ENGINE_VERSION = 23;
-const SCEN_ID = (()=>{ const L='abcdefghjkmnpqrstuvwxyz', D='0123456789';
+const PROJ_ID = (()=>{ const L='abcdefghjkmnpqrstuvwxyz', D='0123456789';
   const pick=s=>s[Math.floor(Math.random()*s.length)];
-  return 'Scenario_'+pick(L)+pick(L)+pick(D)+pick(D)+pick(D); })();
-function scenName(){ const v=($('scenarioName')&&$('scenarioName').value||'').trim(); return v||SCEN_ID; }
+  return 'Project_'+pick(L)+pick(L)+pick(D)+pick(D)+pick(D); })();
+function projName(){ const v=($('scenarioName')&&$('scenarioName').value||'').trim(); return v||PROJ_ID; }
+const scenName=projName; // legacy alias
+/* UX mode: normal (curated minimum) vs advanced (everything). Persisted locally only. */
+function setUxMode(m){
+  document.documentElement.dataset.uxMode = m==='normal'?'normal':'advanced';
+  try{ localStorage.setItem('gpuscale-mode', document.documentElement.dataset.uxMode); }catch(e){}
+  const seg=document.getElementById('modeSeg');
+  if(seg) seg.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed', b.dataset.mode===document.documentElement.dataset.uxMode?'true':'false'));
+}
 const KV_QUANTS = [{name:'BF16',bytes:2},{name:'FP16',bytes:2},{name:'FP8',bytes:1},{name:'INT8',bytes:1},{name:'INT4',bytes:0.5}];
 const REASON_TOK = {'None':0,'Light reasoning':2000,'Heavy reasoning':8000,'Custom':2000};
 const RESIL = {
@@ -817,7 +825,7 @@ function serialize(){
   const s=readState(), d=compute(s);
   return {
     schema:'gpuscale.net/4', engine:ENGINE_VERSION, studio:STUDIO_VERSION,
-    name: scenName(), scenarioId: SCEN_ID,
+    name: projName(), projectId: PROJ_ID, scenarioId: PROJ_ID, mode: document.documentElement.dataset.uxMode||'advanced',
     savedAt: new Date().toISOString(),
     config:{
       model: $('chkCustom').checked? {custom:true, params:s.params, active:s.active, hidden:s.hidden,
@@ -925,6 +933,7 @@ function applyConfig(raw){
   if(es.callDurS!=null) $('ccDur').value=es.callDurS;
   if(raw.name) $('scenarioName').value = raw.name==='Untitled scenario'? '' : raw.name;
   if(c.theme==='dark'||c.theme==='light'){ window.__themeLocked=true; setTheme(c.theme); }
+  if(raw.mode==='normal'||raw.mode==='advanced'||c.mode==='normal'||c.mode==='advanced') setUxMode(raw.mode||c.mode);
   Object.keys(FIELDS).forEach(refreshCtl);
   render();
   return notes;
@@ -1348,6 +1357,7 @@ function autoSize(){
   toast(`Auto-sized: TP${tp} · ${df.replicas} replica${df.replicas>1?'s':''} on ${workers} workers · batch ${batch} · ${df.active} of ${s.concurrent} admitted${df.fits? (df.sloAll?'':' · an SLO still fails, see Recommendations') : ' · still over VRAM, see Recommendations'}`);
 }
 $('btnAuto').addEventListener('click',autoSize);
+document.querySelectorAll('#modeSeg button').forEach(b=>b.addEventListener('click',()=>{ setUxMode(b.dataset.mode); }));
 $('btnReset').addEventListener('click',()=>location.reload());
 
 const MOON='<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>';
@@ -1423,7 +1433,8 @@ window.SizingConsole = window.GPUscale;
   const av=document.getElementById('appVer'); if(av) av.textContent='Studio '+STUDIO_VERSION;
   const ev=document.getElementById('engVer'); if(ev) ev.textContent='v'+ENGINE_VERSION;
   const vc=document.getElementById('verChip'); if(vc) vc.textContent='v'+STUDIO_VERSION.replace(/\.0$/,'');
-  $('scenarioName').placeholder=SCEN_ID;
-  const sid=document.getElementById('storyId'); if(sid) sid.textContent=SCEN_ID;
+  $('scenarioName').placeholder=PROJ_ID;
+  try{ setUxMode(localStorage.getItem('gpuscale-mode')||'advanced'); }catch(e){ setUxMode('advanced'); }
+  const sid=document.getElementById('storyId'); if(sid) sid.textContent=PROJ_ID;
   render();
 })();
