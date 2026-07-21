@@ -1,5 +1,32 @@
 # Changelog
 
+## Studio 5.3 (2026-07-21)
+
+Demand-honest sizing: no more replicas nobody asked for.
+
+- Multi-use-case pools now keep only the replicas the peak load needs;
+  the rest of the pool's GPUs become spares (dashed in the fleet map,
+  reused for supporting models) instead of extra model copies. Nine
+  concurrent calls at batch 16 now mean one replica, not eight. Single
+  use case keeps the classic v4 behavior and instead warns loudly on
+  structural overprovision (capacity 4x beyond peak).
+- Active users at peak is now the primary demand input in BOTH modes.
+  Little's law derives concurrent LLM calls live using the estimator's
+  traffic shape (interactions per hour, calls per turn, burst, call
+  duration), shown under the field and still directly editable.
+- Auto-size fixes: tensor parallel is chosen so one copy plus the per-GPU
+  overhead fits the memory target (previously a memory-tight model at TP1
+  made the worker loop silently run to 64 workers and report them as the
+  answer); the solver now fails with a clear reason instead of returning
+  a fleet that never fit. Its note also states what Auto-size does and
+  does not decide.
+- A new use case that forms its own pool is auto-sized on creation, so
+  stale topology values no longer ride along from the card it was cloned
+  from.
+- Normal mode regained the critical controls: concurrent calls, SLO
+  targets, GPUs per node and the Auto-size button (auto-run stays).
+
+
 ## Studio 5.2.1 (2026-07-21)
 
 Header redesign.

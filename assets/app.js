@@ -7,7 +7,7 @@ if(!MODELS.length || !GPUS.length || !QUANTS.length || !CASES.length){
   document.body.innerHTML = '<div style="font-family:system-ui,sans-serif;max-width:560px;margin:80px auto;padding:0 20px;line-height:1.65;color:#1A2536"><h2 style="margin-bottom:10px">Data files not loaded</h2><p>GPUscale.net could not find its library. Keep <code>index.html</code> together with the <code>data/</code> and <code>assets/</code> folders: the four files <code>data/models.js</code>, <code>data/gpus.js</code>, <code>data/quants.js</code> and <code>data/usecases.js</code> must sit next to this page.</p><p>If you need one portable file instead, use <code>dist/gpuscale_standalone.html</code> or rebuild it with <code>python3 tools/build_single_file.py</code>.</p></div>';
   throw new Error('GPUscale.net data missing');
 }
-const STUDIO_VERSION = '5.2.1', ENGINE_VERSION = 23;
+const STUDIO_VERSION = '5.3.0', ENGINE_VERSION = 23;
 const PROJ_ID = (()=>{ const L='abcdefghjkmnpqrstuvwxyz', D='0123456789';
   const pick=s=>s[Math.floor(Math.random()*s.length)];
   return 'Project_'+pick(L)+pick(L)+pick(D)+pick(D)+pick(D); })();
@@ -386,7 +386,7 @@ function buildStory(s,d,m,g){
   const minGpus=Math.ceil((d.weights+d.act)/s.gpuVram);
   P.push(`One copy of <b>${m.name}</b> at <b>${s.wq.name}</b> weighs <b>${fmt(d.weights)} GB</b>: ${fmt(s.params)} billion parameters × ${s.bytesW} byte${s.bytesW===1?'':'s'} each. A single ${g.name} holds ${fmt(s.gpuVram)} GB, so one copy needs at least <b>${minGpus} GPU${minGpus>1?'s':''}</b>; here it is sliced across <b>TP${s.tp}</b>, a group with ${fmt(s.tp*s.gpuVram)} GB of memory.`);
   if(d.replicas>1)
-    P.push(`Serving <b>${s.concurrent} concurrent calls</b> is what multiplies the fleet: at batch ${s.batch} per copy, admitting ${d.active} calls takes <b>${d.replicas} full copies</b> of the model. The serving fleet is ${d.replicas} × TP${s.tp} = <b>${d.servingGpus||s.gpus} GPUs</b> on ${s.workers} workers${d.queued>0?`, and ${d.queued} calls still queue at peak`:''}. The model itself only ever needed ${minGpus}; the other ${(d.servingGpus||s.gpus)-s.tp} GPUs are for your users.`);
+    P.push(`Serving <b>${s.concurrent} concurrent calls</b> is what multiplies the fleet: at batch ${s.batch} per copy, admitting ${d.active} calls takes <b>${d.replicas} full copies</b> of the model. The serving fleet is ${d.replicas} × TP${s.tp} = <b>${d.servingGpus||s.gpus} GPUs</b> on ${s.workers} workers${d.queued>0?`, and ${d.queued} calls still queue at peak`:''}. The model itself only ever needed ${minGpus}; the other ${(d.servingGpus||s.gpus)-s.tp} GPUs are for your users.`+(window.__prj&&UC.length>1&&(s.gpus>d.replicas*s.tp)? ` The pool's nodes hold ${s.gpus} GPUs; the ${s.gpus-d.replicas*s.tp} beyond the needed replicas stay spare (headroom and supporting models).`:''));
   else
     P.push(`One copy serves everything: at batch ${s.batch} it admits ${d.active} of your ${s.concurrent} concurrent calls${d.queued>0?` while ${d.queued} queue at peak`:''}. Fleet = the single TP${s.tp} group${s.workers>1?` spread over ${s.workers} workers`:''}.`);
   const kvSeq=d.effSeq*d.kvTok;
@@ -628,7 +628,9 @@ function render(){
   window.__lastLat=d.latency;
   const nd=$('nrmDerived');
   if(nd){ const users=Math.max(1,+$('nrmUsers').value||1);
-    nd.textContent=`→ ${fmt(s.concurrent)} concurrent calls from ${fmt(users)} people (6 interactions/h · 1.5× burst · ${fmt(Math.min(120,Math.max(5,d.latency)))} s/call)`; }
+    const turns=+$('ccTurns').value||8, burst=+$('ccBurst').value||1.5;
+    const dur=+$('ccDur').value>0? +$('ccDur').value : Math.min(120,Math.max(5,d.latency));
+    nd.textContent=`→ ${fmt(s.concurrent)} concurrent calls from ${fmt(users)} users (${fmt(turns)} interactions/h · ${fmt(burst)}× burst · ${fmt(dur)} s/call)`; }
   const mb=$('miniBar');
   if(mb){ const F=window.__prj.fleet;
     const fits=F.fits, sloOk=F.sloAll;
@@ -645,6 +647,8 @@ function render(){
     : ['warn',`TP${s.tp} spans workers; the cross-node penalty is modeled via interconnect efficiency ${s.ic}. Prefill (TTFT) is still estimated optimistically across nodes; real systems typically use TP${s.perW} inside the node plus pipeline parallelism across nodes.`]);
   if(d.queued>0&&d.fits){ const bn=Math.ceil(s.concurrent/d.replicas);
     ins.push(['warn',`${d.queued} of ${s.concurrent} calls queue at peak (only ${d.active} admitted). ${bn<=Math.min(d.maxBatchMem||0,512)? `Raise max batch per replica to ${bn} to admit everyone.`:'Add workers or trim context to admit more.'}`]); }
+  const admitCap=s.batch*d.replicas;
+  if(d.replicas>1 && admitCap>=4*s.concurrent) ins.push(['warn',`Structural overprovision: ${d.replicas} replicas × batch ${s.batch} can admit ${fmt(admitCap)} calls, but peak demand is ${fmt(s.concurrent)}. Run Auto-size, or lower workers/TP, unless the extra copies are deliberate burst headroom.`]);
   if(d.kvTotal>d.weightsAll) ins.push(['warn',`KV-dominated deployment: cache (${fmt(d.kvTotal)} GB) outweighs weights (${fmt(d.weightsAll)} GB). FP8/INT8 KV, compressed-KV models, or shorter resident sequences pay off most here.`]);
   if(d.slo.ttft.on&&!d.slo.ttft.pass) ins.push(['bad',`Prefill misses the TTFT target. Options: prefix caching for repeated prompts, chunked prefill, TP ${s.tp}→${Math.min(s.tp*2,s.gpus)}, or a higher-TFLOPS part; disaggregated prefill serving (NVIDIA Dynamo, Mooncake-style) exists for exactly this.`]);
   if(/MHA/.test(m.arch||'')) ins.push(['warn',`${m.name.split(' ')[0]} uses full multi-head attention: KV is ${fmt(d.kvTok*1e3)} MB per token, an order beyond GQA peers. Budget context tightly.`]);
@@ -670,7 +674,7 @@ function render(){
     const F=prj.fleet;
     $('verdict').className='panel verdict '+(F.fits? (F.sloAll?'ok':'warn') : 'bad');
     $('vMain').textContent = F.fits? (F.sloAll? 'Project fits & SLO targets met' : 'Project fits · an SLO target fails') : 'Project exceeds GPU memory';
-    $('vKv').innerHTML = `<b>${fmt(F.vramNeed)} GB</b> required · <b>${fmt(F.vramAvail)} GB</b> across ${F.servG+F.supG} serving GPUs`;
+    $('vKv').innerHTML = `<b>${fmt(F.vramNeed)} GB</b> required · <b>${fmt(F.vramAvail)} GB</b> across ${F.activeG+F.supG} active GPUs${F.spare?` · ${F.spare} spare`:''}`;
     $('vSub').textContent = `${prj.pools.length} pool${prj.pools.length>1?'s':''} · ${F.procG} GPUs procured · ≈${fmt(F.kW)} kW`;
   }
   $('story').innerHTML = buildStory(s,d,m,g);
@@ -786,7 +790,12 @@ function addUc(){ captureUc(); const base=UC[activeUc];
   UC.push(u); loadUc(UC.length-1);
   const ci=CASES.findIndex(c=>/Simple chatbot/.test(c.name));
   if(ci>=0){ $('selCase').value=ci; applyCase(ci); }
-  captureUc(); renderUcCards(); render();
+  captureUc();
+  const prj=computeProject();
+  const p=prj.pools.find(p2=>p2.members.includes(UC.length-1));
+  if(p && p.members.length===1){ const r=solvePool(p.state);
+    if(r.ok){ u.f.inTp=r.tp; u.f.inWorkers=r.workers; u.f.inBatch=r.batch; loadUc(UC.length-1); } }
+  renderUcCards(); render();
   toast('Use case added: pick its type and model below'); }
 function duplicateUc(i){ captureUc(); const base=UC[i]; if(!base) return;
   const u={id:'uc'+(++ucSeq), name:(ucName(base)+' copy').slice(0,40),
@@ -932,9 +941,17 @@ function computeProject(){
     p.state.sloTtft=nzmin(p.members.map(i=>+UC[i].f.sloTtft||0));
     p.state.sloP95=nzmin(p.members.map(i=>+UC[i].f.sloP95||0));
     p.d=compute(p.state);
+    // demand cap: keep only the replicas the peak load needs; the rest of the
+    // pool's GPUs become spares (shown dashed, reused for supporting models)
+    // instead of extra model copies nobody asked for.
+    const needReps=Math.max(1, Math.ceil(p.state.concurrent/Math.max(1,p.state.batch)));
+    if(UC.length>1 && p.d.replicas>needReps){
+      p.capped=p.d.replicas;
+      p.d=compute(Object.assign({}, p.state, {gpus:needReps*p.state.tp}));
+    }
     p.perUc=p.members.map(i=>{
       const s=ucState(UC[i], hw);
-      s.tp=p.state.tp; s.workers=p.state.workers; s.gpus=p.state.gpus; s.batch=p.state.batch;
+      s.tp=p.state.tp; s.workers=p.state.workers; s.gpus=p.d.replicas*p.state.tp; s.batch=p.state.batch;
       const d=compute(s);
       const share=Math.min(s.concurrent, Math.round(p.d.active*s.concurrent/Math.max(1,p.state.concurrent)));
       return {i, uc:UC[i], s, d, share};
@@ -1007,7 +1024,8 @@ function fleetTotals(pools, sup, hw){
   const resilW=pools.reduce((t,p)=>t+info.mult(p.state.workers),0)+info.add;
   const procW=servW+resilW+supNodes;
   const procG=procW*hw.perW;
-  return {servW, servG, spare, supG, supExtraG, supNodes, resilW, procW, procG,
+  const activeG=pools.reduce((t,p)=>t+p.d.replicas*p.state.tp,0);
+  return {servW, servG, activeG, spare, supG, supExtraG, supNodes, resilW, procW, procG,
     kW:procG*hw.g.watts/1000,
     fits:pools.every(p=>p.d.fits),
     sloAll:pools.every(p=>p.perUc.every(x=>x.d.sloAll)),
@@ -1136,7 +1154,7 @@ function renderProject(){
   const short=n=>n.length>26? n.slice(0,24)+'…':n;
   // strip: one chip per pool + supports + procurement
   $('projStrip').innerHTML =
-    pools.map((p,pi)=>`<span class="ps-chip"><span class="dot" style="background:var(--pool${PC[pi]})"></span><b>${esc(short(p.state.model.name))}</b><span class="mono">${esc(p.state.wq.name)} · TP${p.state.tp} · ${p.state.workers}×${p.state.perW} GPU · ${p.d.replicas} repl · ${p.state.concurrent} calls</span><span class="dot" style="background:${p.d.fits&&p.perUc.every(x=>x.d.sloAll)?'var(--teal-strong)':'var(--red)'};border-radius:50%"></span></span>`).join('')+
+    pools.map((p,pi)=>`<span class="ps-chip"><span class="dot" style="background:var(--pool${PC[pi]})"></span><b>${esc(short(p.state.model.name))}</b><span class="mono">${esc(p.state.wq.name)} · TP${p.state.tp} · ${p.state.workers}×${p.state.perW} GPU · ${p.d.replicas} repl · ${p.state.concurrent} calls${p.capped?' · '+(p.capped-p.d.replicas)+' idle repl → spare':''}</span><span class="dot" style="background:${p.d.fits&&p.perUc.every(x=>x.d.sloAll)?'var(--teal-strong)':'var(--red)'};border-radius:50%"></span></span>`).join('')+
     (sup.gpus? `<span class="ps-chip"><span class="dot" style="background:var(--amber-border)"></span><b>Supporting</b><span class="mono">${sup.items.reduce((t,i2)=>t+i2.instances,0)} instances · ${sup.gpus} shared GPU${sup.gpus>1?'s':''}</span></span>`:'')+
     `<span class="ps-chip"><b>Procured</b><span class="mono">${fleet.procW} nodes · ${fleet.procG} GPUs · ≈${fmt(fleet.kW)} kW</span></span>`;
   // per-usecase result cards
@@ -1637,7 +1655,7 @@ async function buildXlsxBytes(){
   res('weights','Weights per replica','GB', ()=>`${I('params')}*${I('bytesW')}`, d.weights);
   res('kvTok','KV per token','GB', ()=>`2*${I('layers')}*${I('kvh')}*${I('hdim')}*${I('bytesK')}/1000000000`, d.kvTok);
   res('effSeq','Effective sequence','tok', ()=>`${I('seq')}+IF(${I('ext')}=1,${I('reason')},0)`, d.effSeq);
-  res('replicas','Replicas (model copies)','', ()=>`MAX(1,INT(${R('gpusTotal')}/MAX(${I('tp')},1)))`, d.replicas);
+  res('replicas','Replicas (model copies)','', ()=> multi? `MIN(MAX(1,INT(${R('gpusTotal')}/MAX(${I('tp')},1))),MAX(1,CEILING(${I('conc')}/MAX(${I('batch')},1),1)))` : `MAX(1,INT(${R('gpusTotal')}/MAX(${I('tp')},1)))`, d.replicas);
   res('active','Admitted sequences','', ()=>`IF(${I('policy')}=1,${I('conc')},MIN(${I('conc')},${I('batch')}*${R('replicas')}))`, d.active);
   res('kvTotal','KV cache total','GB', ()=>`${R('active')}*${R('effSeq')}*${R('kvTok')}`, d.kvTotal);
   res('activ','Activations per replica','GB', ()=>`MIN(${R('effSeq')},8192)*${I('hidden')}*12*${I('bytesW')}/1000000000`, d.act);
@@ -1818,8 +1836,11 @@ async function buildXlsxBytes(){
 /* ================= WIRING ================= */
 function applyNrmUsers(){
   const users=Math.max(1,+$('nrmUsers').value||1);
-  const dur=Math.min(120, Math.max(5, window.__lastLat||20));
-  const conc=Math.max(1, Math.ceil(users*6*dur/3600*1.5));
+  $('ccSessions').value=users;
+  const turns=+$('ccTurns').value||8, share=(+$('ccShare').value||100)/100;
+  const calls=+$('ccCalls').value||1.5, burst=+$('ccBurst').value||1.5;
+  const dur=+$('ccDur').value>0? +$('ccDur').value : Math.min(120, Math.max(5, window.__lastLat||20));
+  const conc=Math.max(1, Math.ceil(users*turns*share*calls*dur/3600*burst));
   $('inConc').value=conc; refreshCtl('inConc');
   return conc;
 }
@@ -1828,7 +1849,7 @@ document.querySelectorAll('input,select').forEach(el=>{
     if(el.id==='selCase') applyCase(+el.value);
     if(el.id==='selReason') syncReason();
     if(el.id==='chkCustom'){ $('customBox').style.display=el.checked?'block':'none'; $('selModel').disabled=el.checked; }
-    if(el.id==='nrmUsers') applyNrmUsers();
+    if(el.id==='nrmUsers'||el.id==='ccTurns'||el.id==='ccShare'||el.id==='ccCalls'||el.id==='ccBurst'||el.id==='ccDur') applyNrmUsers();
     if(el.id==='selResilSimple') $('selResil').value=el.value;
     if(el.id==='selResil'){ const v=el.value, sim=$('selResilSimple');
       if(sim) sim.value = v==='n'? 'n' : (v==='n1'||v==='n2')? 'n1' : 'dr'; }
@@ -1844,7 +1865,9 @@ function solvePool(s){
   const weights=s.params*s.bytesW;
   const actGB=Math.min(s.resident+(s.extend?s.reasonTok:0),8192)*s.hidden*12*s.bytesW/1e9;
   const packPct=Math.min(95,Math.max(50,+($('autoUtil')&&$('autoUtil').value)||80)), pack=packPct/100;
-  let tp=[1,2,4,8,16,32,64,72].find(t=>weights+actGB<=pack*t*s.gpuVram);
+  // TP must leave room per GPU for the ~15 GB multi-GPU overhead too, or the
+  // worker loop can never converge: (weights+act)/tp + 15 <= pack*vram
+  let tp=[1,2,4,8,16,32,64,72].find(t=>weights+actGB<=Math.max(1,(pack*s.gpuVram-15))*t);
   if(!tp) return {ok:false, packPct,
     reason:`No TP up to 64 fits one copy of ${s.model.name} on ${s.gpu.name}: quantize the weights or pick a higher-VRAM GPU`};
   const tpFit=tp;
@@ -1856,6 +1879,7 @@ function solvePool(s){
   const interactive=(s.sloTtft>0||s.sloTps>0||s.sloP95>0);
   const eva=(workers,batch)=>compute({...s, tp, ic, workers, gpus:workers*s.perW, batch});
   let workers, batch, d;
+  let converged=false;
   if(interactive){
     // fewest workers that admit the peak concurrency at a batch of at most 64, then grow until it fits
     workers=Math.min(64,Math.max(1,Math.ceil(Math.max(1,Math.ceil(s.concurrent/64))*tp/s.perW)));
@@ -1863,7 +1887,8 @@ function solvePool(s){
       const replicas=Math.max(1,Math.floor(workers*s.perW/tp));
       batch=Math.min(64,Math.max(1,Math.ceil(s.concurrent/replicas)));
       d=eva(workers,batch);
-      if(d.total<=pack*d.avail||workers>=64) break;
+      if(d.total<=pack*d.avail){ converged=true; break; }
+      if(workers>=64) break;
       workers++;
     }
   } else {
@@ -1872,12 +1897,14 @@ function solvePool(s){
     outer: for(;;){
       for(const b of [256,128,64,32,16,8,4,2,1]){
         batch=b; d=eva(workers,b);
-        if(d.total<=pack*d.avail) break outer;
+        if(d.total<=pack*d.avail){ converged=true; break outer; }
       }
       if(workers>=64) break;
       workers++;
     }
   }
+  if(!converged) return {ok:false, packPct,
+    reason:`Could not fit ${s.model.name} at TP${tp} within the ${packPct}% memory target even at 64 workers: quantize the weights, raise the target, or pick a higher-VRAM GPU`};
   return {ok:true, tp, tpFit, widened, crossed, workers, batch, packPct, weights, actGB};
 }
 function autoSizeProject(quiet){
@@ -1898,7 +1925,7 @@ function autoSizeProject(quiet){
   const why=`Sized each pool separately. `+lines.join(' ')+
     (done.sup.gpus? ` Supporting models need ${done.sup.gpus} shared GPU${done.sup.gpus>1?'s':''}: ${Math.min(done.fleet.spare,done.sup.gpus)} covered by spare pool GPUs, ${done.fleet.supExtraG} added.`:'')+
     ` Fleet: ${done.fleet.servG} serving GPUs across ${done.fleet.servW} workers, ${done.fleet.procG} procured with ${RESIL[done.hw.resil].label} resilience.`;
-  const ar=$('autoResult'); if(ar){ ar.textContent=why; ar.classList.add('show'); }
+  const ar=$('autoResult'); if(ar){ ar.textContent=why+' Auto-size sets TP, workers and batch only; suggestions that change model or precision stay in Recommendations, as your call.'; ar.classList.add('show'); }
   if(!quiet||!allOk) toast(allOk? `Auto-sized ${prj.pools.length} pool${prj.pools.length>1?'s':''}: ${done.fleet.servG} serving GPUs, ${done.fleet.procG} procured` : 'Auto-size finished with problems: see the note under the Auto-size control', !allOk);
 }
 function autoSize(quiet){
@@ -1927,7 +1954,7 @@ function autoSize(quiet){
     const u=df.total/df.avail*100;
     why+=`Memory sits at ${u.toFixed(0)}% against your ${packPct}% target: the smallest whole-GPU fleet that ${interactive?'admits every call in the contract':'fits the model with the largest batch'} within it. The gap below the target is the rounding cost of whole GPUs and power-of-two TP; the gap above it would be your growth and burst margin. Raise the target to pack tighter, lower it for more headroom.`;
   }
-  const ar=$('autoResult'); if(ar){ ar.textContent=why; ar.classList.add('show'); }
+  const ar=$('autoResult'); if(ar){ ar.textContent=why+' Auto-size sets TP, workers and batch only; suggestions that change model or precision stay in Recommendations, as your call.'; ar.classList.add('show'); }
   if(!__quiet) toast(`Auto-sized: TP${tp} · ${df.replicas} replica${df.replicas>1?'s':''} on ${workers} workers · batch ${batch} · ${df.active} of ${s.concurrent} admitted${df.fits? (df.sloAll?'':' · an SLO still fails, see Recommendations') : ' · still over VRAM, see Recommendations'}`);
 }
 let __autoT=null;
