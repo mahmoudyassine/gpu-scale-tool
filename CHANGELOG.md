@@ -1,5 +1,28 @@
 # Changelog
 
+## Studio 5.6 (2026-07-21)
+
+A native Excel report, a richer ledger, and a quieter rail.
+
+- The Excel export is rebuilt around a styled Report sheet that mirrors the
+  page: verdict banner, use-case and deployment rows in each use case's
+  color, KPI tiles, per-pool memory detail, the fleet map as a colored cell
+  grid (supporting GPUs hatched, spares dashed), recommendations, and THREE
+  native Excel charts you can edit like any chart: the memory ledger as a
+  stacked bar per pool, per-user throughput lines per pool, and the latency
+  anatomy per use case. Chart data lives on a Data sheet; the Inputs and
+  Results formula sheets and the Project sheet remain. The screenshot-image
+  sheet is gone. Landscape fit-to-width print setup included.
+- The memory ledger got its depth back: every pool's bar carries hoverable
+  segments plus a breakdown line (weights, KV with sequence count,
+  activations, overhead, each in GB and percent, plus headroom), a
+  supporting-models line, and a project-total row with utilization.
+- The auto-size explainer moved behind the button's (i); the sizing
+  decision, with a timestamp, now lives in the Summary panel (and in the
+  Excel report) instead of a wall of text in the rail.
+- Print: the results banner no longer leaks into the PDF header.
+
+
 ## Studio 5.5 (2026-07-21)
 
 Auto-size now sizes for the SLA, and says what it cannot fix.

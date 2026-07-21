@@ -7,7 +7,7 @@ if(!MODELS.length || !GPUS.length || !QUANTS.length || !CASES.length){
   document.body.innerHTML = '<div style="font-family:system-ui,sans-serif;max-width:560px;margin:80px auto;padding:0 20px;line-height:1.65;color:#1A2536"><h2 style="margin-bottom:10px">Data files not loaded</h2><p>GPUscale.net could not find its library. Keep <code>index.html</code> together with the <code>data/</code> and <code>assets/</code> folders: the four files <code>data/models.js</code>, <code>data/gpus.js</code>, <code>data/quants.js</code> and <code>data/usecases.js</code> must sit next to this page.</p><p>If you need one portable file instead, use <code>dist/gpuscale_standalone.html</code> or rebuild it with <code>python3 tools/build_single_file.py</code>.</p></div>';
   throw new Error('GPUscale.net data missing');
 }
-const STUDIO_VERSION = '5.5.0', ENGINE_VERSION = 23;
+const STUDIO_VERSION = '5.6.0', ENGINE_VERSION = 23;
 const PROJ_ID = (()=>{ const L='abcdefghjkmnpqrstuvwxyz', D='0123456789';
   const pick=s=>s[Math.floor(Math.random()*s.length)];
   return 'Project_'+pick(L)+pick(L)+pick(D)+pick(D)+pick(D); })();
@@ -684,7 +684,8 @@ function render(){
     $('vKv').innerHTML = `<b>${fmt(F.vramNeed)} GB</b> required · <b>${fmt(F.vramAvail)} GB</b> across ${F.activeG+F.supG} active GPUs${F.spare?` · ${F.spare} spare`:''}`;
     $('vSub').textContent = `${prj.pools.length} pool${prj.pools.length>1?'s':''} · ${F.procG} GPUs procured · ≈${fmt(F.kW)} kW`;
   }
-  $('story').innerHTML = (window.__prj && UC.length>1)? buildProjectSummary(window.__prj) : buildStory(s,d,m,g);
+  $('story').innerHTML = (window.__prj && UC.length>1)? buildProjectSummary(window.__prj)
+    : buildStory(s,d,m,g)+(window.__autoNote?`<p class="story-auto">${rico('zap')}<b>Sizing decision</b> (Auto-size, ${esc(window.__autoNote.at.toLocaleTimeString())}): ${esc(window.__autoNote.text)}</p>`:'');
   $('printInputs').innerHTML = '<div class="pi-title">'+(window.__prj&&UC.length>1? 'Inputs · pool '+m.name+' '+s.wq.name+' ('+UC.length+' use cases; project panel below lists all)' : 'Inputs · complete configuration')+'</div><div class="pi-grid">'+[
     ['Model', m.name],['Total params', fmt(s.params)+' B'],['Active params', fmt(s.active)+' B'],
     ['Geometry', s.layers+'L · h'+s.hidden+' · KV '+s.kvHeads+'×'+s.headDim],['Max context', fmtTok(m.ctx)],
@@ -1086,6 +1087,8 @@ function buildProjectSummary(prj){
   if(sup.items.length)
     h+=li('puzzle',`<b>Supporting models</b>: ${sup.items.map(it=>`${KIND_LABEL[it.kind]||it.kind} ×${it.instances}`).join(', ')} on ${sup.gpus} shared GPU${sup.gpus>1?'s':''} (${esc(sup.note)})`);
   h+=li('shield',`<b>Resilience</b>: ${esc(info.long)}${fleet.resilW?` adds ${fleet.resilW} idle node${fleet.resilW>1?'s':''}`:' adds nothing'}${fleet.supNodes?`; ${fleet.supNodes} supporting node${fleet.supNodes>1?'s':''} added`:''}.`);
+  if(window.__autoNote)
+    h+=li('zap',`<b>Sizing decision</b> (Auto-size, ${esc(window.__autoNote.at.toLocaleTimeString())}): ${esc(window.__autoNote.text)}`);
   const finds=[];
   if(!fleet.fits) finds.push(['bad','The project exceeds GPU memory: see Recommendations.']);
   const failing=pools.flatMap(p=>p.perUc.filter(x=>!x.d.sloAll));
@@ -1377,14 +1380,22 @@ function renderProjectReport(prj){
   panel.querySelector('.lg-wrap').style.display='none';
   $('lgLegend').style.display='none';
   $('ledgerNote').textContent=`${fmt(fleet.vramNeed)} of ${fmt(fleet.vramAvail)} GB across ${pools.length} pools + supports`;
+  const pctOfCap=(v,cap)=>(100*v/cap).toFixed(v/cap<0.005&&v>0?1:0)+'%';
   box.innerHTML=pools.map((p,pi)=>{
-    const d=p.d, cap=d.avail;
-    const seg=(v,cls)=>`<div class="seg ${cls}" style="width:${Math.min(100,v/cap*100)}%"></div>`;
+    const d=p.d, cap=d.avail, ovh=d.fixed+d.multi, actAll=d.act*d.replicas;
+    const seg=(v,cls,ttl)=>`<div class="seg ${cls}" style="width:${Math.min(100,v/cap*100)}%" title="${ttl}: ${fmt(v)} GB · ${pctOfCap(v,cap)}"></div>`;
     return `<div class="pl-row">
-      <div class="pl-lab"><span class="dot" style="background:var(--pool${PC[pi]})"></span>${esc(tag(pi))}<span class="pl-note">${p.d.replicas}×TP${p.state.tp}</span></div>
-      <div class="pl-bar">${seg(d.weightsAll,'weights')}${seg(d.kvTotal,'kv')}${seg(d.act*d.replicas,'act')}${seg(d.fixed+d.multi,'ovh')}</div>
-      <div class="pl-val mono">${fmt(d.total)} / ${fmt(cap)} GB · ${(d.total/cap*100).toFixed(0)}%</div></div>`;
-  }).join('')+`<div class="pl-key"><span class="lg-li"><span class="sw seg weights"></span>weights</span><span class="lg-li"><span class="sw seg kv"></span>KV cache</span><span class="lg-li"><span class="sw seg act"></span>activations</span><span class="lg-li"><span class="sw seg ovh"></span>overhead</span></div>`;
+      <div class="pl-lab"><span class="dot" style="background:var(--pool${PC[pi]})"></span>${esc(tag(pi))}<span class="pl-note">${p.d.replicas}×TP${p.state.tp} · ${p.state.workers} node${p.state.workers>1?'s':''}</span></div>
+      <div class="pl-bar">${seg(d.weightsAll,'weights','Weights')}${seg(d.kvTotal,'kv','KV cache')}${seg(actAll,'act','Activations')}${seg(ovh,'ovh','Overhead')}</div>
+      <div class="pl-val mono">${fmt(d.total)} / ${fmt(cap)} GB · ${(d.total/cap*100).toFixed(0)}%</div></div>
+    <div class="pl-detail mono">weights ${fmt(d.weightsAll)} GB ${pctOfCap(d.weightsAll,cap)} · KV · ${d.active} seq ${fmt(d.kvTotal)} GB ${pctOfCap(d.kvTotal,cap)} · activations ${fmt(actAll)} GB ${pctOfCap(actAll,cap)} · overhead ${fmt(ovh)} GB ${pctOfCap(ovh,cap)} · headroom ${fmt(d.headroom)} GB</div>`;
+  }).join('')+
+  (sup.gpus?`<div class="pl-detail mono" style="margin-top:2px">supporting models ${fmt(sup.totalVram)} GB on ${sup.gpus} shared GPU${sup.gpus>1?'s':''} (${sup.items.map(it=>`${KIND_LABEL[it.kind]||it.kind} ${fmt(it.instances*it.model.vram)} GB`).join(' · ')})</div>`:'')+
+  `<div class="pl-row pl-total">
+      <div class="pl-lab">Project total</div>
+      <div class="pl-bar"><div class="seg weights" style="width:${Math.min(100,fleet.vramNeed/fleet.vramAvail*100)}%"></div></div>
+      <div class="pl-val mono">${fmt(fleet.vramNeed)} / ${fmt(fleet.vramAvail)} GB · ${(fleet.vramNeed/fleet.vramAvail*100).toFixed(1)}% · headroom ${fmt(fleet.vramAvail-fleet.vramNeed)} GB</div></div>`+
+  `<div class="pl-key"><span class="lg-li"><span class="sw seg weights"></span>weights</span><span class="lg-li"><span class="sw seg kv"></span>KV cache</span><span class="lg-li"><span class="sw seg act"></span>activations</span><span class="lg-li"><span class="sw seg ovh"></span>overhead</span><span class="lg-li">hover any segment for exact GB and share</span></div>`;
   box.style.display='';
   // --- KPI tiles: project totals + demand-weighted averages ---
   const wavg=get=>pools.reduce((x,p)=>x+get(p)*p.state.concurrent,0)/wsum;
@@ -1896,26 +1907,6 @@ async function buildXlsxBytes(){
   res('power','GPU power (TDP, this pool)','kW', ()=>`${R('procG')}*${I('watts')}/1000`, powerKW);
   res('fleetG','Fleet procured GPUs (all pools + support nodes)','', ()=>`${prj.fleet.procG}`, prj.fleet.procG);
 
-  // ----- curve data -----
-  const curveB=[]; const Smax=Math.max(Math.ceil(s.concurrent*1.4), s.batch*d.replicas*2, 16);
-  for(let i=0;i<=24;i++){ const S=Math.max(1,Math.round(1+(Smax-1)*i/24));
-    const bpr=Math.max(1,S/d.replicas);
-    const tps=d.bwEff/(s.active*s.bytesW+bpr*d.effSeq*d.kvTok);
-    curveB.push([S,tps,tps*S]); }
-  const curveC=[];
-  for(let i=0;i<=24;i++){ const c=Math.round(1024*Math.pow(s.ctx/1024, i/24));
-    const tps=d.bwEff/(s.active*s.bytesW+d.batchPerRep*c*d.kvTok);
-    curveC.push([c,tps]); }
-
-  // ----- images -----
-  const images=[];
-  try{ images.push(['Memory ledger', ledgerPngBytes(s,d)]); }catch(e){}
-  const grabs=[['Throughput vs admitted sequences','#chartBatch svg'],['Per-user speed vs context length','#chartCtx svg']];
-  for(const [label,sel] of grabs){
-    const el=document.querySelector(sel);
-    if(el){ try{ images.push([label, await svgToPngBytes(el, 2)]); }catch(e){} }
-  }
-
   // ----- sheet XML builders -----
   const cell=(ref,style,val,opts)=>{
     if(opts&&opts.formula) return `<c r="${ref}" s="${style}"${opts.str?' t="str"':''}><f>${xEsc(opts.formula)}</f><v>${xEsc(opts.str? val : (isFinite(val)? +(+val).toPrecision(10) : 0))}</v></c>`;
@@ -1982,69 +1973,244 @@ async function buildXlsxBytes(){
     resRows.push([cell('A'+ri,4,r[1]), cell('B'+ri,3,r[4],{formula:r[3](),str:r[5]}), cell('C'+ri,4,r[2]||''), r[5]? cell('D'+ri,3,r[4]) : `<c r="D${ri}" s="3"><v>${+(+r[4]).toPrecision(10)}</v></c>`]);
   });
 
-  const curveRows=[[`<c r="A1" s="5" t="inlineStr"><is><t>Chart source data (as plotted in the studio)</t></is></c>`],
-    ['<c r="A2" s="1" t="inlineStr"><is><t>Admitted seqs</t></is></c>','<c r="B2" s="1" t="inlineStr"><is><t>Per-user tok/s</t></is></c>','<c r="C2" s="1" t="inlineStr"><is><t>Aggregate tok/s</t></is></c>',null,'<c r="E2" s="1" t="inlineStr"><is><t>Context tokens</t></is></c>','<c r="F2" s="1" t="inlineStr"><is><t>Per-user tok/s</t></is></c>']];
-  for(let i=0;i<25;i++){
-    curveRows.push([curveB[i][0],curveB[i][1],curveB[i][2],null,curveC[i][0],curveC[i][1]]);
+
+  // ================= REPORT WORKBOOK (native, styled, editable charts) =================
+  const P_HEX=['2563EB','7C3AED','DB2777','4D7C0F','EA580C','64748B'];
+  const P_SOFT=['E9F0FE','F1EAFD','FBE9F3','EDF3E2','FDEEE4','EEF1F5'];
+  const SEGC={w:'475569',kv:'0F766E',act:'4F63C2',ovh:'CBD5E1',head:'EDF1F7'};
+  const SUPC={embed:'0F766E',rerank:'4F63C2',asr:'92400E',tts:'3B7A9D',ocr:'B0304A',guard:'5F6B7A'};
+  const PCr=prj.pools.map(p=>p.members[0]%6);
+  const ptag=pi=>shortPoolTag(prj.pools,pi)+' '+prj.pools[pi].state.wq.name;
+  const F=prj.fleet, hwr=prj.hw, resInfo=RESIL[hwr.resil]||RESIL.n;
+  // ---- styles: fonts / fills / borders / xfs built together ----
+  const FNT=[
+    '<font><sz val="10"/><color rgb="FF1A2536"/><name val="Calibri"/></font>',
+    '<font><b/><sz val="16"/><color rgb="FF1A2536"/><name val="Calibri"/></font>',
+    '<font><sz val="9"/><color rgb="FF5A6B8C"/><name val="Calibri"/></font>',
+    '<font><b/><sz val="9"/><color rgb="FF8896B3"/><name val="Calibri"/></font>',
+    '<font><b/><sz val="10"/><color rgb="FF1A2536"/><name val="Calibri"/></font>',
+    '<font><b/><sz val="10"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>',
+    '<font><b/><sz val="20"/><color rgb="FF0F766E"/><name val="Calibri"/></font>',
+    '<font><b/><sz val="10"/><color rgb="FF0F766E"/><name val="Calibri"/></font>',
+    '<font><b/><sz val="10"/><color rgb="FFDC2626"/><name val="Calibri"/></font>',
+    '<font><b/><sz val="10"/><color rgb="FFB45309"/><name val="Calibri"/></font>',
+    '<font><sz val="8"/><color rgb="FF8896B3"/><name val="Calibri"/></font>',
+    '<font><b/><sz val="12"/><color rgb="FF1A2536"/><name val="Calibri"/></font>',
+    '<font><i/><sz val="9"/><color rgb="FF5A6B8C"/><name val="Calibri"/></font>',
+  ];
+  const FIL=['<fill><patternFill patternType="none"/></fill>','<fill><patternFill patternType="gray125"/></fill>',
+    '<fill><patternFill patternType="solid"><fgColor rgb="FFF4F6FA"/></patternFill></fill>',
+    '<fill><patternFill patternType="solid"><fgColor rgb="FFE7F1EF"/></patternFill></fill>',
+    '<fill><patternFill patternType="solid"><fgColor rgb="FFFBEEDD"/></patternFill></fill>',
+    '<fill><patternFill patternType="solid"><fgColor rgb="FFFBE7E7"/></patternFill></fill>',
+    '<fill><patternFill patternType="solid"><fgColor rgb="FF0F766E"/></patternFill></fill>'];
+  const fillIdx={}; // extra dynamic fills
+  function fillFor(hex,pattern){ const key=(pattern||'solid')+hex;
+    if(fillIdx[key]==null){ FIL.push(pattern==='lightUp'
+      ? `<fill><patternFill patternType="lightUp"><fgColor rgb="FF${hex}"/><bgColor rgb="FFFFFFFF"/></patternFill></fill>`
+      : `<fill><patternFill patternType="solid"><fgColor rgb="FF${hex}"/></patternFill></fill>`);
+      fillIdx[key]=FIL.length-1; }
+    return fillIdx[key]; }
+  const BRD=['<border><left/><right/><top/><bottom/><diagonal/></border>',
+    '<border><left style="thin"><color rgb="FFDCE2EE"/></left><right style="thin"><color rgb="FFDCE2EE"/></right><top style="thin"><color rgb="FFDCE2EE"/></top><bottom style="thin"><color rgb="FFDCE2EE"/></bottom><diagonal/></border>',
+    '<border><left style="dashed"><color rgb="FF8896B3"/></left><right style="dashed"><color rgb="FF8896B3"/></right><top style="dashed"><color rgb="FF8896B3"/></top><bottom style="dashed"><color rgb="FF8896B3"/></bottom><diagonal/></border>'];
+  const XFS=[]; const xfIdx={};
+  function xf(font,fill,border,align,wrap){ const key=[font,fill,border,align||'',wrap?1:0].join('|');
+    if(xfIdx[key]==null){
+      XFS.push(`<xf numFmtId="0" fontId="${font}" fillId="${fill}" borderId="${border}"${align||wrap?` applyAlignment="1"><alignment${align?` horizontal="${align}"`:''} vertical="center"${wrap?' wrapText="1"':''}/></xf>`:'/>'}`);
+      xfIdx[key]=XFS.length-1; }
+    return xfIdx[key]; }
+  const ST={def:xf(0,0,0), title:xf(1,0,0), sub:xf(2,0,0), cap:xf(3,0,0), b:xf(4,0,0),
+    okBan:xf(7,3,0,'left'), warnBan:xf(9,4,0,'left'), badBan:xf(8,5,0,'left'),
+    big:xf(6,2,1,'center'), klab:xf(3,2,1,'center'), ksub:xf(10,2,1,'center',true),
+    ok:xf(7,3,1,'center'), bad:xf(8,5,1,'center'), off:xf(2,2,1,'center'),
+    wrap:xf(0,0,0,'left',true), wrapMut:xf(2,0,0,'left',true), sec:xf(11,0,0),
+    note:xf(12,0,0,'left',true), grid:xf(0,0,1), spare:xf(10,0,2,'center'),
+    legend:xf(10,0,0)};
+  const poolCell=pi=>xf(0,fillFor(P_HEX[PCr[pi]]),1);
+  const poolSoft=pi=>xf(4,fillFor(P_SOFT[PCr[pi]]),0,'left');
+  const supCell=k=>xf(0,fillFor(SUPC[k]||'5F6B7A','lightUp'),1);
+  // ---- Data sheet (chart sources) ----
+  const dataRows=[]; const setD=(r,c,v,str)=>{ while(dataRows.length<r) dataRows.push([]);
+    const row=dataRows[r-1]; while(row.length<c) row.push(null);
+    row[c-1]= str? cell(String.fromCharCode(64+c)+r, ST.def, v) : (typeof v==='number'? cell(String.fromCharCode(64+c)+r, ST.def, v) : cell(String.fromCharCode(64+c)+r, ST.def, v)); };
+  ['Pool','Weights','KV cache','Activations','Overhead','Headroom'].forEach((h,i)=>setD(1,i+1,h));
+  prj.pools.forEach((p,pi)=>{ const dd=p.d;
+    setD(2+pi,1,ptag(pi)); setD(2+pi,2,+dd.weightsAll.toFixed(1)); setD(2+pi,3,+dd.kvTotal.toFixed(1));
+    setD(2+pi,4,+(dd.act*dd.replicas).toFixed(1)); setD(2+pi,5,+(dd.fixed+dd.multi).toFixed(1)); setD(2+pi,6,+Math.max(0,dd.headroom).toFixed(1)); });
+  const NPTS=26;
+  const SmaxR=Math.max.apply(null, prj.pools.map(p=>Math.max(Math.ceil(p.state.concurrent*1.4), p.state.batch*p.d.replicas*1.3, 16)));
+  setD(1,8,'Admitted');
+  prj.pools.forEach((p,pi)=>setD(1,9+pi,ptag(pi)));
+  for(let i=0;i<NPTS;i++){ const S=Math.max(1,Math.round(1+(SmaxR-1)*i/(NPTS-1)));
+    setD(2+i,8,S);
+    prj.pools.forEach((p,pi)=>{ const bpr=Math.max(1,S/p.d.replicas);
+      setD(2+i,9+pi,+(p.d.bwEff/(p.state.active*p.state.bytesW+bpr*p.d.effSeq*p.d.kvTok)).toFixed(1)); }); }
+  const LROW=30; const ucsAll=[]; prj.pools.forEach((p,pi)=>p.perUc.forEach(x=>ucsAll.push({x,pi})));
+  ['Use case','TTFT s','Overhead s','Reasoning s','Output s'].forEach((h,i)=>setD(LROW,i+1,h));
+  ucsAll.forEach((u,i)=>{ const x=u.x;
+    setD(LROW+1+i,1,ucName(x.uc)); setD(LROW+1+i,2,+(x.d.ttft/1000).toFixed(2)); setD(LROW+1+i,3,+(x.s.ovh/1000).toFixed(2));
+    setD(LROW+1+i,4,+(x.s.reasonTok? x.s.reasonTok/x.d.tps:0).toFixed(2)); setD(LROW+1+i,5,+(x.s.visibleOut/x.d.tps).toFixed(2)); });
+  // ---- chart XML builders ----
+  const CNS='xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"';
+  const strCache=vals=>`<c:strCache><c:ptCount val="${vals.length}"/>${vals.map((v,i)=>`<c:pt idx="${i}"><c:v>${xEsc(String(v))}</c:v></c:pt>`).join('')}</c:strCache>`;
+  const numCache=vals=>`<c:numCache><c:formatCode>General</c:formatCode><c:ptCount val="${vals.length}"/>${vals.map((v,i)=>`<c:pt idx="${i}"><c:v>${v}</c:v></c:pt>`).join('')}</c:numCache>`;
+  const axPair=(a1,a2,catPos,valPos)=>`<c:catAx><c:axId val="${a1}"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="0"/><c:axPos val="${catPos}"/><c:txPr><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr sz="800"/></a:pPr><a:endParaRPr lang="en-US"/></a:p></c:txPr><c:crossAx val="${a2}"/></c:catAx><c:valAx><c:axId val="${a2}"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="0"/><c:axPos val="${valPos}"/><c:txPr><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr sz="800"/></a:pPr><a:endParaRPr lang="en-US"/></a:p></c:txPr><c:crossAx val="${a1}"/></c:valAx>`;
+  function chartXML(title, inner){
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<c:chartSpace ${CNS}><c:chart><c:title><c:tx><c:rich><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr sz="1000" b="1"><a:solidFill><a:srgbClr val="1A2536"/></a:solidFill></a:defRPr></a:pPr><a:r><a:rPr lang="en-US" sz="1000" b="1"/><a:t>${xEsc(title)}</a:t></a:r></a:p></c:rich></c:tx><c:overlay val="0"/></c:title><c:autoTitleDeleted val="0"/><c:plotArea><c:layout/>${inner}</c:plotArea><c:legend><c:legendPos val="b"/><c:txPr><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr sz="800"/></a:pPr><a:endParaRPr lang="en-US"/></a:p></c:txPr></c:legend><c:plotVisOnly val="1"/><c:dispBlanksAs val="gap"/></c:chart></c:chartSpace>`; }
+  const poolNames=prj.pools.map((p,pi)=>ptag(pi));
+  const nP=prj.pools.length;
+  const ledgSeries=[['Weights','B',SEGC.w],['KV cache','C',SEGC.kv],['Activations','D',SEGC.act],['Overhead','E',SEGC.ovh],['Headroom','F',SEGC.head]]
+    .map(([nm,col,hex],si)=>{ const vals=prj.pools.map((p,pi)=>+String(((si===0&&p.d.weightsAll)||(si===1&&p.d.kvTotal)||(si===2&&p.d.act*p.d.replicas)||(si===3&&p.d.fixed+p.d.multi)||(si===4&&Math.max(0,p.d.headroom))||0)).slice(0,12));
+      return `<c:ser><c:idx val="${si}"/><c:order val="${si}"/><c:tx><c:strRef><c:f>Data!$${col}$1</c:f>${strCache([nm])}</c:strRef></c:tx><c:spPr><a:solidFill><a:srgbClr val="${hex}"/></a:solidFill></c:spPr><c:cat><c:strRef><c:f>Data!$A$2:$A$${1+nP}</c:f>${strCache(poolNames)}</c:strRef></c:cat><c:val><c:numRef><c:f>Data!$${col}$2:$${col}$${1+nP}</c:f>${numCache(vals.map(v=>+(+v).toFixed(1)))}</c:numRef></c:val></c:ser>`; }).join('');
+  const chart1=chartXML('Memory per pool (GB)', `<c:barChart><c:barDir val="bar"/><c:grouping val="stacked"/><c:varyColors val="0"/>${ledgSeries}<c:overlap val="100"/><c:axId val="101"/><c:axId val="102"/></c:barChart>${axPair(101,102,'l','b')}`);
+  const sVals=[]; for(let i=0;i<NPTS;i++) sVals.push(Math.max(1,Math.round(1+(SmaxR-1)*i/(NPTS-1))));
+  const lineSeries=prj.pools.map((p,pi)=>{ const col=String.fromCharCode(73+pi);
+    const vals=sVals.map(S=>{ const bpr=Math.max(1,S/p.d.replicas); return +(p.d.bwEff/(p.state.active*p.state.bytesW+bpr*p.d.effSeq*p.d.kvTok)).toFixed(1); });
+    return `<c:ser><c:idx val="${pi}"/><c:order val="${pi}"/><c:tx><c:strRef><c:f>Data!$${col}$1</c:f>${strCache([ptag(pi)])}</c:strRef></c:tx><c:spPr><a:ln w="22225"><a:solidFill><a:srgbClr val="${P_HEX[PCr[pi]]}"/></a:solidFill></a:ln></c:spPr><c:marker><c:symbol val="none"/></c:marker><c:cat><c:numRef><c:f>Data!$H$2:$H$${1+NPTS}</c:f>${numCache(sVals)}</c:numRef></c:cat><c:val><c:numRef><c:f>Data!$${col}$2:$${col}$${1+NPTS}</c:f>${numCache(vals)}</c:numRef></c:val><c:smooth val="0"/></c:ser>`; }).join('');
+  const chart2=chartXML('Per-user tok/s vs admitted sequences', `<c:lineChart><c:grouping val="standard"/><c:varyColors val="0"/>${lineSeries}<c:marker val="1"/><c:axId val="201"/><c:axId val="202"/></c:lineChart>${axPair(201,202,'b','l')}`);
+  const ucNames=ucsAll.map(u=>ucName(u.x.uc));
+  const latSeries=[['TTFT s','B','4F63C2'],['Overhead s','C','CBD5E1'],['Reasoning s','D','64748B'],['Output s','E','0F766E']]
+    .map(([nm,col,hex],si)=>{ const vals=ucsAll.map(u=>{ const x=u.x;
+      return +([x.d.ttft/1000, x.s.ovh/1000, x.s.reasonTok? x.s.reasonTok/x.d.tps:0, x.s.visibleOut/x.d.tps][si]).toFixed(2); });
+    return `<c:ser><c:idx val="${si}"/><c:order val="${si}"/><c:tx><c:strRef><c:f>Data!$${col}$${LROW}</c:f>${strCache([nm])}</c:strRef></c:tx><c:spPr><a:solidFill><a:srgbClr val="${hex}"/></a:solidFill></c:spPr><c:cat><c:strRef><c:f>Data!$A$${LROW+1}:$A$${LROW+ucsAll.length}</c:f>${strCache(ucNames)}</c:strRef></c:cat><c:val><c:numRef><c:f>Data!$${col}$${LROW+1}:$${col}$${LROW+ucsAll.length}</c:f>${numCache(vals)}</c:numRef></c:val></c:ser>`; }).join('');
+  const chart3=chartXML('Request latency anatomy (s)', `<c:barChart><c:barDir val="bar"/><c:grouping val="stacked"/><c:varyColors val="0"/>${latSeries}<c:overlap val="100"/><c:axId val="301"/><c:axId val="302"/></c:barChart>${axPair(301,302,'l','b')}`);
+  // ---- Report sheet ----
+  const NCOL=18; const colLetter=i=>String.fromCharCode(66+i); // B..S
+  const repRows=[]; const merges=[]; const rowHts={}; const anchors=[];
+  let rr=0;
+  const push=(cells,ht)=>{ rr++; repRows.push(cells||[]); if(ht) rowHts[rr]=ht; return rr; };
+  const txt=(row,c0,c1,style,val)=>{ const ref=colLetter(c0)+row;
+    repRows[row-1][c0]=cell(ref,style,val);
+    if(c1>c0) merges.push(colLetter(c0)+row+':'+colLetter(c1)+row); };
+  const line=(style,val,ht,c0,c1)=>{ const r=push([],ht); txt(r,c0==null?0:c0,c1==null?NCOL-1:c1,style,val); return r; };
+  line(ST.title, 'GPUscale.net · '+name, 24);
+  line(ST.sub, `${UC.length} use cases · ${nP} pool${nP>1?'s':''} on ${hwr.g.name} · ${hwr.perW} GPU/node · ${resInfo.long} · Studio ${STUDIO_VERSION} · engine v${ENGINE_VERSION} · ${new Date().toLocaleString()}`, 14);
+  push();
+  line(F.fits? (F.sloAll? ST.okBan:ST.warnBan) : ST.badBan,
+    (F.fits? (F.sloAll?'PROJECT FITS & SLO TARGETS MET':'PROJECT FITS · AN SLO TARGET FAILS'):'PROJECT EXCEEDS GPU MEMORY')
+    +`   ·   ${fmt(F.vramNeed)} of ${fmt(F.vramAvail)} GB   ·   ${F.procW} nodes · ${F.procG} GPUs procured   ·   ≈${fmt(F.kW)} kW`, 22);
+  push();
+  line(ST.sec,'Use cases · demand',16);
+  ucsAll.forEach(u=>{ const x=u.x, f2=x.uc.f; const users=Math.max(1,+f2.nrmUsers||1);
+    const r=push([],15);
+    repRows[r-1][0]=cell(colLetter(0)+r, poolSoft(u.pi), '');
+    txt(r,1,5,ST.b,ucName(x.uc));
+    txt(r,6,10,ST.def,`${fmt(users)} users → ${fmt(x.s.concurrent)} calls (${(100*x.s.concurrent/users).toFixed(1)}%${x.uc.concManual?', manual':''})`);
+    txt(r,11,14,ST.def,x.s.model.name.slice(0,28));
+    txt(r,15,NCOL-1, x.d.sloAll? ST.ok : (x.s.sloTtft>0||x.s.sloTps>0||x.s.sloP95>0? ST.bad : ST.off),
+      x.d.sloAll? 'SLOs met' : (x.s.sloTtft>0||x.s.sloTps>0||x.s.sloP95>0? 'target missed':'no targets')); });
+  push();
+  line(ST.sec,'Deployments',16);
+  prj.pools.forEach((p,pi)=>{ const r=push([],26);
+    repRows[r-1][0]=cell(colLetter(0)+r, poolCell(pi), '');
+    txt(r,1,NCOL-1,ST.wrap,`${p.state.model.name} ${p.state.wq.name}: one ${fmt(p.state.model.params*p.state.wq.bytes)} GB copy needs TP${p.state.tp}; ${p.d.replicas} replicas at batch ${p.state.batch} admit ${p.d.active} of ${p.state.concurrent} pooled calls on ${p.state.workers} node${p.state.workers>1?'s':''} · ${(p.d.total/p.d.avail*100).toFixed(0)}% memory used${p.state.gpus>p.d.replicas*p.state.tp?` · ${p.state.gpus-p.d.replicas*p.state.tp} GPUs spare`:''}`); });
+  if(prj.sup.items.length) line(ST.wrapMut,'Supporting: '+prj.sup.items.map(it=>`${KIND_LABEL[it.kind]||it.kind} ×${it.instances} (${it.model.name})`).join(' · ')+` on ${prj.sup.gpus} shared GPU${prj.sup.gpus>1?'s':''} · ${prj.sup.note}`, 24);
+  if(window.__autoNote) line(ST.note, `Sizing decision (Auto-size, ${window.__autoNote.at.toLocaleString()}): ${window.__autoNote.text}`, 84);
+  push();
+  line(ST.sec,'Key numbers',16);
+  { const r1=push([],14), r2=push([],26), r3=push([],24);
+    const tiles=[['Avg first token', fmt(prj.pools.reduce((x2,p)=>x2+p.d.ttft*p.state.concurrent,0)/Math.max(1,prj.pools.reduce((x2,p)=>x2+p.state.concurrent,0)))+' ms','demand-weighted'],
+      ['Avg per-user speed', fmt(prj.pools.reduce((x2,p)=>x2+p.d.tps*p.state.concurrent,0)/Math.max(1,prj.pools.reduce((x2,p)=>x2+p.state.concurrent,0)))+' tok/s','demand-weighted'],
+      ['Aggregate throughput', fmt(prj.pools.reduce((x2,p)=>x2+p.d.agg,0))+' tok/s', prj.pools.reduce((x2,p)=>x2+p.d.active,0)+' admitted'],
+      ['Fleet power', '≈'+fmt(F.kW)+' kW', F.procG+' GPUs TDP']];
+    const spans=[[0,3],[4,8],[9,12],[13,NCOL-1]];
+    tiles.forEach((tl,i)=>{ const [c0,c1]=spans[i];
+      txt(r1,c0,c1,ST.klab,tl[0]); txt(r2,c0,c1,ST.big,tl[1]); txt(r3,c0,c1,ST.ksub,tl[2]);
+      for(let rq=r1;rq<=r3;rq++) for(let cq=c0;cq<=c1;cq++) if(!repRows[rq-1][cq]) repRows[rq-1][cq]=cell(colLetter(cq)+rq, ST.klab, '');
+    }); }
+  push();
+  const ledgerCap=line(ST.sec,'Memory ledger · per pool',16);
+  const chart1Top=rr;
+  for(let i=0;i<13;i++) push([],18);
+  anchors.push({rid:'rIdC1', c0:1, r0:chart1Top, c1:NCOL, r1:rr});
+  prj.pools.forEach((p,pi)=>{ const dd=p.d;
+    line(ST.wrapMut, `${ptag(pi)}: weights ${fmt(dd.weightsAll)} GB · KV ${fmt(dd.kvTotal)} GB (${dd.active} seq) · activations ${fmt(dd.act*dd.replicas)} GB · overhead ${fmt(dd.fixed+dd.multi)} GB · headroom ${fmt(dd.headroom)} GB · ${(dd.total/dd.avail*100).toFixed(0)}% of ${fmt(dd.avail)} GB`, 13); });
+  push();
+  line(ST.sec,'Throughput & latency',16);
+  const chartsTop=rr;
+  for(let i=0;i<15;i++) push([],18);
+  anchors.push({rid:'rIdC2', c0:1, r0:chartsTop, c1:9, r1:rr});
+  anchors.push({rid:'rIdC3', c0:10, r0:chartsTop, c1:NCOL, r1:rr});
+  push();
+  line(ST.sec,'Deployment topology & fleet map',16);
+  { const sites=buildFleetSites(prj).sites;
+    sites.forEach(s2=>{
+      line(ST.b, s2.title+'   ·   '+s2.workers+' nodes · '+s2.gpus+' GPU · ≈'+fmt(s2.kW)+' kW', 15);
+      const MAXNODES=24;
+      const shown=s2.nodes.slice(0,MAXNODES);
+      for(let base=0; base<shown.length; base+=4){
+        const group=shown.slice(base,base+4);
+        const rl=push([],12);
+        group.forEach((n2,gi)=>{ const c0=gi*4+(gi>0?1:0)*0+gi; // 4 cols + 1 gap
+          const cc0=gi*5; txt(rl,cc0,cc0+3,ST.cap,n2.label+' '+(ROLE_LABEL[n2.cls]||n2.cls)); });
+        const gpuRowCount=Math.ceil((group[0]?group[0].gpus.length:8)/4);
+        const rowIds=[]; for(let q=0;q<gpuRowCount;q++) rowIds.push(push([],14));
+        group.forEach((n2,gi)=>{ const cc0=gi*5;
+          n2.gpus.forEach((g2,k)=>{ const rq=rowIds[Math.floor(k/4)], cq=cc0+(k%4);
+            let stl=ST.grid;
+            if(g2.type==='pool') stl=poolCell(n2.pool);
+            else if(g2.type==='sup') stl=supCell(g2.bin&&g2.bin.slices[0]? g2.bin.slices[0].kind:'guard');
+            else stl=ST.spare;
+            repRows[rq-1][cq]=cell(colLetter(cq)+rq, stl, ''); }); });
+      }
+      if(s2.nodes.length>MAXNODES) line(ST.wrapMut, '+'+(s2.nodes.length-MAXNODES)+' more nodes (see Project sheet node map for the full list)', 12);
+      if(s2.link) line(ST.sub, '⇅  '+s2.link, 12);
+    });
+    const lg=push([],14); let lc=0;
+    prj.pools.forEach((p,pi)=>{ repRows[lg-1][lc]=cell(colLetter(lc)+lg, poolCell(pi), ''); txt(lg,lc+1,lc+3,ST.legend,shortPoolTag(prj.pools,pi)); lc+=4; });
+    if(prj.sup.items.length&&lc<NCOL-3){ repRows[lg-1][lc]=cell(colLetter(lc)+lg, supCell(prj.sup.items[0].kind), ''); txt(lg,lc+1,lc+3,ST.legend,'supporting'); lc+=4; }
+    if(lc<NCOL-3){ repRows[lg-1][lc]=cell(colLetter(lc)+lg, ST.spare, ''); txt(lg,lc+1,lc+3,ST.legend,'spare/standby'); }
   }
-
-  // visuals sheet: labels + anchored images
-  const visRows=[[`<c r="A1" s="5" t="inlineStr"><is><t>Visuals · exported from the studio at save time</t></is></c>`]];
-  __storyText.forEach((line,i)=>{ visRows.push([cell('A'+(visRows.length+1),4,line)]); });
-  visRows.push([]);
-  const EMU=9525, colW=64, rowH=20; // px per default col/row approx
-  let anchorRow=2; const anchors=[]; const media=[];
-  images.forEach(([label,img],idx)=>{
-    while(visRows.length<anchorRow) visRows.push([]);
-    visRows.push([cell('A'+(anchorRow+1),4,label)]);
-    const dispW=Math.min(img.w,1180), dispH=Math.round(img.h*dispW/img.w);
-    anchors.push(`<xdr:oneCellAnchor><xdr:from><xdr:col>0</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>${anchorRow+1}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from><xdr:ext cx="${dispW*EMU}" cy="${dispH*EMU}"/><xdr:pic><xdr:nvPicPr><xdr:cNvPr id="${idx+2}" name="img${idx+1}"/><xdr:cNvPicPr/></xdr:nvPicPr><xdr:blipFill><a:blip xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" r:embed="rId${idx+1}"/><a:stretch xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:fillRect/></a:stretch></xdr:blipFill><xdr:spPr><a:xfrm xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:off x="0" y="0"/><a:ext cx="${dispW*EMU}" cy="${dispH*EMU}"/></a:xfrm><a:prstGeom xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" prst="rect"><a:avLst/></a:prstGeom></xdr:spPr></xdr:pic><xdr:clientData/></xdr:oneCellAnchor>`);
-    media.push(img.u8);
-    anchorRow += Math.ceil(dispH/rowH)+3;
-  });
-  while(visRows.length<anchorRow) visRows.push([]);
-
-  const drawingXML=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">${anchors.join('')}</xdr:wsDr>`;
-  const drawingRels=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${media.map((m,i)=>`<Relationship Id="rId${i+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/image${i+1}.png"/>`).join('')}</Relationships>`;
-
+  push();
+  line(ST.sec,'Recommendations',16);
+  { prj.pools.forEach((p,pi)=>{ const rb=buildRecs(p.state,p.d,p.state.model,hwr.g,/2026/.test(hwr.g.cls));
+      rb.recs.slice(0,4).forEach(rec=>{ line(rec.lv==='bad'? xf(8,fillFor('FBE7E7'),0,'left',true) : rec.lv==='warn'? xf(9,fillFor('FBEEDD'),0,'left',true) : ST.wrap, shortPoolTag(prj.pools,pi)+' · '+rec.t+': '+rec.b.replace(/<[^>]+>/g,''), 26); }); }); }
+  line(ST.sub, 'All figures are peak closed-form estimates; production typically achieves 70-90%. Generated by GPUscale.net.', 13);
+  // ---- assemble ----
   const styles=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-<fonts count="6"><font><sz val="10"/><name val="Arial"/></font><font><b/><color rgb="FFFFFFFF"/><sz val="10"/><name val="Arial"/></font><font><b/><color rgb="FF1F3B99"/><sz val="10"/><name val="Arial"/></font><font><b/><color rgb="FF0F766E"/><sz val="10"/><name val="Arial"/></font><font><i/><color rgb="FF757575"/><sz val="9"/><name val="Arial"/></font><font><b/><color rgb="FF1A2744"/><sz val="12"/><name val="Arial"/></font></fonts>
-<fills count="5"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF1A2536"/><bgColor rgb="FF1A2536"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFFFF8E1"/><bgColor rgb="FFFFF8E1"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFF2F4F8"/><bgColor rgb="FFF2F4F8"/></patternFill></fill></fills>
-<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>
-<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
-<cellXfs count="6"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0"/><xf numFmtId="0" fontId="2" fillId="3" borderId="0"/><xf numFmtId="0" fontId="3" fillId="4" borderId="0"/><xf numFmtId="0" fontId="4" fillId="0" borderId="0"/><xf numFmtId="0" fontId="5" fillId="0" borderId="0"/></cellXfs>
-</styleSheet>`;
-
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="${FNT.length}">${FNT.join('')}</fonts><fills count="${FIL.length}">${FIL.join('')}</fills><borders count="${BRD.length}">${BRD.join('')}</borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="${XFS.length}">${XFS.join('')}</cellXfs></styleSheet>`;
+  function reportSheetXML(){
+    const cols=`<cols><col min="1" max="1" width="1.8" customWidth="1"/><col min="2" max="${NCOL+1}" width="6.6" customWidth="1"/></cols>`;
+    const body=repRows.map((r,ri)=>`<row r="${ri+1}"${rowHts[ri+1]?` ht="${rowHts[ri+1]}" customHeight="1"`:''}>${r.map(c2=>c2==null?'':c2).join('')}</row>`).join('');
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>${cols}<sheetData>${body}</sheetData>${merges.length?`<mergeCells count="${merges.length}">${merges.map(m2=>`<mergeCell ref="${m2}"/>`).join('')}</mergeCells>`:''}<pageMargins left="0.4" right="0.4" top="0.4" bottom="0.4" header="0.2" footer="0.2"/><pageSetup orientation="landscape" fitToWidth="1" fitToHeight="0" paperSize="9"/><drawing r:id="rIdD"/></worksheet>`; }
+  const drawing=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">${anchors.map((an,i)=>`<xdr:twoCellAnchor><xdr:from><xdr:col>${an.c0}</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>${an.r0}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from><xdr:to><xdr:col>${an.c1}</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>${an.r1}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:to><xdr:graphicFrame macro=""><xdr:nvGraphicFramePr><xdr:cNvPr id="${i+2}" name="Chart ${i+1}"/><xdr:cNvGraphicFramePr/></xdr:nvGraphicFramePr><xdr:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/></xdr:xfrm><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/chart"><c:chart xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:id="${an.rid}"/></a:graphicData></a:graphic></xdr:graphicFrame><xdr:clientData/></xdr:twoCellAnchor>`).join('')}</xdr:wsDr>`;
+  const drawingRels=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rIdC1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart" Target="../charts/chart1.xml"/><Relationship Id="rIdC2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart" Target="../charts/chart2.xml"/><Relationship Id="rIdC3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart" Target="../charts/chart3.xml"/></Relationships>`;
+  const sheet1Rels=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rIdD" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing1.xml"/></Relationships>`;
   const workbook=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Inputs" sheetId="1" r:id="rId1"/><sheet name="Results" sheetId="2" r:id="rId2"/><sheet name="Chart data" sheetId="3" r:id="rId3"/><sheet name="Visuals" sheetId="4" r:id="rId4"/><sheet name="Project" sheetId="5" r:id="rId5"/></sheets></workbook>`;
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Report" sheetId="1" r:id="rId1"/><sheet name="Inputs" sheetId="2" r:id="rId2"/><sheet name="Results" sheetId="3" r:id="rId3"/><sheet name="Data" sheetId="4" r:id="rId4"/><sheet name="Project" sheetId="5" r:id="rId5"/></sheets></workbook>`;
   const wbRels=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet3.xml"/><Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet4.xml"/><Relationship Id="rId5" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet5.xml"/><Relationship Id="rId6" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`;
   const rootRels=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`;
   const contentTypes=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet3.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet4.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet5.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/><Override PartName="/xl/drawings/drawing1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/></Types>`;
-  const sheet4Rels=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing1.xml"/></Relationships>`;
-
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>${[1,2,3,4,5].map(n2=>`<Override PartName="/xl/worksheets/sheet${n2}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')}<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/><Override PartName="/xl/drawings/drawing1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/>${[1,2,3].map(n2=>`<Override PartName="/xl/charts/chart${n2}.xml" ContentType="application/vnd.openxmlformats-officedocument.drawingml.chart+xml"/>`).join('')}</Types>`;
+  const dataSheet=(()=>{ const body=dataRows.map((r,ri)=>`<row r="${ri+1}">${r.map(c2=>c2==null?'':c2).join('')}</row>`).join('');
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><cols><col min="1" max="1" width="26" customWidth="1"/><col min="2" max="14" width="11" customWidth="1"/></cols><sheetData>${body}</sheetData></worksheet>`; })();
   const entries=[
     ['[Content_Types].xml', enc.encode(contentTypes)],
     ['_rels/.rels', enc.encode(rootRels)],
     ['xl/workbook.xml', enc.encode(workbook)],
     ['xl/_rels/workbook.xml.rels', enc.encode(wbRels)],
     ['xl/styles.xml', enc.encode(styles)],
-    ['xl/worksheets/sheet1.xml', enc.encode(sheetXML([34,16,52], inpRows))],
-    ['xl/worksheets/sheet2.xml', enc.encode(sheetXML([34,42,10,14], resRows))],
-    ['xl/worksheets/sheet3.xml', enc.encode(sheetXML([14,14,15,4,15,14], curveRows))],
-    ['xl/worksheets/sheet4.xml', enc.encode(sheetXML([120], visRows, true))],
+    ['xl/worksheets/sheet1.xml', enc.encode(reportSheetXML())],
+    ['xl/worksheets/_rels/sheet1.xml.rels', enc.encode(sheet1Rels)],
+    ['xl/worksheets/sheet2.xml', enc.encode(sheetXML([34,16,52], inpRows))],
+    ['xl/worksheets/sheet3.xml', enc.encode(sheetXML([34,42,10,14], resRows))],
+    ['xl/worksheets/sheet4.xml', enc.encode(dataSheet)],
     ['xl/worksheets/sheet5.xml', enc.encode(sheetXML([22,22,34,10,10,10,10,12,10,40], projRows))],
-    ['xl/worksheets/_rels/sheet4.xml.rels', enc.encode(sheet4Rels)],
-    ['xl/drawings/drawing1.xml', enc.encode(drawingXML)],
+    ['xl/drawings/drawing1.xml', enc.encode(drawing)],
     ['xl/drawings/_rels/drawing1.xml.rels', enc.encode(drawingRels)],
+    ['xl/charts/chart1.xml', enc.encode(chart1)],
+    ['xl/charts/chart2.xml', enc.encode(chart2)],
+    ['xl/charts/chart3.xml', enc.encode(chart3)],
   ];
-  media.forEach((m,i)=>entries.push([`xl/media/image${i+1}.png`, m]));
   return zipStore(entries);
 }
 
@@ -2171,7 +2337,7 @@ function autoSizeProject(quiet){
   const why=`Sized each pool separately. `+lines.join(' ')+
     (done.sup.gpus? ` Supporting models need ${done.sup.gpus} shared GPU${done.sup.gpus>1?'s':''}: ${Math.min(done.fleet.spare,done.sup.gpus)} covered by spare pool GPUs, ${done.fleet.supExtraG} added.`:'')+
     ` Fleet: ${done.fleet.servG} serving GPUs across ${done.fleet.servW} workers, ${done.fleet.procG} procured with ${RESIL[done.hw.resil].label} resilience.`;
-  const ar=$('autoResult'); if(ar){ ar.textContent=why+' Auto-size sets TP, workers and batch only; suggestions that change model or precision stay in Recommendations, as your call.'; ar.classList.add('show'); }
+  window.__autoNote={text:why+' Auto-size decides topology, batch and support placement; suggestions that change model or precision stay in Recommendations, as your call.', at:new Date()};
   if(!quiet||!allOk) toast(allOk? `Auto-sized ${prj.pools.length} pool${prj.pools.length>1?'s':''}: ${done.fleet.servG} serving GPUs, ${done.fleet.procG} procured` : 'Auto-size finished with problems: see the note under the Auto-size control', !allOk);
 }
 function autoSize(quiet){
@@ -2204,7 +2370,7 @@ function autoSize(quiet){
     const u=df.total/df.avail*100;
     why+=`Memory sits at ${u.toFixed(0)}% against your ${packPct}% target: the smallest whole-GPU fleet that ${interactive?'admits every call in the contract':'fits the model with the largest batch'} within it. The gap below the target is the rounding cost of whole GPUs and power-of-two TP; the gap above it would be your growth and burst margin. Raise the target to pack tighter, lower it for more headroom.`;
   }
-  const ar=$('autoResult'); if(ar){ ar.textContent=why+' Auto-size sets TP, workers and batch only; suggestions that change model or precision stay in Recommendations, as your call.'; ar.classList.add('show'); }
+  window.__autoNote={text:why+' Auto-size decides topology, batch and support placement; suggestions that change model or precision stay in Recommendations, as your call.', at:new Date()};
   if(!__quiet) toast(`Auto-sized: TP${tp} · ${df.replicas} replica${df.replicas>1?'s':''} on ${workers} workers · batch ${batch} · ${df.active} of ${s.concurrent} admitted${df.fits? (df.sloAll?'':' · an SLO still fails, see Recommendations') : ' · still over VRAM, see Recommendations'}`);
 }
 let __autoT=null;
