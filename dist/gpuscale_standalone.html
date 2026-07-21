@@ -1948,6 +1948,155 @@ function ucSnapshot(u){ const f=u.f;
     weightBytes:wq.bytes, kvBytes:kq.bytes};
 }
 
+/* ================= PROJECT ENGINE (multi-pool) ================= */
+/* Pools group use cases that share model+precision+KV policy (unless isolated):
+   one pooled deployment is sized for the combined load. Support models are
+   aggregated per kind+model and packed onto GPU partitions. */
+const uv=(f,id)=>{ const c=FIELDS[id]; const raw=(f[id]===''||f[id]==null)? c.val : +f[id];
+  const v=isFinite(raw)? raw : c.val; return Math.min(c.max, Math.max(c.min, v)); };
+function readHw(){
+  const g=GPUS[+$('selGpu').value||0];
+  const fv=id=>{ const c=FIELDS[id]; const raw=$(id).value===''? c.val : +$(id).value;
+    const v=isFinite(raw)? raw : c.val; return Math.min(c.max, Math.max(c.min, v)); };
+  return {g, perW:Math.round(fv('inPerW')), resil:$('selResil').value,
+    mfu:fv('inMfu'), mbu:fv('inMbu'), ic:fv('inIc'), ovh:fv('inOvh')};
+}
+function ucState(u, hw){
+  hw=hw||readHw(); const f=u.f;
+  const m=f.chkCustom? {name:'Custom', params:+f.cusParams||0.1, active:+f.cusActive||0.1,
+      hidden:+f.cusHidden||64, layers:+f.cusLayers||1, kvHeads:+f.cusKvh||1,
+      headDim:+f.cusHdim||8, ctx:+f.cusCtx||1024, arch:'Custom', dev:'—', url:''}
+    : (MODELS[+f.selModel||0]||MODELS[0]);
+  const wq=QUANTS[+f.selWQuant||0]||QUANTS[0], kq=KV_QUANTS[+f.selKQuant||0]||KV_QUANTS[0];
+  const workers=Math.round(uv(f,'inWorkers')), gpus=workers*hw.perW;
+  const tp=Math.min(Math.round(uv(f,'inTp')), gpus);
+  return {model:m, gpu:hw.g, wq, kq,
+    params:m.params, active:m.active, hidden:m.hidden, layers:m.layers,
+    kvHeads:m.kvHeads, headDim:m.headDim, ctx:m.ctx,
+    bytesW:wq.bytes, bytesK:kq.bytes,
+    resident:Math.round(uv(f,'inSeq')), visibleOut:Math.round(uv(f,'inOut')),
+    reasonMode:f.selReason||'None', reasonTok:Math.round(uv(f,'inReasonTok')),
+    extend:!!f.chkExtend,
+    concurrent:Math.round(uv(f,'inConc')), batch:Math.round(uv(f,'inBatch')),
+    policy:f.selPolicy||'run',
+    workers, perW:hw.perW, gpus, tp, resil:hw.resil,
+    gpuVram:hw.g.vram, gpuBw:hw.g.bw, gpuTflops:hw.g.tflops,
+    mfu:hw.mfu, mbu:hw.mbu, ic:hw.ic, ovh:hw.ovh,
+    sloTtft:+f.sloTtft||0, sloTps:+f.sloTps||0, sloP95:+f.sloP95||0};
+}
+function poolState(pool, hw){
+  const states=pool.members.map(i=>ucState(UC[i], hw));
+  const base=states[0];
+  const conc=states.reduce((t,s)=>t+s.concurrent,0)||1;
+  const wavg=get=>states.reduce((t,s)=>t+get(s)*s.concurrent,0)/conc;
+  return Object.assign({}, base, {
+    concurrent:conc,
+    resident:Math.round(wavg(s=>s.resident)),
+    visibleOut:Math.round(wavg(s=>s.visibleOut)),
+    reasonTok:Math.round(wavg(s=>s.extend||s.reasonTok>0? s.reasonTok:0)),
+    extend:states.some(s=>s.extend&&s.reasonTok>0),
+    batch:Math.max.apply(null, states.map(s=>s.batch)),
+    sloTtft:0,
+    sloTps:Math.max.apply(null, states.map(s=>s.sloTps).concat([0])),
+    sloP95:0,
+  });
+}
+function computeProject(){
+  const hw=readHw();
+  const pools=[];
+  UC.forEach((u,i)=>{ const k=u.isolate? 'iso:'+u.id : poolKey(u);
+    let p=pools.find(x=>x.key===k); if(!p){ p={key:k, members:[]}; pools.push(p); }
+    p.members.push(i); });
+  pools.forEach(p=>{
+    p.state=poolState(p, hw);
+    const nzmin=(vals)=>{ const n=vals.filter(v=>v>0); return n.length? Math.min.apply(null,n) : 0; };
+    p.state.sloTtft=nzmin(p.members.map(i=>+UC[i].f.sloTtft||0));
+    p.state.sloP95=nzmin(p.members.map(i=>+UC[i].f.sloP95||0));
+    p.d=compute(p.state);
+    p.perUc=p.members.map(i=>{
+      const s=ucState(UC[i], hw);
+      s.tp=p.state.tp; s.workers=p.state.workers; s.gpus=p.state.gpus; s.batch=p.state.batch;
+      const d=compute(s);
+      const share=Math.min(s.concurrent, Math.round(p.d.active*s.concurrent/Math.max(1,p.state.concurrent)));
+      return {i, uc:UC[i], s, d, share};
+    });
+  });
+  const sup=allocSupports(hw);
+  const fleet=fleetTotals(pools, sup, hw);
+  return {pools, sup, fleet, hw};
+}
+function allocSupports(hw){
+  const g=hw.g, part=g.part||{kind:'frac'};
+  const agg={};
+  UC.forEach((u,idx)=>{ const conc=Math.round(uv(u.f,'inConc'));
+    (u.supports||[]).forEach(sp=>{ const m=SUP_MODEL(sp.kind, sp.model); if(!m) return;
+      const key=sp.kind+'|'+m.name;
+      const a=agg[key]=agg[key]||{kind:sp.kind, model:m, demand:0, ucIdx:[]};
+      a.demand+=conc; a.ucIdx.push(idx); }); });
+  const items=Object.values(agg).map(a=>Object.assign({}, a,
+    {instances:Math.max(1, Math.ceil(a.demand/a.model.cap))}));
+  const totalVram=items.reduce((t,it)=>t+it.instances*it.model.vram,0);
+  if(!items.length) return {items, gpus:0, mode:part.kind, layout:[], totalVram:0, note:''};
+  const layout=[]; let note='';
+  const sliceable = part.kind==='mig'||part.kind==='cpx';
+  if(sliceable){
+    // one slice unit = the part's smallest partition. A model larger than one unit
+    // takes a wider profile (ceil units); smaller models co-host several instances
+    // inside one unit (they are VRAM-bound at this scale, so instances pack by memory).
+    items.forEach(it=>{
+      if(it.model.vram>part.min){
+        it.units=Math.min(part.max, Math.ceil(it.model.vram/part.min));
+        it.perSlice=1; it.sliceCount=it.instances;
+      } else {
+        it.units=1; it.perSlice=Math.max(1, Math.floor(part.min/it.model.vram));
+        it.sliceCount=Math.ceil(it.instances/it.perSlice);
+      } });
+    items.slice().sort((x,y)=>y.units-x.units).forEach(it=>{
+      for(let n=0;n<it.sliceCount;n++){
+        const inst=Math.min(it.perSlice, it.instances-n*it.perSlice);
+        let bin=layout.find(b=>b.used+it.units<=part.max);
+        if(!bin){ bin={used:0, slices:[]}; layout.push(bin); }
+        bin.used+=it.units;
+        bin.slices.push({kind:it.kind, model:it.model.name, gb:Math.min(g.vram, it.units*part.min), n:it.units, inst});
+      } });
+    note = part.kind==='mig'
+      ? `isolated MIG slices (${part.max} per GPU, ${part.min} GB granularity)`
+      : `isolated compute partitions (${part.max} per GPU, ${part.min} GB each)`;
+  } else {
+    const cap = part.kind==='whole'? g.vram : 0.9*g.vram;
+    items.slice().sort((x,y)=>y.model.vram-x.model.vram).forEach(it=>{
+      for(let n=0;n<it.instances;n++){
+        let bin=layout.find(b=>b.used+it.model.vram<=cap);
+        if(!bin){ bin={used:0, slices:[]}; layout.push(bin); }
+        bin.used+=it.model.vram;
+        bin.slices.push({kind:it.kind, model:it.model.name, gb:it.model.vram, n:0});
+      } });
+    note = part.kind==='whole'
+      ? `whole-card granularity: ${g.name} has no partitioning; co-residency within one card only via one serving container`
+      : `fractional sharing (time-slice / MPS): no memory or fault isolation on ${g.name}`;
+  }
+  return {items, gpus:layout.length, mode:part.kind, layout, totalVram, note};
+}
+function fleetTotals(pools, sup, hw){
+  const info=RESIL[hw.resil]||RESIL.n;
+  const servW=pools.reduce((t,p)=>t+p.state.workers,0);
+  const servG=pools.reduce((t,p)=>t+p.state.gpus,0);
+  const spare=pools.reduce((t,p)=>t+Math.max(0, p.state.gpus - p.d.replicas*p.state.tp),0);
+  const supG=sup.gpus||0;
+  const supExtraG=Math.max(0, supG-spare);
+  const supNodes=Math.ceil(supExtraG/hw.perW);
+  const resilW=pools.reduce((t,p)=>t+info.extraW(p.state.workers),0);
+  const procW=servW+resilW+supNodes;
+  const procG=procW*hw.perW;
+  return {servW, servG, spare, supG, supExtraG, supNodes, resilW, procW, procG,
+    kW:procG*hw.g.watts/1000,
+    fits:pools.every(p=>p.d.fits),
+    sloAll:pools.every(p=>p.perUc.every(x=>x.d.sloAll)),
+    agg:pools.reduce((t,p)=>t+p.d.agg,0),
+    vramNeed:pools.reduce((t,p)=>t+p.d.total,0)+sup.totalVram,
+    vramAvail:pools.reduce((t,p)=>t+p.d.avail,0)+supG*hw.g.vram};
+}
+
 /* ================= SERIALIZE / APPLY ================= */
 function serialize(){
   captureUc();
@@ -2458,13 +2607,13 @@ document.querySelectorAll('input,select').forEach(el=>{
 $('ccApply').addEventListener('click',()=>{ $('inConc').value=Math.max(1,+$('ccDerived').dataset.cc||1); refreshCtl('inConc'); render(); toast('Concurrency applied'); });
 
 /* ================= AUTO-SIZE ================= */
-function autoSize(){
-  const s=readState();
+function solvePool(s){
   const weights=s.params*s.bytesW;
   const actGB=Math.min(s.resident+(s.extend?s.reasonTok:0),8192)*s.hidden*12*s.bytesW/1e9;
   const packPct=Math.min(95,Math.max(50,+($('autoUtil')&&$('autoUtil').value)||80)), pack=packPct/100;
   let tp=[1,2,4,8,16,32,64,72].find(t=>weights+actGB<=pack*t*s.gpuVram);
-  if(!tp){ toast(`No TP up to 64 fits one copy of ${s.model.name} on ${s.gpu.name}: quantize the weights or pick a higher-VRAM GPU`, true); return; }
+  if(!tp) return {ok:false, packPct,
+    reason:`No TP up to 64 fits one copy of ${s.model.name} on ${s.gpu.name}: quantize the weights or pick a higher-VRAM GPU`};
   const tpFit=tp;
   // widen TP while a TTFT target is missed (prefill scales with TP)
   if(s.sloTtft>0){ let t=tp; while(t<64 && 2*s.resident*s.active/(s.gpuTflops*t*s.mfu)>s.sloTtft) t*=2; tp=Math.min(72,t); }
@@ -2496,6 +2645,38 @@ function autoSize(){
       workers++;
     }
   }
+  return {ok:true, tp, tpFit, widened, crossed, workers, batch, packPct, weights};
+}
+function autoSizeProject(){
+  captureUc();
+  const prj=computeProject();
+  const lines=[]; let anyCrossed=false, allOk=true;
+  prj.pools.forEach(p=>{
+    const r=solvePool(p.state);
+    if(!r.ok){ allOk=false; lines.push(`${p.state.model.name} ${p.state.wq.name}: ${r.reason}`); return; }
+    anyCrossed=anyCrossed||r.crossed;
+    p.members.forEach(mi=>{ const f=UC[mi].f; f.inTp=r.tp; f.inWorkers=r.workers; f.inBatch=r.batch; });
+    const names=p.members.map(mi=>ucName(UC[mi])).join(' + ');
+    lines.push(`${p.state.model.name} ${p.state.wq.name} (${names}): TP${r.tp} · ${r.workers} worker${r.workers>1?'s':''} · batch ${r.batch} for ${p.state.concurrent} pooled calls${r.widened?', TP widened for the TTFT target':''}${r.crossed?', one copy spans workers':''}.`);
+  });
+  if(anyCrossed&&+$('inIc').value>0.7){ $('inIc').value=0.7; refreshCtl('inIc'); }
+  loadUc(activeUc); renderUcCards(); render();
+  const done=computeProject();
+  const why=`Sized each pool separately. `+lines.join(' ')+
+    (done.sup.gpus? ` Supporting models need ${done.sup.gpus} shared GPU${done.sup.gpus>1?'s':''}: ${Math.min(done.fleet.spare,done.sup.gpus)} covered by spare pool GPUs, ${done.fleet.supExtraG} added.`:'')+
+    ` Fleet: ${done.fleet.servG} serving GPUs across ${done.fleet.servW} workers, ${done.fleet.procG} procured with ${RESIL[done.hw.resil].label} resilience.`;
+  const ar=$('autoResult'); if(ar){ ar.textContent=why; ar.classList.add('show'); }
+  toast(allOk? `Auto-sized ${prj.pools.length} pool${prj.pools.length>1?'s':''}: ${done.fleet.servG} serving GPUs, ${done.fleet.procG} procured` : 'Auto-size finished with problems: see the note under the button', !allOk);
+}
+function autoSize(){
+  captureUc();
+  if(UC.length>1) return autoSizeProject();
+  const s=readState();
+  const r=solvePool(s);
+  if(!r.ok){ toast(r.reason, true); return; }
+  const {tp, tpFit, widened, crossed, workers, batch, packPct}=r;
+  const weights=r.weights;
+  const interactive=(s.sloTtft>0||s.sloTps>0||s.sloP95>0);
   $('inTp').value=tp; refreshCtl('inTp');
   $('inWorkers').value=workers; refreshCtl('inWorkers');
   $('inBatch').value=batch; refreshCtl('inBatch');
@@ -2578,7 +2759,7 @@ $('fileImport').addEventListener('change',e=>{
 });
 
 /* ================= PUBLIC API & BOOT ================= */
-window.GPUscale = {compute, readState, serialize, applyConfig, buildXls, buildXlsxBytes, render, autoSize, MODELS, GPUS, QUANTS, CASES,
+window.GPUscale = {compute, readState, serialize, applyConfig, buildXls, buildXlsxBytes, render, autoSize, computeProject, MODELS, GPUS, QUANTS, CASES,
   usecases:{list:()=>UC, active:()=>activeUc, add:addUc, select:selectUc, remove:removeUc}};
 window.SizingConsole = window.GPUscale;
 (function boot(){
