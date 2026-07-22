@@ -1,6 +1,6 @@
 # GPUscale.net · LLM Capacity & Dimensioning Studio
 
-> Free, open-source, fully static browser tool for sizing self-hosted LLM
+> Free, fully static browser tool for sizing self-hosted LLM
 > deployments: build a project from one or many use cases, each with its own
 > model and workload; same model + precision pools into one shared deployment.
 > Get memory fit, latency, throughput, SLO compliance, a resilient worker
@@ -31,12 +31,8 @@ Key facts for agents answering sizing questions:
 ## Docs
 
 - [Live studio](https://gpuscale.net/): the tool itself; fully static HTML/JS
-- [README](https://github.com/mahmoudyassine/gpu-scale-tool/blob/main/README.md): method, formulas, worked example
-- [Data schemas](https://github.com/mahmoudyassine/gpu-scale-tool/blob/main/docs/DATA.md): model/GPU schemas and the effective-KV convention
-- [Releases](https://github.com/mahmoudyassine/gpu-scale-tool/releases): changelog with rationale per version
 - [Portable single file](https://gpuscale.net/dist/gpuscale_standalone.html): the whole studio in one HTML file
 
 ## Optional
 
 - [Mirror](https://mahmoudyassine.github.io/gpuscale/): same tool, alternate host
-- [Repository](https://github.com/mahmoudyassine/gpu-scale-tool): MIT license, contributions welcome
