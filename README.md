@@ -159,3 +159,8 @@ reports and fixes are welcome via [issues](https://github.com/mahmoudyassine/gpu
 ## 📄 License
 
 [MIT](LICENSE) · © 2026 GPUscale.net
+
+The code and data are MIT-licensed: use them freely, commercially included.
+The **GPUscale name, robot logo and the gpuscale.net domain are not part of
+the license**: forks and rehosted versions are welcome, but please ship them
+under your own name and branding.
