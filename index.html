@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GPUscale.net · LLM Capacity &amp; Dimensioning Studio</title>
+<title>GPUscale.net · Local Open-Source GPU VRAM Calculator for Self-Hosted LLM Fleets</title>
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
 <link rel="icon" type="image/png" sizes="512x512" href="assets/icon-512.png">
@@ -12,21 +12,21 @@
 <meta name="color-scheme" content="light dark">
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F6F7FA">
 <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0C1322">
-<meta name="description" content="Free GPU sizing calculator for self-hosted LLMs: VRAM fit, KV cache, tensor parallelism, latency and throughput estimates, SLO checks and resilient topology. 94 models, 38 GPUs, no signup.">
+<meta name="description" content="Local open-source GPU VRAM calculator for self-hosted LLM fleets: memory fit, KV cache, tensor parallelism, MIG sharing, latency and throughput estimates, SLO checks and resilient topology. 94 models, 37 GPUs, runs entirely in your browser, no signup.">
 <link rel="canonical" href="https://gpuscale.net/">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://gpuscale.net/">
 <meta property="og:site_name" content="GPUscale.net">
-<meta property="og:title" content="GPUscale.net · LLM Capacity &amp; Dimensioning Studio">
-<meta property="og:description" content="Size self-hosted LLM deployments: memory fit, latency, throughput, SLO compliance and resilient worker topology. Free, open source, no backend.">
+<meta property="og:title" content="GPUscale.net · Local Open-Source GPU VRAM Calculator for Self-Hosted LLM Fleets">
+<meta property="og:description" content="Local open-source GPU VRAM calculator for self-hosted LLM fleets: memory fit, latency, SLO compliance, GPU sharing and resilient topology. Runs entirely in your browser.">
 <meta property="og:image" content="https://gpuscale.net/assets/og-card.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="GPUscale.net · LLM Capacity &amp; Dimensioning Studio">
-<meta name="twitter:description" content="Size self-hosted LLM deployments: memory fit, latency, throughput, SLO compliance and resilient worker topology. Free, open source, no backend.">
+<meta name="twitter:title" content="GPUscale.net · Local Open-Source GPU VRAM Calculator for Self-Hosted LLM Fleets">
+<meta name="twitter:description" content="Local open-source GPU VRAM calculator for self-hosted LLM fleets: memory fit, latency, SLO compliance, GPU sharing and resilient topology. Runs entirely in your browser.">
 <meta name="twitter:image" content="https://gpuscale.net/assets/og-card.png">
-<script type="application/ld+json">{"@context": "https://schema.org", "@type": "WebApplication", "name": "GPUscale.net · LLM Capacity & Dimensioning Studio", "url": "https://gpuscale.net/", "description": "Free, open-source GPU sizing calculator for self-hosted LLM deployments: memory fit, KV cache, tensor parallelism, latency, throughput, SLO compliance and resilient worker topology.", "applicationCategory": "DeveloperApplication", "operatingSystem": "Any (browser-based)", "browserRequirements": "Any modern browser; fully client-side", "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}, "creator": {"@type": "Person", "name": "Mahmoud Yassine", "url": "https://github.com/mahmoudyassine"}, "license": "https://github.com/mahmoudyassine/gpu-scale-tool/blob/main/LICENSE", "image": "https://gpuscale.net/assets/og-card.png", "featureList": "Multi-use-case projects with pooled deployments, fleet map per GPU and node, supporting models on MIG/partitioned GPUs, memory fit per replica, KV cache modeling (GQA/MLA/hybrid), tensor/data parallelism, auto-sizing from SLOs, resilience patterns (N+1 to N+N+DR), JSON/XLSX/PDF export", "codeRepository": "https://github.com/mahmoudyassine/gpu-scale-tool"}</script>
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "WebApplication", "name": "GPUscale.net · Local Open-Source GPU VRAM Calculator for Self-Hosted LLM Fleets", "url": "https://gpuscale.net/", "description": "Local, open-source GPU VRAM calculator for self-hosted LLM fleets: memory fit, KV cache, tensor parallelism, MIG sharing, latency, throughput, SLO compliance and resilient worker topology. Fully client-side.", "applicationCategory": "DeveloperApplication", "operatingSystem": "Any (browser-based)", "browserRequirements": "Any modern browser; fully client-side", "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}, "creator": {"@type": "Person", "name": "Mahmoud Yassine", "url": "https://github.com/mahmoudyassine"}, "license": "https://github.com/mahmoudyassine/gpu-scale-tool/blob/main/LICENSE", "image": "https://gpuscale.net/assets/og-card.png", "featureList": "Multi-use-case projects with pooled deployments, fleet map per GPU and node, supporting models on MIG/partitioned GPUs, memory fit per replica, KV cache modeling (GQA/MLA/hybrid), tensor/data parallelism, auto-sizing from SLOs, resilience patterns (N+1 to N+N+DR), JSON/XLSX/PDF export", "codeRepository": "https://github.com/mahmoudyassine/gpu-scale-tool"}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">

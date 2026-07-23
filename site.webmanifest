@@ -1,7 +1,7 @@
 {
-  "name": "GPUscale.net · LLM Capacity & Dimensioning Studio",
+  "name": "GPUscale.net · Local Open-Source GPU VRAM Calculator",
   "short_name": "GPUscale",
-  "description": "Size self-hosted LLM deployments: memory fit, latency, throughput, SLO compliance and resilient worker topology.",
+  "description": "Local open-source GPU VRAM calculator for self-hosted LLM fleets: memory fit, latency, SLO compliance, GPU sharing and resilient topology.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

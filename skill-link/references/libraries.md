@@ -1,4 +1,4 @@
-# GPUscale libraries (generated · library v28 · engine v24 · studio 5.15.1)
+# GPUscale libraries (generated · library v28 · engine v24 · studio 5.15.2)
 
 ## Models (94)
 

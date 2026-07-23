@@ -1,7 +1,7 @@
-# GPUscale.net · LLM Capacity & Dimensioning Studio
+# GPUscale.net · Local Open-Source GPU VRAM Calculator for Self-Hosted LLM Fleets
 
-> Free, open-source, fully static browser tool for sizing self-hosted LLM
-> deployments: build a project from one or many use cases, each with its own
+> Local, open-source, fully static GPU VRAM calculator for self-hosted LLM
+> fleets: build a project from one or many use cases, each with its own
 > model and workload; same model + precision pools into one shared deployment.
 > Get memory fit, latency, throughput, SLO compliance, a resilient worker
 > topology, auto-attached supporting models (embeddings, reranker, ASR, TTS,

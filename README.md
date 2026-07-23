@@ -9,15 +9,16 @@
 
 # GPUscale.net
 
-**Plan self-hosted LLM deployments in your browser.** Build a project from one
-or many use cases (RAG copilot, voice agent, document intake), pick hardware
-once, and get memory fit, latency, SLO compliance, a resilient topology and a
-fleet map of every model on every GPU, supporting models included. Free, open
-source, and fully static: no backend, no build step, nothing uploaded.
+**Local Open-Source GPU VRAM calculator for self-hosted LLM fleets.** Build a
+project from one or many use cases (RAG copilot, voice agent, medical imaging,
+document intake), pick hardware once, and get memory fit, latency, SLO
+compliance, a resilient topology and a fleet map of every model on every GPU,
+supporting models and MIG-shared GPUs included. Free, open source, and fully
+static: no backend, no build step, nothing uploaded.
 
 **▶ Try it now: https://gpuscale.net/**
 
-![The studio](docs/screenshot.png)
+![The studio: a healthcare AI platform project with four use cases, pooled deployments and SLO verdicts](docs/screenshot.png)
 
 ## ✨ Features
 
@@ -37,6 +38,19 @@ source, and fully static: no backend, no build step, nothing uploaded.
 - 📤 **Exports**: JSON configs, an Excel template with live formulas, and a print-ready PDF report
 - 🪄 **Auto-size**: one click picks the TP that fits one copy of the model and the workers that admit your peak load
 - 🌓 **Polished**: light and dark themes, mobile friendly, installable, keyboard accessible
+- 🤖 **Claude skill**: download `gpuscale-link.skill` from the footer, hand it to Claude, and it turns plain-language requirements into a ready, verified share link (gpuscale.net + mirror)
+
+## 🗺️ Fleet map & GPU sharing
+
+Every node and GPU drawn with its assignment; shared GPUs show each MIG
+slice's memory with a per-slice breakdown, and the sizing decision explains
+dedicated-vs-sliced choices per pool.
+
+![Deployment topology and fleet map with MIG-shared GPUs and per-slice memory](docs/screenshot-fleet.png)
+
+Dark theme, same project:
+
+![Dark theme](docs/screenshot-dark.png)
 
 ## 🚀 Quick start
 

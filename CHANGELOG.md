@@ -1,5 +1,18 @@
 # Changelog
 
+## Studio 5.15.2 (2026-07-23)
+
+Branding pass around the new tagline.
+
+- Page title, meta/OG/Twitter descriptions, JSON-LD, web manifest and
+  llms.txt now read "Local Open-Source GPU VRAM Calculator for Self-Hosted
+  LLM Fleets".
+- New social/hero card (og-card.png): wordmark, tagline and a stylized
+  fleet-map motif with a MIG-shared GPU.
+- README rebuilt around the same positioning with fresh screenshots from a
+  real multi-use-case healthcare project (light hero, fleet map with
+  per-slice memory, dark theme) and a Claude-skill feature bullet.
+
 ## Studio 5.15.1 (2026-07-23)
 
 - Tagline: "Local Open-Source GPU VRAM calculator for self-hosted LLM fleets."
