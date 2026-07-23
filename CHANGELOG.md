@@ -1,5 +1,31 @@
 # Changelog
 
+## Studio 5.8 (2026-07-21)
+
+Charts anyone can explain, and a clearer canvas.
+
+- The two charts speak plain language: "Speed per user as demand grows"
+  and "Speed per user vs conversation length", with a halo-labeled "today"
+  marker per pool (with units), an amber target line, and a y-axis capped
+  to the operating region so slow pools no longer flatten onto the axis.
+  Axis ticks are integers, not "1.00".
+- Request latency anatomy rebuilt: one bar per use case on a shared scale,
+  an amber tick marking the slowest allowed time (derived from the P95
+  target), red totals when over, pool-color dots to tell same-named use
+  cases apart, and a visible plain-words key. The panel no longer clips.
+- Normal mode results are simplified but not dumbed down: dense breakdown
+  lines, placement notes and solver prose hide; every chart, diagram,
+  verdict and finding stays. Deployment bullets lead with the plain
+  sentence and keep the TP/batch detail for Advanced.
+- The input rail sits in a tinted container in both themes, corners are
+  sharper across the app (8/6px system), and the SLO roll-up carries pool
+  dots too.
+- Fixed: printing through the browser dialog now keeps all bar and map
+  colors even with "Background graphics" off (print-color-adjust); loading
+  a saved or shared project no longer overrides the viewer's light/dark
+  preference with the theme stored in the file.
+
+
 ## Studio 5.7.1 (2026-07-21)
 
 Excel report polish for real Excel.

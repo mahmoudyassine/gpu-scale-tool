@@ -325,13 +325,13 @@
     <div class="sr-only" id="fleetList"></div>
     <div class="fm-note" id="fmNote"></div>
     <div class="resil-stats" id="resilStats"></div>
-    <div class="resil-why">Resilience buys survival, not speed: the guaranteed figures are what remains during the failure you chose to cover. Idle spares add nothing day-to-day; active/active sites add burst headroom you should not plan sustained load on.</div>
+    <div class="resil-why dtl">Resilience buys survival, not speed: the guaranteed figures are what remains during the failure you chose to cover. Idle spares add nothing day-to-day; active/active sites add burst headroom you should not plan sustained load on.</div>
     <div class="topo-sum" id="topoSum"></div>
   </section>
 
   <div class="charts">
     <section class="panel chart-box">
-      <div class="p-head"><span class="p-title"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l6-6 4 4 7-8"/><path d="M14 7h6v6"/></svg>Throughput vs admitted sequences</span><span class="p-note">batch-aware</span></div>
+      <div class="p-head"><span class="p-title"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l6-6 4 4 7-8"/><path d="M14 7h6v6"/></svg>Speed per user as demand grows</span><span class="p-note">more simultaneous calls = slower streams</span></div>
       <div id="chartBatch"></div>
       <div class="fm-legend" id="chartBatchLgd" style="border:none;margin-top:4px;padding-top:0"></div>
       <div class="chart-legend">
@@ -342,7 +342,7 @@
       </div>
     </section>
     <section class="panel chart-box">
-      <div class="p-head"><span class="p-title"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12c3-7.5 6.5-7.5 9.5 0s6.5 7.5 9.5 0"/></svg>Per-user speed vs context length</span><span class="p-note">at current batch</span></div>
+      <div class="p-head"><span class="p-title"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12c3-7.5 6.5-7.5 9.5 0s6.5 7.5 9.5 0"/></svg>Speed per user vs conversation length</span><span class="p-note">longer context = slower streams</span></div>
       <div id="chartCtx"></div>
       <div class="fm-legend" id="chartCtxLgd" style="border:none;margin-top:4px;padding-top:0"></div>
       <div class="chart-legend">
@@ -358,7 +358,7 @@
     <div class="wf-legend" id="wfLegend"></div>
   </section>
 
-  <section class="panel">
+  <section class="panel dtl">
     <div class="p-head"><span class="p-title"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 17.5h5M10.5 21h3"/><path d="M12 3a6 6 0 0 0-3.4 10.9c.8.6 1.4 1.5 1.4 2.6h4c0-1.1.6-2 1.4-2.6A6 6 0 0 0 12 3z"/></svg>Reading of this configuration</span></div>
     <div class="insights" id="insights"></div>
   </section>

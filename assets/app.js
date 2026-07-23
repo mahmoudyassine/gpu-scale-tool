@@ -7,7 +7,7 @@ if(!MODELS.length || !GPUS.length || !QUANTS.length || !CASES.length){
   document.body.innerHTML = '<div style="font-family:system-ui,sans-serif;max-width:560px;margin:80px auto;padding:0 20px;line-height:1.65;color:#1A2536"><h2 style="margin-bottom:10px">Data files not loaded</h2><p>GPUscale.net could not find its library. Keep <code>index.html</code> together with the <code>data/</code> and <code>assets/</code> folders: the four files <code>data/models.js</code>, <code>data/gpus.js</code>, <code>data/quants.js</code> and <code>data/usecases.js</code> must sit next to this page.</p><p>If you need one portable file instead, use <code>dist/gpuscale_standalone.html</code> or rebuild it with <code>python3 tools/build_single_file.py</code>.</p></div>';
   throw new Error('GPUscale.net data missing');
 }
-const STUDIO_VERSION = '5.7.1', ENGINE_VERSION = 23;
+const STUDIO_VERSION = '5.8.0', ENGINE_VERSION = 23;
 function newProjId(){ const L='abcdefghjkmnpqrstuvwxyz', D='0123456789';
   const pick=s=>s[Math.floor(Math.random()*s.length)];
   return 'Project_'+pick(L)+pick(L)+pick(D)+pick(D)+pick(D); }
@@ -308,17 +308,23 @@ function chartSVG(opts){
   const W=560,H=248,L=48,R=opts.rightAxis?52:14,T=18,B=42, iw=W-L-R, ih=H-T-B;
   const X=v=>L+opts.xScale(v)*iw;
   let s=`<svg viewBox="0 0 ${W} ${H}" style="aspect-ratio:${W}/${H};width:100%;height:auto" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${opts.aria}">`;
+  const tickFmt=v=>v===0?'0':(v>=10? fmt(Math.round(v)) : fmt(v));
   axisTicks(opts.maxL).forEach(v=>{ const y=T+ih-(v/niceCeil(opts.maxL))*ih;
     s+=`<line x1="${L}" y1="${y}" x2="${W-R}" y2="${y}" stroke="${P.grid}" stroke-width="1"/>`;
-    s+=`<text x="${L-7}" y="${y+3.5}" fill="${P.axis}" font-size="9.5" text-anchor="end" font-family="IBM Plex Mono,monospace">${fmt(v)}</text>`; });
+    s+=`<text x="${L-7}" y="${y+3.5}" fill="${P.axis}" font-size="10.5" text-anchor="end" font-family="IBM Plex Mono,monospace">${tickFmt(v)}</text>`; });
   if(opts.rightAxis) axisTicks(opts.maxR).forEach(v=>{ const y=T+ih-(v/niceCeil(opts.maxR))*ih;
-    s+=`<text x="${W-R+7}" y="${y+3.5}" fill="${P.axis}" font-size="9.5" text-anchor="start" font-family="IBM Plex Mono,monospace">${fmt(v)}</text>`; });
+    s+=`<text x="${W-R+7}" y="${y+3.5}" fill="${P.axis}" font-size="10.5" text-anchor="start" font-family="IBM Plex Mono,monospace">${tickFmt(v)}</text>`; });
   if(opts.yLabelL) s+=`<text x="${L}" y="10" fill="${P.faint}" font-size="8.5" font-family="Inter,sans-serif">${opts.yLabelL}</text>`;
   if(opts.rightAxis&&opts.yLabelR) s+=`<text x="${W-4}" y="10" fill="${P.faint}" font-size="8.5" text-anchor="end" font-family="Inter,sans-serif">${opts.yLabelR}</text>`;
   opts.xTicks.forEach(([v,lab])=>{ const x=X(v);
     s+=`<line x1="${x}" y1="${T+ih}" x2="${x}" y2="${T+ih+4}" stroke="${P.axis}"/>`;
-    s+=`<text x="${x}" y="${T+ih+16}" fill="${P.axis}" font-size="9.5" text-anchor="middle" font-family="IBM Plex Mono,monospace">${lab}</text>`; });
+    s+=`<text x="${x}" y="${T+ih+16}" fill="${P.axis}" font-size="10.5" text-anchor="middle" font-family="IBM Plex Mono,monospace">${lab}</text>`; });
   if(opts.xLabel) s+=`<text x="${L+iw/2}" y="${H-7}" fill="${P.faint}" font-size="8.5" text-anchor="middle" font-family="Inter,sans-serif">${opts.xLabel}</text>`;
+  if(opts.guideY!=null && opts.guideY>0 && opts.guideY<=niceCeil(opts.maxL)){
+    const gy=T+ih-(opts.guideY/niceCeil(opts.maxL))*ih;
+    s+=`<line x1="${L}" y1="${gy}" x2="${W-R}" y2="${gy}" stroke="${P.amber}" stroke-width="1.4" stroke-dasharray="4 4" opacity=".9"/>`;
+    if(opts.guideYLabel) s+=`<text x="${L+6}" y="${gy-6}" fill="${P.amber}" font-size="10" font-family="IBM Plex Mono,monospace" stroke="${P.bg}" stroke-width="3" paint-order="stroke">${opts.guideYLabel}</text>`;
+  }
   if(opts.guideX!=null && opts.guideX<=opts.xMax){ const x=X(opts.guideX);
     s+=`<line x1="${x}" y1="${T}" x2="${x}" y2="${T+ih}" stroke="${P.red}" stroke-width="1.4" stroke-dasharray="4 4" opacity=".85"/>`;
     if(opts.guideLabel) s+=`<text x="${Math.min(x+5,W-R-70)}" y="${T+11}" fill="${P.red}" font-size="8.5" font-family="IBM Plex Mono,monospace">${opts.guideLabel}</text>`; }
@@ -332,9 +338,9 @@ function chartSVG(opts){
     const x=X(mk.x), y=Y(mk.y);
     s+=`<circle cx="${x}" cy="${y}" r="4.5" fill="${P.amber}" stroke="${P.bg}" stroke-width="1.6"/>`;
     if(mk.align==='left')
-      s+=`<text x="${Math.max(x-8,L+4)}" y="${Math.max(y-8,T+10)}" fill="${P.amber}" font-size="10" text-anchor="end" font-family="IBM Plex Mono,monospace">${mk.label}</text>`;
+      s+=`<text x="${Math.max(x-8,L+4)}" y="${Math.max(y-8,T+10)}" fill="${P.amber}" font-size="11" text-anchor="end" font-family="IBM Plex Mono,monospace" stroke="${P.bg}" stroke-width="3" paint-order="stroke">${mk.label}</text>`;
     else
-      s+=`<text x="${Math.min(x+8,W-R-4)}" y="${Math.max(y-8,T+10)}" fill="${P.amber}" font-size="10" font-family="IBM Plex Mono,monospace">${mk.label}</text>`;
+      s+=`<text x="${Math.min(x+8,W-R-4)}" y="${Math.max(y-8,T+10)}" fill="${P.amber}" font-size="11" font-family="IBM Plex Mono,monospace" stroke="${P.bg}" stroke-width="3" paint-order="stroke">${mk.label}</text>`;
   }
   if(opts.marker) drawMarker(opts.marker);
   if(opts.marker2) drawMarker(opts.marker2);
@@ -1088,7 +1094,7 @@ function buildProjectSummary(prj){
   pools.forEach((p,pi)=>{
     const st=p.state, wPer=st.model.params*st.wq.bytes;
     const spareG=st.gpus-p.d.replicas*st.tp;
-    h+=li('layers',`<b>${esc(st.model.name)} ${esc(st.wq.name)}</b>: one ${fmt(wPer)} GB copy needs TP${st.tp} (smallest slice that fits it in the memory target); ${p.d.replicas} replica${p.d.replicas>1?'s':''} at batch ${st.batch} admit ${p.d.active} of ${st.concurrent} pooled calls on ${st.workers} node${st.workers>1?'s':''}${spareG>0?`, ${spareG} GPUs spare`:''} · ${(p.d.total/p.d.avail*100).toFixed(0)}% memory used`);
+    h+=li('layers',`<b>${esc(st.model.name)} ${esc(st.wq.name)}</b>: serves ${p.d.active} of ${st.concurrent} pooled calls on ${st.workers} node${st.workers>1?'s':''}${spareG>0?` with ${spareG} GPUs spare`:''} · ${(p.d.total/p.d.avail*100).toFixed(0)}% memory used<span class="dtl">; one ${fmt(wPer)} GB copy needs TP${st.tp} (smallest slice that fits the memory target), ${p.d.replicas} replica${p.d.replicas>1?'s':''} at batch ${st.batch}</span>`);
   });
   if(sup.items.length)
     h+=li('puzzle',`<b>Supporting models</b>: ${sup.items.map(it=>`${KIND_LABEL[it.kind]||it.kind} ×${it.instances}`).join(', ')} on ${sup.gpus} shared GPU${sup.gpus>1?'s':''} (${esc(sup.note)})`);
@@ -1329,6 +1335,7 @@ function renderFleet(prj){
   if(info.add) notes.push((hw.resil==='aass'||hw.resil==='aan1')
     ? `Each site keeps one idle spare: it covers a node failure in its own site, for any pool (hardware is uniform).`
     : `The ${info.add} spare node${info.add>1?'s are':' is'} shared${pools.length>1?` across all ${pools.length} pools`:''}: hardware is uniform, so any spare can take over any failed node.`);
+  $('fmNote').className='fm-note dtl';
   $('fmNote').innerHTML=notes.map(esc).join(' ')+` GPU fill height shows each pool's memory use.<span class="no-print"> Hover any GPU for its exact assignment.</span>`;
   // economics, project level
   const agg=pools.reduce((x,p)=>x+p.d.agg,0), active=pools.reduce((x,p)=>x+p.d.active,0);
@@ -1394,9 +1401,9 @@ function renderProjectReport(prj){
       <div class="pl-lab"><span class="dot" style="background:var(--pool${PC[pi]})"></span>${esc(tag(pi))}<span class="pl-note">${p.d.replicas}×TP${p.state.tp} · ${p.state.workers} node${p.state.workers>1?'s':''}</span></div>
       <div class="pl-bar">${seg(d.weightsAll,'weights','Weights')}${seg(d.kvTotal,'kv','KV cache')}${seg(actAll,'act','Activations')}${seg(ovh,'ovh','Overhead')}</div>
       <div class="pl-val mono">${fmt(d.total)} / ${fmt(cap)} GB · ${(d.total/cap*100).toFixed(0)}%</div></div>
-    <div class="pl-detail mono">weights ${fmt(d.weightsAll)} GB ${pctOfCap(d.weightsAll,cap)} · KV · ${d.active} seq ${fmt(d.kvTotal)} GB ${pctOfCap(d.kvTotal,cap)} · activations ${fmt(actAll)} GB ${pctOfCap(actAll,cap)} · overhead ${fmt(ovh)} GB ${pctOfCap(ovh,cap)} · headroom ${fmt(d.headroom)} GB</div>`;
+    <div class="pl-detail mono dtl">weights ${fmt(d.weightsAll)} GB ${pctOfCap(d.weightsAll,cap)} · KV · ${d.active} seq ${fmt(d.kvTotal)} GB ${pctOfCap(d.kvTotal,cap)} · activations ${fmt(actAll)} GB ${pctOfCap(actAll,cap)} · overhead ${fmt(ovh)} GB ${pctOfCap(ovh,cap)} · headroom ${fmt(d.headroom)} GB</div>`;
   }).join('')+
-  (sup.gpus?`<div class="pl-detail mono" style="margin-top:2px">supporting models ${fmt(sup.totalVram)} GB on ${sup.gpus} shared GPU${sup.gpus>1?'s':''} (${sup.items.map(it=>`${KIND_LABEL[it.kind]||it.kind} ${fmt(it.instances*it.model.vram)} GB`).join(' · ')})</div>`:'')+
+  (sup.gpus?`<div class="pl-detail mono dtl" style="margin-top:2px">supporting models ${fmt(sup.totalVram)} GB on ${sup.gpus} shared GPU${sup.gpus>1?'s':''} (${sup.items.map(it=>`${KIND_LABEL[it.kind]||it.kind} ${fmt(it.instances*it.model.vram)} GB`).join(' · ')})</div>`:'')+
   `<div class="pl-row pl-total">
       <div class="pl-lab">Project total</div>
       <div class="pl-bar"><div class="seg weights" style="width:${Math.min(100,fleet.vramNeed/fleet.vramAvail*100)}%"></div></div>
@@ -1420,7 +1427,7 @@ function renderProjectReport(prj){
   let chips='';
   pools.forEach((p,pi)=>p.perUc.forEach(x=>{
     const on=x.s.sloTtft>0||x.s.sloTps>0||x.s.sloP95>0;
-    chips+=`<div class="slo ${on?(x.d.sloAll?'pass':'fail'):'off'}"><span class="dot"></span><span class="s-name">${esc(ucName(x.uc))}</span><span class="s-val">${on?(x.d.sloAll?'all targets met':'target missed'):'no targets'}</span></div>`; }));
+    chips+=`<div class="slo ${on?(x.d.sloAll?'pass':'fail'):'off'}"><span class="dot"></span><span class="s-name"><span class="wfp-dot" style="background:var(--pool${x.i%6})"></span>${esc(ucName(x.uc))}</span><span class="s-val">${on?(x.d.sloAll?'all targets met':'target missed'):'no targets'}</span></div>`; }));
   $('sloRow').innerHTML=chips;
   $('sloNote').textContent='per use case; details in the cards above';
   // --- charts: one line per pool ---
@@ -1434,12 +1441,21 @@ function renderProjectReport(prj){
       pts.push([S,v]); maxL=Math.max(maxL,v); }
     return {pts, color:poolHex(PC[pi]), axis:'L'}; });
   const m0=pools[0];
+  const tgtTps=Math.max.apply(null, pools.map(p=>p.state.sloTps||0).concat([0]));
+  // cap the y axis at 3x the operating region so slow pools and the target
+  // line stay readable; the single-user spike clips at the top by design
+  const yCap=Math.max(tgtTps, Math.max.apply(null, pools.map(p=>p.d.tps)))*3 || maxL;
+  const capped=series.map(sr=>({...sr, pts:sr.pts.map(pt=>[pt[0], Math.min(pt[1], yCap)])}));
+  const m1=pools[1];
   $('chartBatch').innerHTML=chartSVG({
-    aria:'Per-user throughput versus admitted sequences, one line per pool',
-    xScale:v=>(v-1)/(Smax-1||1), xMax:Smax, maxL, maxR:0, rightAxis:false,
-    xTicks:[1,Math.round(Smax/4),Math.round(Smax/2),Math.round(3*Smax/4),Smax].map(v=>[v,fmt(v)]),
-    xLabel:'admitted sequences', yLabelL:'tok/s per user',
-    series, marker:{x:Math.min(m0.d.active,Smax), y:m0.d.tps, label:esc(shortPoolTag(pools,0))+' '+fmt(m0.d.tps), series:0}});
+    aria:'Per-user streaming speed as simultaneous demand grows, one line per pool',
+    xScale:v=>(v-1)/(Smax-1||1), xMax:Smax, maxL:Math.min(maxL,yCap), maxR:0, rightAxis:false,
+    xTicks:[1,Math.round(Smax/4),Math.round(Smax/2),Math.round(3*Smax/4),Smax].map(v=>[v,String(Math.round(v))]),
+    xLabel:'simultaneous calls being served', yLabelL:'tok/s per user',
+    guideY:tgtTps||null, guideYLabel:tgtTps? 'target ≥ '+fmt(tgtTps)+' tok/s':null,
+    series:capped,
+    marker:{x:Math.min(m0.d.active,Smax), y:Math.min(m0.d.tps,yCap), label:'today · '+fmt(m0.d.tps)+' tok/s', series:0},
+    marker2:m1?{x:Math.min(m1.d.active,Smax), y:Math.min(m1.d.tps,yCap), label:'today · '+fmt(m1.d.tps)+' tok/s', series:1, align:'left'}:null});
   const ctxMax=Math.max.apply(null, pools.map(p=>p.state.ctx));
   let maxC=0;
   const cser=pools.map((p,pi)=>{ const pts=[];
@@ -1447,21 +1463,32 @@ function renderProjectReport(prj){
       const v=p.d.bwEff/(p.state.active*p.state.bytesW+p.d.batchPerRep*Math.min(c,p.state.ctx)*p.d.kvTok);
       pts.push([c,v]); maxC=Math.max(maxC,v); }
     return {pts, color:poolHex(PC[pi]), axis:'L'}; });
+  const cCapped=cser.map(sr=>({...sr, pts:sr.pts.map(pt=>[pt[0], Math.min(pt[1], yCap)])}));
   $('chartCtx').innerHTML=chartSVG({
-    aria:'Per-user speed versus context length, one line per pool',
-    xScale:v=>Math.log(v/1024)/Math.log(ctxMax/1024||2), xMax:ctxMax, maxL:maxC, maxR:0, rightAxis:false,
+    aria:'Per-user speed versus conversation length, one line per pool',
+    xScale:v=>Math.log(v/1024)/Math.log(ctxMax/1024||2), xMax:ctxMax, maxL:Math.min(maxC,yCap), maxR:0, rightAxis:false,
     xTicks:[1024,4096,16384,65536,ctxMax].filter((v,ix,arr)=>arr.indexOf(v)===ix&&v<=ctxMax).map(v=>[v,fmtTok(v)]),
-    xLabel:'resident context (tokens, log scale)', yLabelL:'tok/s per user', series:cser});
+    xLabel:'conversation length (tokens, log scale)', yLabelL:'tok/s per user',
+    guideY:tgtTps||null, guideYLabel:tgtTps? 'target ≥ '+fmt(tgtTps)+' tok/s':null,
+    series:cCapped,
+    marker:{x:Math.max(1024,Math.min(m0.state.resident,ctxMax)), y:Math.min(m0.d.tps,yCap), label:'today · '+fmt(m0.d.tps)+' tok/s @ '+fmtTok(m0.state.resident), series:0}});
   const clg=id=>{ const el=$(id); if(el){ el.style.display='flex'; el.innerHTML=pools.map((p,pi)=>`<span class="lg-li"><span class="sw" style="background:${poolHex(PC[pi])}"></span>${esc(tag(pi))}</span>`).join(''); } };
   clg('chartBatchLgd'); clg('chartCtxLgd');
   document.querySelectorAll('.chart-legend').forEach(el=>el.style.display='none');
   // --- latency anatomy: one row per use case ---
-  const rows=[];
+  const anat=[];
   pools.forEach(p=>p.perUc.forEach(x=>{
-    const segs=[['ttft',x.d.ttft],['ovh',x.s.ovh],['reason',x.s.reasonTok? x.s.reasonTok/x.d.tps*1000:0],['out',x.s.visibleOut/x.d.tps*1000]].filter(sg=>sg[1]>0.01);
-    const tot=segs.reduce((a2,sg)=>a2+sg[1],0);
-    rows.push(`<div class="wfp"><span class="n">${esc(ucName(x.uc))}</span><div class="bar">${segs.map(sg=>`<div class="wf-seg ${sg[0]}" style="width:${(sg[1]/tot*100)}%" title="${sg[0]}: ${fmt(sg[1])} ms"></div>`).join('')}</div><span class="t mono">${tot>=1000? fmt(tot/1000)+' s' : fmt(tot)+' ms'}</span></div>`); }));
-  $('wfBar').innerHTML=`<div class="wfp-list">${rows.join('')}</div>`;
+    const segs=[['ttft','First token',x.d.ttft],['ovh','Overhead',x.s.ovh],['reason','Reasoning',x.s.reasonTok? x.s.reasonTok/x.d.tps*1000:0],['out','Visible output',x.s.visibleOut/x.d.tps*1000]].filter(sg=>sg[2]>0.01);
+    anat.push({x, segs, tot:segs.reduce((a2,sg)=>a2+sg[2],0), tgt:x.s.sloP95>0? x.s.sloP95*1000/1.3 : 0}); }));
+  const maxMs=Math.max.apply(null, anat.map(r2=>Math.max(r2.tot, r2.tgt)))||1;
+  const rows=anat.map(r2=>{ const wPct=r2.tot/maxMs*100;
+    const over=r2.tgt>0 && r2.tot>r2.tgt;
+    const pdot=`<span class="wfp-dot" style="background:var(--pool${r2.x.i%6})"></span>`;
+    return `<div class="wfp"><span class="n">${pdot}${esc(ucName(r2.x.uc))}</span>
+      <div class="bar" title="mean request time; the tick is the P95 target">${r2.segs.map(sg=>`<div class="wf-seg ${sg[0]}" style="width:${(sg[2]/maxMs*100)}%" title="${sg[1]}: ${fmt(sg[2])} ms"></div>`).join('')}${r2.tgt>0?`<div class="wf-tick" style="left:${Math.min(99,r2.tgt/maxMs*100)}%" title="P95 target ${fmt(r2.tgt/1000)} s mean-equivalent"></div>`:''}</div>
+      <span class="t mono${over?' over':''}">${r2.tot>=1000? fmt(r2.tot/1000)+' s' : fmt(r2.tot)+' ms'}${r2.tgt?` / ${fmt(r2.tgt/1000)} s`:''}</span></div>`; });
+  $('wfBar').className='wf-bar wf-multi';
+  $('wfBar').innerHTML=`<div class="wfp-list">${rows.join('')}</div><div class="wf-scalenote">time taken / slowest allowed · tick = the allowed limit<span class="dtl"> · bars share one scale (longest request = full width) · the allowed figure is the mean time that still meets the P95 target</span></div>`;
   $('wfLegend').innerHTML=[['TTFT','ttft'],['Overhead','ovh'],['Reasoning','reason'],['Visible output','out']].map(([n2,c2])=>`<span class="lg-li"><span class="lg-sw wf-seg ${c2}" style="width:10px;height:10px"></span><span class="k">${n2}</span></span>`).join('');
   $('wfTotal').textContent=`mean ${fmt(wavg(p=>p.d.latency))} s (demand-weighted)`;
   // --- insights hidden (Summary carries findings); recommendations per pool ---
@@ -1491,6 +1518,7 @@ function renderProjectReport(prj){
   </table>`;
 }
 function restoreSingleReport(){
+  const wf=$('wfBar'); if(wf) wf.className='wf-bar';
   const box=$('projLedger'); if(box) box.style.display='none';
   document.querySelectorAll('.chart-legend').forEach(el=>el.style.display='');
   ['chartBatchLgd','chartCtxLgd'].forEach(id=>{ const el=$(id); if(el) el.style.display='none'; });
@@ -1758,7 +1786,7 @@ function applyGlobalDom(c, raw, notes){
   if(t.frameworkOverheadMs!=null) $('inOvh').value=t.frameworkOverheadMs;
   if(t.autoSizeUtilPct!=null&&$('autoUtil')) $('autoUtil').value=t.autoSizeUtilPct;
   if(raw.name) $('scenarioName').value = /^Untitled (scenario|project)$/.test(raw.name)? '' : raw.name;
-  if(c.theme==='dark'||c.theme==='light'){ window.__themeLocked=true; setTheme(c.theme); }
+  // theme stays a viewer preference: stored config themes are ignored on load
   if(raw.mode==='normal'||raw.mode==='advanced'||c.mode==='normal'||c.mode==='advanced') setUxMode(raw.mode||c.mode);
 }
 function applyConfig(raw){
