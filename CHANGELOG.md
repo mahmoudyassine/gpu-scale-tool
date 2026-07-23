@@ -1,5 +1,9 @@
 # Changelog
 
+## Studio 5.15.1 (2026-07-23)
+
+- Tagline: "Local Open-Source GPU VRAM calculator for self-hosted LLM fleets."
+
 ## Studio 5.15 (2026-07-23)
 
 A Claude skill that turns plain-language requirements into a ready link.
