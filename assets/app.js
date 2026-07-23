@@ -7,7 +7,7 @@ if(!MODELS.length || !GPUS.length || !QUANTS.length || !CASES.length){
   document.body.innerHTML = '<div style="font-family:system-ui,sans-serif;max-width:560px;margin:80px auto;padding:0 20px;line-height:1.65;color:#1A2536"><h2 style="margin-bottom:10px">Data files not loaded</h2><p>GPUscale.net could not find its library. Keep <code>index.html</code> together with the <code>data/</code> and <code>assets/</code> folders: the four files <code>data/models.js</code>, <code>data/gpus.js</code>, <code>data/quants.js</code> and <code>data/usecases.js</code> must sit next to this page.</p><p>If you need one portable file instead, use <code>dist/gpuscale_standalone.html</code> or rebuild it with <code>python3 tools/build_single_file.py</code>.</p></div>';
   throw new Error('GPUscale.net data missing');
 }
-const STUDIO_VERSION = '5.9.0', ENGINE_VERSION = 24;
+const STUDIO_VERSION = '5.10.0', ENGINE_VERSION = 24;
 function newProjId(){ const L='abcdefghjkmnpqrstuvwxyz', D='0123456789';
   const pick=s=>s[Math.floor(Math.random()*s.length)];
   return 'Project_'+pick(L)+pick(L)+pick(D)+pick(D)+pick(D); }
@@ -935,6 +935,12 @@ function sliceProfiles(g){
   }
   return out;
 }
+/* bin capacity and per-slice cost in the units that physically constrain packing:
+   7-slice MIG parts fill their 8 MEMORY slices first (a 3g takes 4 of 8), so
+   3g+3g+1g is impossible even though 3+3+1 compute units fit; 4-slice MIG and
+   cpx parts have memory == compute units. */
+function binCap(part){ return part&&part.kind==='mig'&&part.max===7? 8 : (part&&part.max)||1; }
+function sliceCost(part,u){ return part&&part.kind==='mig'&&part.max===7? (MIG_MEM_MAP7[u]||8) : u; }
 /* user-facing name for a slice profile: NVIDIA MIG geometry vs AMD uniform partitions */
 const sliceName=(sl,plural)=> sl.kind==='cpx'? `GPU partition${plural?'s':''}` : `MIG ${sl.units}g slice${plural?'s':''}`;
 const uv=(f,id)=>{ const c=FIELDS[id]; const raw=(f[id]===''||f[id]==null)? c.val : +f[id];
@@ -1000,7 +1006,7 @@ function computeProject(){
     // MIG-sliced pool: each replica lives on its own hardware slice, modeled as
     // a synthetic smaller GPU (compute u/max, bandwidth by memory-slice map,
     // per-instance overhead instead of whole-GPU multi overhead)
-    const su=+((UC[p.members[0]]||{}).sliceU)||0;
+    const su=UC.length>1? (+((UC[p.members[0]]||{}).sliceU)||0) : 0;
     const prof=su>0&&p.state.tp===1? sliceProfiles(hw.g).find(pr2=>pr2.units===su) : null;
     if(prof){
       p.sliced=prof;
@@ -1041,11 +1047,12 @@ function allocShared(pools, hw){
       gb:p.sliced.gb, tip:`${p.state.model.name} replica ${r2+1} · ${sliceName(p.sliced)} (${fmt(p.sliced.gb)} GB)`}); });
   sup.layout.forEach(bin=>bin.slices.forEach(sl=>items.push({kind:'sup', sub:sl.kind, model:sl.model,
     units:sl.n, gb:sl.gb, inst:sl.inst, tip:`${KIND_LABEL[sl.kind]||sl.kind} ${sl.model}${sl.inst>1?' ×'+sl.inst:''} (${fmt(sl.gb)} GB slice)`})));
-  const bins=[];
-  items.sort((x,y)=>y.units-x.units).forEach(it=>{
-    let bin=bins.find(b=>b.used+it.units<=part.max);
+  const bins=[], cap=binCap(part);
+  items.forEach(it=>{ it.mu=sliceCost(part, it.units); });
+  items.sort((x,y)=>y.mu-x.mu).forEach(it=>{
+    let bin=bins.find(b=>b.used+it.mu<=cap);
     if(!bin){ bin={used:0, slices:[]}; bins.push(bin); }
-    bin.used+=it.units; bin.slices.push(it); });
+    bin.used+=it.mu; bin.slices.push(it); });
   return {sup, bins, gpus:bins.length,
     note:`isolated ${part.kind==='mig'?'MIG slices':'compute partitions'} (${part.max} per GPU): sliced model replicas and supporting models share physical GPUs`};
 }
@@ -1080,13 +1087,15 @@ function allocSupports(hw){
         it.perSlice=Math.max(1, Math.floor(smallest.gb/it.model.vram));
         it.sliceCount=Math.ceil(it.instances/it.perSlice);
       } });
-    items.slice().sort((x,y)=>y.units-x.units).forEach(it=>{
+    const cap=binCap(part);
+    items.slice().sort((x,y)=>sliceCost(part,y.units)-sliceCost(part,x.units)).forEach(it=>{
+      const mu=sliceCost(part, it.units);
       for(let n=0;n<it.sliceCount;n++){
         const inst=Math.min(it.perSlice, it.instances-n*it.perSlice);
-        let bin=layout.find(b=>b.used+it.units<=part.max);
+        let bin=layout.find(b=>b.used+mu<=cap);
         if(!bin){ bin={used:0, slices:[]}; layout.push(bin); }
-        bin.used+=it.units;
-        bin.slices.push({kind:it.kind, model:it.model.name, gb:it.sliceGb, n:it.units, inst});
+        bin.used+=mu;
+        bin.slices.push({kind:it.kind, model:it.model.name, gb:it.sliceGb, n:it.units, mu, inst});
       } });
     note = part.kind==='mig'
       ? `isolated MIG slices (${part.max} per GPU, ${part.min} GB granularity)`
@@ -1221,7 +1230,7 @@ function buildFleetSites(prj){
       const chunk=list.slice(base, base+hw.perW);
       const poolsIn=new Set(chunk.filter(g2=>g2.type==='pool').map(g2=>g2.pool));
       const part=hw.g.part||{max:1};
-      node.util=chunk.length? chunk.reduce((x,g2)=>x+(g2.type==='pool'? g2.util : g2.type==='shared'? Math.min(1,(part.max>1? g2.bin.used/part.max : g2.bin.used/Math.max(1,hw.g.vram))) : 0),0)/hw.perW : 0;
+      node.util=chunk.length? chunk.reduce((x,g2)=>x+(g2.type==='pool'? g2.util : g2.type==='shared'? Math.min(1,(part.max>1? g2.bin.used/binCap(part) : g2.bin.used/Math.max(1,hw.g.vram))) : 0),0)/hw.perW : 0;
       chunk.forEach((g2,k)=>{ node.gpus.push({...g2, tip:`${node.label} · GPU ${k+1} · ${g2.tip}`}); });
       while(node.gpus.length<hw.perW) node.gpus.push({type:'spare', tip:`${node.label} · unassigned headroom`});
       if(poolsIn.size===1){ node.pool=[...poolsIn][0]; node.poolName=pools[node.pool].state.model.name; }
@@ -1343,18 +1352,18 @@ function renderFleet(prj){
       return w[s]||w[0]; }; })();
   const partMax=(hw.g.part&&hw.g.part.max)||1;
   const short=n=>n.length>26? n.slice(0,24)+'…':n;
-  const MAXN=18;
+  const gp=p2=>`<span class="gp">${Math.round(p2*100)}%</span>`;
   const gpuHtml=g2=>{
     if(g2.type==='pool'){ const h=Math.max(6, Math.round(g2.util*100));
-      return `<div class="fm-gpu assigned" title="${esc(g2.tip)}"><div class="fill" style="height:${h}%;background:var(--pool${PC[g2.pool]});opacity:${g2.rep%2?0.72:1}"></div></div>`; }
+      return `<div class="fm-gpu assigned" title="${esc(g2.tip)}"><div class="fill" style="height:${h}%;background:var(--pool${PC[g2.pool]});opacity:${g2.rep%2?0.72:1}"></div>${gp(g2.util)}</div>`; }
     if(g2.type==='idle'){ const col=g2.pool==null? 'var(--amber-border)' : (g2.mode==='drs'? 'var(--violet)' : `var(--pool${PC[g2.pool]})`);
       return `<div class="fm-gpu spare" title="${esc(g2.tip)}" style="border-color:${col}"></div>`; }
     if(g2.type==='sup'||g2.type==='shared'){ let y=0;
-      const bands=g2.bin.slices.map(sl=>{ const h=Math.max(10, partMax>1? (sl.units||sl.n||1)/partMax*100 : Math.min(100,(sl.gb||1)/Math.max(1,hw.g.vram)*100));
+      const bands=g2.bin.slices.map(sl=>{ const h=Math.max(10, partMax>1? (sl.mu||sl.units||sl.n||1)/binCap(hw.g.part)*100 : Math.min(100,(sl.gb||1)/Math.max(1,hw.g.vram)*100));
         const col = sl.kind==='pool'? `var(--pool${PC[sl.pool]})` : `var(--sup${sl.sub||sl.kind})`;
         const b=`<div class="band${sl.kind==='pool'?' solid':''}" style="top:${y}%;height:${h}%;background:${col}"></div>`; y+=h; return b; }).join('');
-      const tip=g2.tip;
-      return `<div class="fm-gpu assigned" title="${esc(tip)}">${bands}</div>`; }
+      const used=partMax>1? g2.bin.used/binCap(hw.g.part) : g2.bin.used/Math.max(1,hw.g.vram);
+      return `<div class="fm-gpu assigned" title="${esc(g2.tip)}">${bands}${gp(Math.min(1,used))}</div>`; }
     return `<div class="fm-gpu spare" title="${esc(g2.tip)}"></div>`;
   };
   const nodeHtml=n2=>{
@@ -1369,16 +1378,10 @@ function renderFleet(prj){
   const dense=sites.reduce((x,s2)=>x+s2.nodes.length,0)>14;
   box.className='fleet-map'+(dense?' dense':'');
   box.innerHTML=sites.map(s2=>{
-    let list=s2.nodes, moreN=0;
-    if(list.length>MAXN){ const idlers=list.filter(n2=>n2.cls!=='serve');
-      const servers=list.filter(n2=>n2.cls==='serve');
-      const room=Math.max(1, MAXN-1-idlers.length);
-      moreN=servers.length-room;
-      list=[...servers.slice(0,room), ...idlers]; }
     const sico=s2.icon==='globe'?'<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9s1.3-6.3 3.8-9z"/>':s2.icon==='shield'?RICO.shield:'<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 7h2M13 7h2M9 11h2M13 11h2M9 15h2M13 15h2"/>';
     return `<div class="fm-site">
       <div class="fm-site-head"><span class="t"><svg class="ri" viewBox="0 0 24 24" aria-hidden="true">${sico}</svg>${esc(s2.title)}</span><span class="schip">${s2.workers} node${s2.workers>1?'s':''} · ${s2.gpus} GPU · ≈${fmt(s2.kW)} kW</span></div>
-      <div class="fm-nodes">${list.map(nodeHtml).join('')}${moreN>0?`<div class="fm-node fm-more">+${moreN} more ${esc(short(pools.length===1?pools[0].state.model.name:'serving'))} node${moreN>1?'s':''}</div>`:''}</div>
+      <div class="fm-nodes">${s2.nodes.map(nodeHtml).join('')}</div>
     </div>`+(s2.link?`<div class="fm-link" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 4v16M7 20l-3-3.5M7 20l3-3.5M17 20V4M17 4l-3 3.5M17 4l3 3.5"/></svg>${esc(s2.link)}</div>`:'');
   }).join('');
   // legend
@@ -2523,6 +2526,7 @@ function solvePool(s){
   const eva=(workers,batch)=>compute({...s, tp, ic, workers, gpus:workers*s.perW, batch});
   let workers, batch, d;
   let converged=false, sloStuck=null, grewForSlo=0;
+  let tpsCan=true, p95Can=true;
   if(interactive){
     // fewest workers that admit the peak concurrency at a batch of at most 64, then grow until it fits
     workers=Math.min(64,Math.max(1,Math.ceil(Math.max(1,Math.ceil(s.concurrent/64))*tp/s.perW)));
@@ -2535,23 +2539,34 @@ function solvePool(s){
       workers++;
     }
     // SLA growth: per-user speed and P95 both improve as batch-per-replica falls,
-    // so add nodes until the targets pass; if they still fail at batch 1 no amount
-    // of hardware helps (the output length itself is the floor) and we say so.
+    // so add nodes until the targets pass. FIRST check what a call gets alone on
+    // this hardware at batch 1 (the physical best case): a target that fails even
+    // there can never be met by more hardware (the output length itself is the
+    // floor), so we never buy nodes for it; we report it and keep the fleet at
+    // the size the ACHIEVABLE targets and the demand actually need.
     if(converged){
+      const alone=compute({...s, tp, ic, workers:Math.max(1,Math.ceil(tp/s.perW)), gpus:tp, batch:1, concurrent:1});
+      tpsCan = !(s.sloTps>0) || alone.slo.tps.pass;
+      p95Can = !(s.sloP95>0) || alone.slo.p95.pass;
+      const stuckList=[];
+      if(!tpsCan) stuckList.push('per-user speed');
+      if(!p95Can) stuckList.push('P95');
       const w0=workers;
       for(let guard=0; guard<80; guard++){
         d=eva(workers,batch);
-        const missTps = s.sloTps>0 && !d.slo.tps.pass;
-        const missP95 = s.sloP95>0 && !d.slo.p95.pass;
+        const missTps = tpsCan && s.sloTps>0 && !d.slo.tps.pass;
+        const missP95 = p95Can && s.sloP95>0 && !d.slo.p95.pass;
         if(!(missTps||missP95)) break;
         if(batch<=1 || workers>=64){
-          sloStuck=(missTps?'per-user speed':'')+(missTps&&missP95?' and ':'')+(missP95?'P95':'');
+          if(missTps) stuckList.push('per-user speed');
+          if(missP95) stuckList.push('P95');
           break;
         }
         workers++;
         const reps2=Math.max(1,Math.floor(workers*s.perW/tp));
         batch=Math.min(64,Math.max(1,Math.ceil(s.concurrent/reps2)));
       }
+      sloStuck = stuckList.length? stuckList.join(' and ') : null;
       grewForSlo=workers-w0;
     }
   } else {
@@ -2581,13 +2596,20 @@ function solvePool(s){
       unitsArr.slice().sort((a,b)=>b-a).forEach(u2=>{ const i2=bins.findIndex(x=>x+u2<=max);
         if(i2<0) bins.push(u2); else bins[i2]+=u2; });
       return bins.length; };
+    const partS=s.gpu.part||{};
     let supU=[];
-    try{ allocSupports({g:s.gpu}).layout.forEach(b=>b.slices.forEach(sl=>{ if(sl.n>0) supU.push(sl.n); })); }catch(e){}
-    const supAlone=supU.length? binCount(supU, (s.gpu.part||{}).max||1) : 0;
+    try{ allocSupports({g:s.gpu}).layout.forEach(b=>b.slices.forEach(sl=>{ if(sl.n>0) supU.push(sliceCost(partS, sl.n)); })); }catch(e){}
+    const supAlone=supU.length? binCount(supU, binCap(partS)) : 0;
     let best=null;
     for(const prof of profs){
       if(weights+actGB+1.4 > pack*prof.gb) continue;
       const syn={...s, gpuVram:prof.gb, gpuBw:prof.bw, gpuTflops:prof.tflops, tp:1, perW:1, ic:1, multiGb:1.4};
+      // a slice that cannot meet a target the dedicated plan CAN meet is out;
+      // targets unachievable on any hardware are ignored here too (parity with
+      // the dedicated path: we never buy or reject hardware for them)
+      const aloneP=compute({...syn, gpus:1, workers:1, batch:1, concurrent:1});
+      if((s.sloTps>0 && tpsCan && !aloneP.slo.tps.pass) ||
+         (s.sloP95>0 && p95Can && !aloneP.slo.p95.pass)) continue;
       const SLICE_CAP=64;
       let slices=Math.max(1,Math.ceil(s.concurrent/SLICE_CAP)), sb=0, sd=null, okFit=false, stuck=null;
       for(let guard=0; guard<200; guard++){
@@ -2599,7 +2621,7 @@ function solvePool(s){
       }
       if(!okFit) continue;
       for(let guard=0; guard<200; guard++){
-        const missT2=s.sloTps>0&&!sd.slo.tps.pass, missP2=s.sloP95>0&&!sd.slo.p95.pass, missF2=s.sloTtft>0&&!sd.slo.ttft.pass;
+        const missT2=s.sloTps>0&&tpsCan&&!sd.slo.tps.pass, missP2=s.sloP95>0&&p95Can&&!sd.slo.p95.pass, missF2=s.sloTtft>0&&!sd.slo.ttft.pass;
         if(!(missT2||missP2||missF2)) break;
         if(missF2 && sb<=1){ stuck='TTFT'; break; }   // slice compute is capped: TTFT may be unreachable
         if(sb<=1 || slices>=SLICE_CAP){ if(missT2||missP2) stuck=(missT2?'per-user speed':'')+(missT2&&(missP2)?' and ':'')+(missP2?'P95':''); break; }
@@ -2608,14 +2630,17 @@ function solvePool(s){
         sd=compute({...syn, gpus:slices, workers:slices, batch:sb});
       }
       if(stuck) continue;
-      const packed=binCount([...Array(slices).fill(prof.units), ...supU], prof.max);
+      const packed=binCount([...Array(slices).fill(sliceCost(partS, prof.units)), ...supU], binCap(partS));
       const phys=Math.max(0, packed-supAlone);
       if(!best || phys<best.physGpus) best={ok:true, mode:'sliced', tp:1, sliceU:prof.units, prof,
         workers:slices, batch:sb, packPct, weights, actGB, physGpus:phys, sloStuck:null, grewForSlo:0, widened:false, crossed:false, tpFit:1};
     }
-    // pick sliced only when it genuinely saves hardware and passes every SLO
-    if(best && best.physGpus < dedicated.physGpus - 0.01 && !dedicated.sloStuck) return best;
-    if(best && dedicated.sloStuck) return best;
+    // pick sliced only when it genuinely saves hardware; targets no hardware can
+    // meet are missed identically on both paths and carry over to the report
+    if(best){
+      best.sloStuck=[!tpsCan?'per-user speed':null, !p95Can?'P95':null].filter(Boolean).join(' and ')||null;
+      if(best.physGpus < dedicated.physGpus - 0.01) return best;
+    }
   }
   return dedicated;
 }
@@ -2631,8 +2656,8 @@ function autoSizeProject(quiet){
       UC[mi].sliceU = r.mode==='sliced'? r.sliceU : 0; });
     const names=p.members.map(mi=>ucName(UC[mi])).join(' + ');
     lines.push(r.mode==='sliced'
-      ? `${p.state.model.name} ${p.state.wq.name} (${names}): ${r.workers} replica${r.workers>1?'s':''} on ${sliceName(r.prof,r.workers>1)} (${fmt(r.prof.gb)} GB each) · batch ${r.batch} for ${p.state.concurrent} pooled calls · shares physical GPUs with other models and supports (${r.physGpus>0? '+'+r.physGpus+' GPU'+(r.physGpus>1?'s':'')+' beyond the shared support GPUs' : 'fits into spare slice capacity on the shared GPUs'}).`
-      : `${p.state.model.name} ${p.state.wq.name} (${names}): TP${r.tp} · ${r.workers} worker${r.workers>1?'s':''} · batch ${r.batch} for ${p.state.concurrent} pooled calls${r.widened?', TP widened for the TTFT target':''}${r.grewForSlo?`, ${r.grewForSlo} node${r.grewForSlo>1?'s':''} added to meet speed/P95 targets`:''}${r.sloStuck?`; the ${r.sloStuck} target stays unmet even at batch 1: not solvable with more hardware, trim output/reasoning tokens or relax the target`:''}${r.crossed?', one copy spans workers':''}.`);
+      ? `${p.state.model.name} ${p.state.wq.name} (${names}): ${r.workers} replica${r.workers>1?'s':''} on ${sliceName(r.prof,r.workers>1)} (${fmt(r.prof.gb)} GB each) · batch ${r.batch} for ${p.state.concurrent} pooled calls · shares physical GPUs with other models and supports (${r.physGpus>0? '+'+r.physGpus+' GPU'+(r.physGpus>1?'s':'')+' beyond the shared support GPUs' : 'fits into spare slice capacity on the shared GPUs'})${r.sloStuck?`; the ${r.sloStuck} target is not achievable on any fleet size: trim output/reasoning tokens or relax the target`:''}.`
+      : `${p.state.model.name} ${p.state.wq.name} (${names}): TP${r.tp} · ${r.workers} worker${r.workers>1?'s':''} · batch ${r.batch} for ${p.state.concurrent} pooled calls${r.widened?', TP widened for the TTFT target':''}${r.grewForSlo?`, ${r.grewForSlo} node${r.grewForSlo>1?'s':''} added to meet speed/P95 targets`:''}${r.sloStuck?`; the ${r.sloStuck} target is not achievable on any fleet size (fails even alone at batch 1), so no hardware was added for it: trim output/reasoning tokens or relax the target`:''}${r.crossed?', one copy spans workers':''}.`);
   });
   if(anyCrossed&&+$('inIc').value>0.7){ $('inIc').value=0.7; refreshCtl('inIc'); }
   loadUc(activeUc); renderUcCards(); render();
@@ -2648,6 +2673,7 @@ function autoSize(quiet){
   UC.forEach(u=>{ if(!u.concManual) deriveConcFor(u); });
   loadUc(activeUc);
   if(UC.length>1) return autoSizeProject(quiet);
+  UC.forEach(u=>{ u.sliceU=0; });
   const s=readState();
   const r=solvePool(s);
   if(!r.ok){ toast(r.reason, true); return; }
@@ -2667,7 +2693,7 @@ function autoSize(quiet){
     : `One copy stays inside a single worker's NVLink island: no network penalty. `;
   why+=`${workers} worker${workers>1?'s':''} give ${df.replicas} cop${df.replicas>1?'ies':'y'} serving ${df.active} of ${s.concurrent} calls at batch ${batch}. `;
   if(r.grewForSlo) why+=`${r.grewForSlo} of those worker${r.grewForSlo>1?'s were':' was'} added purely to hit the speed/P95 targets. `;
-  if(r.sloStuck) why+=`The ${r.sloStuck} target stays unmet even at batch 1: no fleet size fixes it; shorten visible output or reasoning tokens, pick a faster GPU, or relax the target. `;
+  if(r.sloStuck) why+=`The ${r.sloStuck} target is not achievable on any fleet size (it fails even alone at batch 1), so no hardware was added for it; shorten visible output or reasoning tokens, pick a faster GPU, or relax the target. `;
   why+= df.fits? (df.sloAll? 'Result: fits, and every SLO target passes. ' : 'Result: memory fits, but an SLO target still fails. Hardware alone cannot fix that one: see Recommendations below. ') : 'Result: still exceeds VRAM, see Recommendations. ';
   if(df.fits){
     const u=df.total/df.avail*100;
@@ -2747,7 +2773,7 @@ $('fileImport').addEventListener('change',e=>{
 });
 
 /* ================= PUBLIC API & BOOT ================= */
-window.GPUscale = {compute, readState, serialize, applyConfig, buildXls, buildXlsxBytes, render, autoSize, computeProject, MODELS, GPUS, QUANTS, CASES,
+window.GPUscale = {compute, readState, serialize, applyConfig, buildXls, buildXlsxBytes, render, autoSize, computeProject, solvePool, sliceProfiles, MODELS, GPUS, QUANTS, CASES,
   usecases:{list:()=>UC, active:()=>activeUc, add:addUc, select:selectUc, remove:removeUc},
   projects:{list:lsIndex, load:loadProject, del:deleteProject, share:shareLink, id:()=>PROJ_ID}};
 window.SizingConsole = window.GPUscale;

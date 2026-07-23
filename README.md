@@ -22,6 +22,7 @@ source, and fully static: no backend, no build step, nothing uploaded.
 ## ✨ Features
 
 - 🗂️ **Projects with multiple use cases**: each card has its own workload, concurrency, SLOs and model; same model + precision is served by one shared pooled deployment, sized for the combined load
+- 🍰 **GPU sharing (MIG slicing)**: in multi-use-case projects, small-model pools can run one replica per hardware slice and share physical GPUs with other models and supporting services, the way Triton and vLLM deployments do on partitioned clusters; only real slice geometries, honest per-slice speed
 - 🤝 **Supporting models auto-attach**: embeddings and rerankers for RAG, ASR and TTS for voice, OCR for documents, guard models for public chat; placed on MIG slices, AMD partitions or fractional GPUs with honest footprints
 - 🗺️ **Fleet map**: every node and GPU drawn with its assignment: replicas, support slices, spares and standby nodes, plus a screen-reader text form
 - 🎚️ **Two modes**: Normal asks for people at peak and derives the rest; Advanced exposes every control

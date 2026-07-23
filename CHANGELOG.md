@@ -1,5 +1,30 @@
 # Changelog
 
+## Studio 5.10 (2026-07-23)
+
+No hardware for impossible targets, and a fleet map that shows everything.
+
+- Auto-size no longer buys nodes for an SLO target that no fleet size can
+  meet. It first checks what a single call gets alone on the hardware at
+  batch 1 (the physical best case); a target that fails even there, such
+  as a tight P95 against a long reasoning output, is reported as
+  unachievable and excluded from sizing. Previously the solver grew the
+  fleet all the way to batch 1 chasing it and kept the added nodes: a
+  project with a 5 s P95 target on an 8.8K-token workload procured 168
+  GPUs where 16 carry the actual demand. The achievable targets still
+  size the fleet exactly as before.
+- Slice packing now counts MIG memory slices, not compute slices: on
+  7-slice parts a 3g or 4g instance occupies 4 of the 8 memory slices, so
+  combinations such as 3g+3g+1g that no H100/H200 can host are no longer
+  produced, and shared-GPU utilization is measured against the memory
+  budget.
+- The fleet map shows every node: the "+N more" tile is gone. Node tiles
+  and GPU cells are larger, and every GPU now displays its memory
+  utilization inside the cell, including shared GPUs, where the figure is
+  the slice-budget share of the sliced replicas and supporting models on
+  that card.
+
+
 ## Studio 5.9 (2026-07-23) · engine v24
 
 GPU sharing: replicas and models can now share physical GPUs, the way
