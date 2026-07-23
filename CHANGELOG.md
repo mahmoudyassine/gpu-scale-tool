@@ -1,5 +1,42 @@
 # Changelog
 
+## Studio 5.11 (2026-07-23) · library v28
+
+Research-refreshed workload presets, and shared GPUs that show their slice memory.
+
+- Every preset's SLO targets re-grounded in production latency conventions
+  (NVIDIA NIM/GenAI-Perf profiles, vLLM SLO-triage guides, Azure OpenAI
+  latency guidance, voice-agent latency literature). Streaming targets now
+  reflect what a user actually needs: 20 tok/s reading pace for chat, 40-60
+  for skim and agent flows. TTFT budgets include the retrieval hop or the
+  long prefill where the workload has one. Every preset's P95 is now
+  numerically achievable from its own TTFT and TPS targets; several old
+  presets demanded a P95 their own targets made physically impossible
+  (voice asked for 3 s while its token budget alone took 4.3 s).
+- Presets now carry an exact reasoning-token budget where the 2K/8K classes
+  are wrong: Advanced RAG plans with ~250 tool-plan tokens, the code agent
+  with ~3K, deep research with ~20K.
+- Presets that cannot survive an idle-turn KV eviction pin session caches
+  (real-time voice, contact-center assist); picking any other preset resets
+  to running-batch admission. The default landing verdict now narrates it:
+  "200 of 200 calls resident in KV".
+- Five new presets: medical imaging report assistant, clinical knowledge
+  assistant, real-time video analytics, translation / localization, and
+  contact-center agent assist, each with its own users-to-concurrency
+  traffic shape.
+- Fleet map: shared GPUs now show how much of each slice's memory its model
+  actually uses. Each band is one slice; the solid part is used memory, the
+  faint part is slice headroom; hovering gives exact GB per slice. The
+  centered percentage on a shared GPU is now memory-based, and the hatch
+  pattern on supporting-model bands renders again (an inline background
+  shorthand had been overriding it since the bands were introduced).
+- Header: cleaner wordmark with the domain underneath, a tagline that says
+  what the tool is (use cases in, VRAM out), and the JSON button is now
+  labeled Export.
+- Library v28; metadata now correctly reports engine v24. Preset field
+  reference (reasonTok, policy, SLO consistency rule) documented in
+  docs/DATA.md.
+
 ## Studio 5.10 (2026-07-23)
 
 No hardware for impossible targets, and a fleet map that shows everything.

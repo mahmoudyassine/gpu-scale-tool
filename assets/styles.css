@@ -52,7 +52,9 @@ button{font-family:inherit}
 
 /* ============ HEADER ============ */
 header.top{display:flex;align-items:flex-start;justify-content:space-between;gap:14px 24px;padding:6px 2px 14px;border-bottom:1px solid var(--line-soft);margin-bottom:18px;flex-wrap:wrap}
-.brand h1{font-family:var(--disp);font-weight:700;font-size:27px;letter-spacing:-.015em}
+.brand h1{font-family:var(--disp);font-weight:700;font-size:27px;letter-spacing:-.015em;line-height:1}
+.brand-word{display:flex;flex-direction:column;gap:1px}
+.brand-word .dom{font-family:var(--mono);font-size:9.5px;color:var(--teal-strong);letter-spacing:.05em}
 .brand h1 .tld{color:var(--teal-strong)}
 .brand .sub{color:var(--muted);font-size:13px;margin-top:3px;max-width:600px}
 .top-right{display:flex;flex-direction:column;align-items:flex-end;gap:9px}
@@ -208,8 +210,10 @@ html[data-theme="dark"]{--pool0:#82AAFF;--pool1:#C4A5FF;--pool2:#FF8FC1;--pool3:
 .fm-gpu{width:34px;height:34px;border-radius:6px;border:1px solid var(--line);background:var(--inset);position:relative;overflow:hidden}
 .fm-gpu.assigned{border-color:transparent}
 .fm-gpu.spare{border-style:dashed}
-.fm-gpu .band{position:absolute;left:0;right:0;background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.4) 0 2px,transparent 2px 5px)}
-html[data-theme="dark"] .fm-gpu .band{background-image:repeating-linear-gradient(135deg,rgba(0,0,0,.35) 0 2px,transparent 2px 5px)}
+.fm-gpu .band{position:absolute;left:0;right:0;overflow:hidden}
+.fm-gpu .bfill{position:absolute;left:0;right:0;bottom:0;background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.4) 0 2px,transparent 2px 5px)}
+html[data-theme="dark"] .fm-gpu .bfill{background-image:repeating-linear-gradient(135deg,rgba(0,0,0,.35) 0 2px,transparent 2px 5px)}
+.fm-gpu .bfill.solid{background-image:none}
 .fm-legend .sw.hatch{background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.4) 0 2px,transparent 2px 4px)}
 html[data-theme="dark"] .fm-legend .sw.hatch{background-image:repeating-linear-gradient(135deg,rgba(0,0,0,.35) 0 2px,transparent 2px 4px)}
 .fleet-map.dense .fm-gpus{grid-template-columns:repeat(4,26px)}

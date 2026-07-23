@@ -141,3 +141,21 @@ model-derived latency), or `traffic:{direct:1}` for workloads where the
 users figure IS the concurrency (voice calls, batch queue depth). `pct` is
 the display note. The estimator drawer edits these per card; a directly
 typed concurrency sets `concManual` and stops the derivation.
+
+## data/usecases.js · SLO targets, `reasonTok`, `policy` (v28)
+
+SLO targets (ttftTarget ms, tpsTarget tok/s, p95Target s) follow production
+conventions (NVIDIA NIM/GenAI-Perf profiles, vLLM SLO-triage guides, Azure
+OpenAI latency guidance, voice-agent latency literature) and are numerically
+self-consistent with the engine's latency model: p95Target >= 1.3 x
+(ttft + (reasoning + visibleOut) / tps) with margin, so a preset can never
+demand a p95 its own TTFT/TPS targets make impossible. tpsTarget reflects
+per-user streaming needs (20 tok/s reading pace for chat, 40-60 for
+skim/agent flows), not batch throughput. Optional per-preset fields:
+`reasonTok` overrides the reasoning-class token budget through the Custom
+class (e.g. Advanced RAG 250 tool-plan tokens, code agent 3000, deep
+research 20000); `policy:"all"` pins per-session KV in VRAM for the whole
+session, used only where an idle-turn eviction would break the latency
+budget (real-time voice, contact-center agent assist). v28 also adds five
+presets: medical imaging reports, clinical knowledge assistant, real-time
+video analytics, translation/localization, contact-center agent assist.

@@ -68,7 +68,9 @@ button{font-family:inherit}
 
 /* ============ HEADER ============ */
 header.top{display:flex;align-items:flex-start;justify-content:space-between;gap:14px 24px;padding:6px 2px 14px;border-bottom:1px solid var(--line-soft);margin-bottom:18px;flex-wrap:wrap}
-.brand h1{font-family:var(--disp);font-weight:700;font-size:27px;letter-spacing:-.015em}
+.brand h1{font-family:var(--disp);font-weight:700;font-size:27px;letter-spacing:-.015em;line-height:1}
+.brand-word{display:flex;flex-direction:column;gap:1px}
+.brand-word .dom{font-family:var(--mono);font-size:9.5px;color:var(--teal-strong);letter-spacing:.05em}
 .brand h1 .tld{color:var(--teal-strong)}
 .brand .sub{color:var(--muted);font-size:13px;margin-top:3px;max-width:600px}
 .top-right{display:flex;flex-direction:column;align-items:flex-end;gap:9px}
@@ -224,8 +226,10 @@ html[data-theme="dark"]{--pool0:#82AAFF;--pool1:#C4A5FF;--pool2:#FF8FC1;--pool3:
 .fm-gpu{width:34px;height:34px;border-radius:6px;border:1px solid var(--line);background:var(--inset);position:relative;overflow:hidden}
 .fm-gpu.assigned{border-color:transparent}
 .fm-gpu.spare{border-style:dashed}
-.fm-gpu .band{position:absolute;left:0;right:0;background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.4) 0 2px,transparent 2px 5px)}
-html[data-theme="dark"] .fm-gpu .band{background-image:repeating-linear-gradient(135deg,rgba(0,0,0,.35) 0 2px,transparent 2px 5px)}
+.fm-gpu .band{position:absolute;left:0;right:0;overflow:hidden}
+.fm-gpu .bfill{position:absolute;left:0;right:0;bottom:0;background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.4) 0 2px,transparent 2px 5px)}
+html[data-theme="dark"] .fm-gpu .bfill{background-image:repeating-linear-gradient(135deg,rgba(0,0,0,.35) 0 2px,transparent 2px 5px)}
+.fm-gpu .bfill.solid{background-image:none}
 .fm-legend .sw.hatch{background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.4) 0 2px,transparent 2px 4px)}
 html[data-theme="dark"] .fm-legend .sw.hatch{background-image:repeating-linear-gradient(135deg,rgba(0,0,0,.35) 0 2px,transparent 2px 4px)}
 .fleet-map.dense .fm-gpus{grid-template-columns:repeat(4,26px)}
@@ -610,8 +614,8 @@ footer.foot .mono{font-family:var(--mono);color:var(--text)}
 
 <header class="top">
   <div class="brand">
-    <div class="brand-row"><svg class="logo-mark" viewBox="0 0 64 64" aria-hidden="true"><rect x="13" y="8" width="42" height="10" rx="4" fill="#16233B"/><rect x="3" y="20" width="6" height="7.5" rx="1.8" fill="var(--faint)"/><rect x="3" y="31" width="6" height="7.5" rx="1.8" fill="var(--faint)"/><rect x="8" y="12" width="48" height="34" rx="8" fill="var(--teal-strong)"/><circle cx="23.0" cy="28.0" r="8.3" fill="#16233B"/><polygon points="26.90,28.07 30.46,27.22 29.50,31.75 26.59,29.52" fill="#263349"/><polygon points="24.89,31.41 27.41,34.07 23.00,35.50 23.48,31.87" fill="#263349"/><polygon points="20.99,31.34 19.95,34.85 16.50,31.75 19.89,30.35" fill="#263349"/><polygon points="19.10,27.93 15.54,28.78 16.50,24.25 19.41,26.48" fill="#263349"/><polygon points="21.11,24.59 18.59,21.93 23.00,20.50 22.52,24.13" fill="#263349"/><polygon points="25.01,24.66 26.05,21.15 29.50,24.25 26.11,25.65" fill="#263349"/><circle cx="23.0" cy="28.0" r="3.1" fill="var(--amber-border)"/><circle cx="21.85" cy="26.85" r="1.05" fill="#FFFFFF"/><circle cx="41.0" cy="28.0" r="8.3" fill="#16233B"/><polygon points="44.47,29.77 48.05,30.57 45.19,34.22 43.56,30.94" fill="#263349"/><polygon points="41.20,31.89 42.30,35.39 37.71,34.74 39.73,31.69" fill="#263349"/><polygon points="37.73,30.12 35.25,32.82 33.52,28.52 37.17,28.74" fill="#263349"/><polygon points="37.53,26.23 33.95,25.43 36.81,21.78 38.44,25.06" fill="#263349"/><polygon points="40.80,24.11 39.70,20.61 44.29,21.26 42.27,24.31" fill="#263349"/><polygon points="44.27,25.88 46.75,23.18 48.48,27.48 44.83,27.26" fill="#263349"/><circle cx="41.0" cy="28.0" r="3.1" fill="var(--amber-border)"/><circle cx="39.85" cy="26.85" r="1.05" fill="#FFFFFF"/><rect x="15" y="45" width="34" height="5.4" rx="2.7" fill="#16233B"/><rect x="17.60" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/><rect x="22.85" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/><rect x="28.10" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/><rect x="33.35" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/><rect x="41.10" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/><rect x="46.35" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/></svg><h1>GPUscale<span class="tld">.net</span></h1><a class="ver-chip" href="https://github.com/mahmoudyassine/gpu-scale-tool/releases" target="_blank" rel="noopener" title="Release notes" id="verChip">v4.7</a></div>
-    <div class="sub">Size multi-scenario, self-hosted LLM fleets · all in your browser.</div>
+    <div class="brand-row"><svg class="logo-mark" viewBox="0 0 64 64" aria-hidden="true"><rect x="13" y="8" width="42" height="10" rx="4" fill="#16233B"/><rect x="3" y="20" width="6" height="7.5" rx="1.8" fill="var(--faint)"/><rect x="3" y="31" width="6" height="7.5" rx="1.8" fill="var(--faint)"/><rect x="8" y="12" width="48" height="34" rx="8" fill="var(--teal-strong)"/><circle cx="23.0" cy="28.0" r="8.3" fill="#16233B"/><polygon points="26.90,28.07 30.46,27.22 29.50,31.75 26.59,29.52" fill="#263349"/><polygon points="24.89,31.41 27.41,34.07 23.00,35.50 23.48,31.87" fill="#263349"/><polygon points="20.99,31.34 19.95,34.85 16.50,31.75 19.89,30.35" fill="#263349"/><polygon points="19.10,27.93 15.54,28.78 16.50,24.25 19.41,26.48" fill="#263349"/><polygon points="21.11,24.59 18.59,21.93 23.00,20.50 22.52,24.13" fill="#263349"/><polygon points="25.01,24.66 26.05,21.15 29.50,24.25 26.11,25.65" fill="#263349"/><circle cx="23.0" cy="28.0" r="3.1" fill="var(--amber-border)"/><circle cx="21.85" cy="26.85" r="1.05" fill="#FFFFFF"/><circle cx="41.0" cy="28.0" r="8.3" fill="#16233B"/><polygon points="44.47,29.77 48.05,30.57 45.19,34.22 43.56,30.94" fill="#263349"/><polygon points="41.20,31.89 42.30,35.39 37.71,34.74 39.73,31.69" fill="#263349"/><polygon points="37.73,30.12 35.25,32.82 33.52,28.52 37.17,28.74" fill="#263349"/><polygon points="37.53,26.23 33.95,25.43 36.81,21.78 38.44,25.06" fill="#263349"/><polygon points="40.80,24.11 39.70,20.61 44.29,21.26 42.27,24.31" fill="#263349"/><polygon points="44.27,25.88 46.75,23.18 48.48,27.48 44.83,27.26" fill="#263349"/><circle cx="41.0" cy="28.0" r="3.1" fill="var(--amber-border)"/><circle cx="39.85" cy="26.85" r="1.05" fill="#FFFFFF"/><rect x="15" y="45" width="34" height="5.4" rx="2.7" fill="#16233B"/><rect x="17.60" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/><rect x="22.85" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/><rect x="28.10" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/><rect x="33.35" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/><rect x="41.10" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/><rect x="46.35" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/></svg><div class="brand-word"><h1>GPUscale</h1><span class="dom">gpuscale.net</span></div><a class="ver-chip" href="https://github.com/mahmoudyassine/gpu-scale-tool/releases" target="_blank" rel="noopener" title="Release notes" id="verChip">v4.7</a></div>
+    <div class="sub">Use cases → VRAM: a GPU memory calculator for self-hosted LLM fleets · all in your browser.</div>
     <div class="privacy-chip"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="9.5" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></svg>Private by default: projects save to this browser only</div>
   </div>
   <div class="top-right">
@@ -630,7 +634,7 @@ footer.foot .mono{font-family:var(--mono);color:var(--text)}
     </div>
       <div class="btn-group" role="group" aria-label="Import and export">
       <button class="btn" id="btnImport" type="button" title="Import configuration JSON"><svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 21h16"/></svg><span class="lbl">Import</span></button>
-      <button class="btn" id="btnExport" type="button" title="Export configuration JSON"><svg viewBox="0 0 24 24"><path d="M12 15V3M7 8l5-5 5 5M4 21h16"/></svg><span class="lbl">JSON</span></button>
+      <button class="btn" id="btnExport" type="button" title="Export configuration JSON"><svg viewBox="0 0 24 24"><path d="M12 15V3M7 8l5-5 5 5M4 21h16"/></svg><span class="lbl">Export</span></button>
       <button class="btn" id="btnXls" type="button" title="Save as Excel template with live formulas"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></svg><span class="lbl">XLS</span></button>
       <button class="btn" id="btnShare" type="button" title="Copy a share link: the whole project travels inside the URL, nothing is uploaded"><svg viewBox="0 0 24 24"><circle cx="6" cy="12" r="2.5"/><circle cx="17.5" cy="6" r="2.5"/><circle cx="17.5" cy="18" r="2.5"/><path d="M8.3 10.8l6.9-3.6M8.3 13.2l6.9 3.6"/></svg><span class="lbl">Share</span></button>
       <button class="btn" id="btnPdf" type="button" title="Save the report as PDF (print dialog)"><svg viewBox="0 0 24 24"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v7H6z"/></svg><span class="lbl">PDF</span></button>
@@ -942,7 +946,7 @@ footer.foot .mono{font-family:var(--mono);color:var(--text)}
 <footer class="foot">
   <div class="foot-grid">
     <div class="f-col f-brand">
-      <div class="f-brand-row"><svg class="f-mark" viewBox="0 0 64 64" aria-hidden="true"><rect x="8" y="12" width="48" height="34" rx="8" fill="currentColor" opacity=".85"/><circle cx="23" cy="28" r="8.3" fill="var(--panel)"/><circle cx="41" cy="28" r="8.3" fill="var(--panel)"/><circle cx="23" cy="28" r="3.1" fill="currentColor"/><circle cx="41" cy="28" r="3.1" fill="currentColor"/><rect x="15" y="45" width="34" height="5.4" rx="2.7" fill="var(--panel)"/></svg><span class="f-name">GPUscale<span class="tld">.net</span></span></div>
+      <div class="f-brand-row"><svg class="f-mark" viewBox="0 0 64 64" aria-hidden="true"><rect x="8" y="12" width="48" height="34" rx="8" fill="currentColor" opacity=".85"/><circle cx="23" cy="28" r="8.3" fill="var(--panel)"/><circle cx="41" cy="28" r="8.3" fill="var(--panel)"/><circle cx="23" cy="28" r="3.1" fill="currentColor"/><circle cx="41" cy="28" r="3.1" fill="currentColor"/><rect x="15" y="45" width="34" height="5.4" rx="2.7" fill="var(--panel)"/></svg><span class="f-name">GPUscale <span class="tld">· gpuscale.net</span></span></div>
       <p>Capacity &amp; dimensioning studio for self-hosted LLM deployments. All figures are peak estimates; production typically achieves 70–90%. Validate with vLLM bench / GenAI-Perf before commitments.</p>
       <p class="f-copy">© 2026 GPUscale.net · Code released under the <a href="https://github.com/mahmoudyassine/gpu-scale-tool/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a>; the GPUscale name and logo are reserved</p>
     </div>
@@ -970,7 +974,7 @@ footer.foot .mono{font-family:var(--mono);color:var(--text)}
 // GPUscale.net · model library (params B · active B · hidden · layers · effective KV heads × head dim · max ctx)
 // One entry per line. Field reference: docs/DATA.md
 window.GPUSCALE_DATA = window.GPUSCALE_DATA || {};
-window.GPUSCALE_DATA.meta = {"library":"v27","engine":23,"updated":"2026-07-21"};
+window.GPUSCALE_DATA.meta = {"library":"v28","engine":24,"updated":"2026-07-23"};
 window.GPUSCALE_DATA.models = [
 {"name":"Llama 3.1 8B","params":8.0,"active":8.0,"hidden":4096,"layers":32,"kvHeads":8,"headDim":128,"ctx":131072,"experts":null,"activeExperts":null,"arch":"Dense (GQA)","dev":"Meta","url":"https://ai.meta.com/blog/meta-llama-3-1/"},
 {"name":"Llama 3.1 70B","params":70.0,"active":70.0,"hidden":8192,"layers":80,"kvHeads":8,"headDim":128,"ctx":131072,"experts":null,"activeExperts":null,"arch":"Dense (GQA)","dev":"Meta","url":"https://ai.meta.com/blog/meta-llama-3-1/"},
@@ -1133,26 +1137,36 @@ window.GPUSCALE_DATA.quants = [
 {"name":"Q2_K","bits":2.6,"bytes":0.32,"quality":"~80-88%","speed":"Fastest","use":"GGUF extreme (quality loss)","hw":"All (llama.cpp)"},
 {"name":"MXFP4","bits":4.25,"bytes":0.53125,"quality":"~93-96%","speed":"Fastest","use":"GPT-OSS native / OCP microscaling (incl. scales)","hw":"Blackwell native; Hopper via SW"},
 ];
-// GPUscale.net · workload presets (resident seq · reasoning · visible out · SLO targets)
+// GPUscale.net · workload presets (resident seq · reasoning · visible out · SLO targets · KV policy)
 // One entry per line. Field reference: docs/DATA.md
+// SLO targets follow production conventions (NVIDIA NIM/GenAI-Perf, vLLM triage guides,
+// Azure OpenAI latency guidance, voice-agent latency literature, 2025-2026) and are
+// numerically self-consistent: p95Target >= 1.3 x (ttft + (reasoning+visibleOut)/tps) with margin.
+// reasonTok (when present) overrides the reasoning-class token budget via the Custom class.
+// policy "all" pins per-session KV in VRAM for the whole session (voice calls, live assist).
 window.GPUSCALE_DATA = window.GPUSCALE_DATA || {};
 window.GPUSCALE_DATA.cases = [
 {"name": "Custom (manual inputs)", "resident": 0, "reasoning": "None", "visibleOut": 0, "ttftTarget": 0, "tpsTarget": 0, "p95Target": 0, "note": "Set all values manually; preset auto-populate disabled.", "supports": []},
-{"name": "Simple chatbot", "resident": 4096, "reasoning": "None", "visibleOut": 400, "ttftTarget": 500, "tpsTarget": 25, "p95Target": 15, "note": "Short chat: greeting, FAQ, basic Q&A. ~4K context, ~400 tok answers.", "supports": ["guard"], "traffic": {"turns": 25, "calls": 1.3, "durS": 4, "burst": 2, "pct": "~8%"}},
-{"name": "Simple RAG", "resident": 8192, "reasoning": "None", "visibleOut": 700, "ttftTarget": 600, "tpsTarget": 25, "p95Target": 20, "note": "Single-pass RAG: 4-6 retrieved chunks (~6K) + query, 1 LLM call.", "supports": ["embed", "rerank"], "traffic": {"turns": 18, "calls": 2, "durS": 5, "burst": 2, "pct": "~10%"}},
-{"name": "Advanced RAG", "resident": 32768, "reasoning": "None", "visibleOut": 1500, "ttftTarget": 1500, "tpsTarget": 25, "p95Target": 45, "note": "Multi-hop RAG: large context (16-32K), tool calls, reranking, longer answers.", "supports": ["embed", "rerank"], "traffic": {"turns": 10, "calls": 6, "durS": 4.5, "burst": 2, "pct": "~15%"}},
-{"name": "Internal GPT / Copilot", "resident": 16384, "reasoning": "None", "visibleOut": 800, "ttftTarget": 1000, "tpsTarget": 25, "p95Target": 30, "note": "Enterprise assistant w/ doc retrieval, multi-turn. ~16K context, 800 tok answers.", "supports": ["embed", "rerank"], "traffic": {"turns": 3, "calls": 1.5, "durS": 9, "burst": 2.5, "pct": "~3%"}},
-{"name": "Document Q&A", "resident": 32768, "reasoning": "None", "visibleOut": 1000, "ttftTarget": 1500, "tpsTarget": 20, "p95Target": 45, "note": "Long doc loaded into context, factoid questions. 32K typical.", "supports": ["ocr", "embed", "rerank"], "traffic": {"turns": 10, "calls": 2, "durS": 10, "burst": 1.5, "pct": "~8%"}},
-{"name": "Document generation", "resident": 8192, "reasoning": "None", "visibleOut": 3000, "ttftTarget": 2000, "tpsTarget": 30, "p95Target": 120, "note": "Long-form drafting (reports, emails, articles). Latency-tolerant, big output.", "supports": [], "traffic": {"turns": 7, "calls": 1.5, "durS": 28, "burst": 1.5, "pct": "~12%"}},
-{"name": "Code generation", "resident": 8192, "reasoning": "None", "visibleOut": 1500, "ttftTarget": 1500, "tpsTarget": 30, "p95Target": 60, "note": "Code completion / refactor. Mid-context, mid-output, latency matters.", "supports": ["embed"], "traffic": {"turns": 65, "calls": 1, "durS": 0.4, "burst": 3, "pct": "~2.5%"}},
-{"name": "Code agent (Cline/Cursor-style)", "resident": 65536, "reasoning": "Light reasoning", "visibleOut": 2000, "ttftTarget": 2000, "tpsTarget": 30, "p95Target": 180, "note": "Repo-aware coding agent: large context, light reasoning, multi-tool.", "supports": ["embed"], "traffic": {"turns": 4, "calls": 30, "durS": 8, "burst": 1.5, "pct": "~40%"}},
-{"name": "Voice agent (real-time)", "resident": 4096, "reasoning": "None", "visibleOut": 200, "ttftTarget": 300, "tpsTarget": 50, "p95Target": 3, "note": "Voice/IVR. TTFT < 300ms is hard requirement. Short answers.", "supports": ["asr", "tts"], "traffic": {"direct": 1, "pct": "100%: callers are the concurrency"}},
-{"name": "Reasoning agent (light)", "resident": 8192, "reasoning": "Light reasoning", "visibleOut": 800, "ttftTarget": 800, "tpsTarget": 30, "p95Target": 60, "note": "Simple agentic flow with chain-of-thought (~2K reasoning tokens).", "supports": [], "traffic": {"turns": 8, "calls": 3.5, "durS": 17, "burst": 1.5, "pct": "~20%"}},
-{"name": "Reasoning agent (heavy)", "resident": 16384, "reasoning": "Heavy reasoning", "visibleOut": 1500, "ttftTarget": 1000, "tpsTarget": 30, "p95Target": 240, "note": "Math / coding / research. ~8K reasoning tokens. Latency-tolerant.", "supports": [], "traffic": {"turns": 3, "calls": 5, "durS": 50, "burst": 1.5, "pct": "~30%"}},
-{"name": "Video summarization", "resident": 65536, "reasoning": "None", "visibleOut": 2000, "ttftTarget": 3000, "tpsTarget": 25, "p95Target": 180, "note": "Long input (frames as tokens), big summary. Throughput-oriented.", "supports": ["asr"], "traffic": {"turns": 2, "calls": 12, "durS": 10, "burst": 1.5, "pct": "~10%"}},
-{"name": "Long-doc analysis (legal/financial)", "resident": 65536, "reasoning": "Light reasoning", "visibleOut": 2500, "ttftTarget": 3000, "tpsTarget": 25, "p95Target": 240, "note": "Long contracts/filings + reasoning. Quality > latency.", "supports": ["ocr"], "traffic": {"turns": 2.5, "calls": 20, "durS": 10, "burst": 1.5, "pct": "~20%"}},
-{"name": "Offline batch / extract", "resident": 4096, "reasoning": "None", "visibleOut": 500, "ttftTarget": 0, "tpsTarget": 0, "p95Target": 0, "note": "Batch jobs (extraction, classification). No interactive SLOs.", "supports": ["ocr"], "traffic": {"direct": 1, "pct": "queue-set: enter jobs in flight, not people"}},
-{"name": "Deep research agent (async)", "resident": 65536, "reasoning": "Heavy reasoning", "visibleOut": 4000, "ttftTarget": 3000, "tpsTarget": 25, "p95Target": 600, "note": "Multi-step autonomous research: many tool calls, big synthesis. Size as a background load class, not interactive.", "supports": ["embed", "rerank"], "traffic": {"turns": 1, "calls": 90, "durS": 8, "burst": 1.5, "pct": "~30%"}},
+{"name": "Simple chatbot", "resident": 4096, "reasoning": "None", "visibleOut": 250, "ttftTarget": 400, "tpsTarget": 20, "p95Target": 18, "note": "Short support chat. 20 tok/s outruns reading speed; a 250-tok reply streams in ~13 s.", "supports": ["guard"], "traffic": {"turns": 25, "calls": 1.3, "durS": 4, "burst": 2, "pct": "~8%"}},
+{"name": "Simple RAG", "resident": 8192, "reasoning": "None", "visibleOut": 300, "ttftTarget": 800, "tpsTarget": 25, "p95Target": 18, "note": "Single-pass RAG. TTFT budget includes retrieval + rerank (~400 ms) ahead of prefill.", "supports": ["embed", "rerank"], "traffic": {"turns": 18, "calls": 2, "durS": 5, "burst": 2, "pct": "~10%"}},
+{"name": "Advanced RAG", "resident": 32768, "reasoning": "None", "reasonTok": 250, "visibleOut": 400, "ttftTarget": 1200, "tpsTarget": 30, "p95Target": 32, "note": "Multi-hop RAG with tool calls: 16-32K context, short tool-plan budget, ~3 LLM calls per answer.", "supports": ["embed", "rerank"], "traffic": {"turns": 10, "calls": 6, "durS": 4.5, "burst": 2, "pct": "~15%"}},
+{"name": "Internal GPT / Copilot", "resident": 16384, "reasoning": "None", "visibleOut": 300, "ttftTarget": 600, "tpsTarget": 25, "p95Target": 18, "note": "Enterprise assistant with doc retrieval, multi-turn; prefix caching assumed for history.", "supports": ["embed", "rerank"], "traffic": {"turns": 3, "calls": 1.5, "durS": 9, "burst": 2.5, "pct": "~3%"}},
+{"name": "Document Q&A", "resident": 32768, "reasoning": "None", "visibleOut": 300, "ttftTarget": 2500, "tpsTarget": 25, "p95Target": 20, "note": "Long doc in context, factoid answers. TTFT is dominated by the 32K prefill (~2 s tuned).", "supports": ["ocr", "embed", "rerank"], "traffic": {"turns": 10, "calls": 2, "durS": 10, "burst": 1.5, "pct": "~8%"}},
+{"name": "Document generation", "resident": 8192, "reasoning": "None", "visibleOut": 1500, "ttftTarget": 1000, "tpsTarget": 40, "p95Target": 55, "note": "Long-form drafting. Users skim, not read along: 40 tok/s, a 1.5K draft streams in ~40 s.", "supports": [], "traffic": {"turns": 7, "calls": 1.5, "durS": 28, "burst": 1.5, "pct": "~12%"}},
+{"name": "Code generation", "resident": 8192, "reasoning": "None", "visibleOut": 150, "ttftTarget": 300, "tpsTarget": 60, "p95Target": 5, "note": "IDE completion / small edits. Latency-critical: fast first token, 60+ tok/s streaming.", "supports": ["embed"], "traffic": {"turns": 65, "calls": 1, "durS": 0.4, "burst": 3, "pct": "~2.5%"}},
+{"name": "Code agent (Cline/Cursor-style)", "resident": 65536, "reasoning": "None", "reasonTok": 3000, "visibleOut": 1000, "ttftTarget": 1000, "tpsTarget": 50, "p95Target": 120, "note": "Repo-aware coding agent: 32-64K append-only context, ~3K tool/edit tokens per call, many calls per task.", "supports": ["embed"], "traffic": {"turns": 4, "calls": 30, "durS": 8, "burst": 1.5, "pct": "~40%"}},
+{"name": "Voice agent (real-time)", "resident": 4096, "reasoning": "None", "visibleOut": 100, "ttftTarget": 300, "tpsTarget": 30, "p95Target": 5, "note": "Telephony/IVR. Voice-to-voice budget needs LLM TTFT under ~300 ms; decode only has to outpace TTS playback.", "supports": ["asr", "tts"], "policy": "all", "traffic": {"direct": 1, "pct": "100%: callers are the concurrency"}},
+{"name": "Reasoning agent (light)", "resident": 8192, "reasoning": "Light reasoning", "visibleOut": 300, "ttftTarget": 600, "tpsTarget": 60, "p95Target": 55, "note": "~2K hidden CoT + short answer. Nobody reads CoT: decode speed is the latency lever, so target 60 tok/s.", "supports": [], "traffic": {"turns": 8, "calls": 3.5, "durS": 17, "burst": 1.5, "pct": "~20%"}},
+{"name": "Reasoning agent (heavy)", "resident": 16384, "reasoning": "Heavy reasoning", "visibleOut": 500, "ttftTarget": 800, "tpsTarget": 60, "p95Target": 200, "note": "~8K CoT budget (math/coding/research). 8.5K tokens at 60 tok/s is a ~142 s physical floor.", "supports": [], "traffic": {"turns": 3, "calls": 5, "durS": 50, "burst": 1.5, "pct": "~30%"}},
+{"name": "Video summarization", "resident": 16384, "reasoning": "None", "reasonTok": 2000, "visibleOut": 500, "ttftTarget": 2000, "tpsTarget": 40, "p95Target": 90, "note": "Chunked VLM captioning then aggregate; ~15K vision tokens per minute of video at ~2 fps sampling.", "supports": ["asr"], "traffic": {"turns": 2, "calls": 12, "durS": 10, "burst": 1.5, "pct": "~10%"}},
+{"name": "Long-doc analysis (legal/financial)", "resident": 65536, "reasoning": "None", "reasonTok": 1000, "visibleOut": 800, "ttftTarget": 5000, "tpsTarget": 30, "p95Target": 90, "note": "64-128K contracts/filings. TTFT is the long prefill (~5 s at 64K tuned); prefix caching helps repeat queries.", "supports": ["ocr"], "traffic": {"turns": 2.5, "calls": 20, "durS": 10, "burst": 1.5, "pct": "~20%"}},
+{"name": "Offline batch / extract", "resident": 4096, "reasoning": "None", "visibleOut": 500, "ttftTarget": 0, "tpsTarget": 0, "p95Target": 0, "note": "Batch jobs (extraction, classification): 24 h job SLA, no interactive SLOs; size for throughput at max batch.", "supports": ["ocr"], "traffic": {"direct": 1, "pct": "queue-set: enter jobs in flight, not people"}},
+{"name": "Deep research agent (async)", "resident": 65536, "reasoning": "Heavy reasoning", "reasonTok": 20000, "visibleOut": 3000, "ttftTarget": 1000, "tpsTarget": 50, "p95Target": 620, "note": "Multi-step autonomous research: ~20K thinking tokens across the task, big synthesis. Background load class.", "supports": ["embed", "rerank"], "traffic": {"turns": 1, "calls": 90, "durS": 8, "burst": 1.5, "pct": "~30%"}},
+{"name": "Medical imaging report assistant", "resident": 8192, "reasoning": "None", "visibleOut": 400, "ttftTarget": 1500, "tpsTarget": 50, "p95Target": 15, "note": "VLM reads a study (1-3K image tokens in context) and drafts findings/impression. Clinician-interactive.", "supports": ["ocr", "guard"], "traffic": {"turns": 12, "calls": 2, "durS": 8, "burst": 2, "pct": "~7%"}},
+{"name": "Clinical knowledge assistant", "resident": 8192, "reasoning": "None", "reasonTok": 250, "visibleOut": 350, "ttftTarget": 800, "tpsTarget": 40, "p95Target": 22, "note": "Grounded medical Q&A with citations and a short verification budget; guardrails on both directions.", "supports": ["embed", "rerank", "guard"], "traffic": {"turns": 4, "calls": 1.5, "durS": 8, "burst": 2.5, "pct": "~4%"}},
+{"name": "Real-time video analytics", "resident": 4096, "reasoning": "None", "visibleOut": 80, "ttftTarget": 700, "tpsTarget": 40, "p95Target": 4, "note": "VLM monitors streams in short clips; alert within seconds. Concurrency = camera streams; small models fit best.", "supports": [], "traffic": {"direct": 1, "pct": "100%: camera streams are the concurrency"}},
+{"name": "Translation / localization", "resident": 2048, "reasoning": "None", "visibleOut": 500, "ttftTarget": 500, "tpsTarget": 40, "p95Target": 18, "note": "Segment/page translation, roughly symmetric input and output. Subtitle mode needs segments under ~2 s.", "supports": [], "traffic": {"turns": 30, "calls": 1.2, "durS": 11, "burst": 2, "pct": "~10%"}},
+{"name": "Contact-center agent assist", "resident": 16384, "reasoning": "None", "visibleOut": 60, "ttftTarget": 400, "tpsTarget": 40, "p95Target": 3, "note": "Live suggestions while a human talks: transcript + KB in context, tiny outputs, utterance-to-suggestion under ~2.5 s.", "supports": ["asr", "embed", "rerank"], "policy": "all", "traffic": {"direct": 1, "pct": "100%: live assisted calls are the concurrency"}},
 ];
 // GPUscale.net · supporting-model library (auto-attached per use case)
 // vram = GB one serving instance needs; cap = concurrent calls one instance absorbs
@@ -1196,7 +1210,7 @@ if(!MODELS.length || !GPUS.length || !QUANTS.length || !CASES.length){
   document.body.innerHTML = '<div style="font-family:system-ui,sans-serif;max-width:560px;margin:80px auto;padding:0 20px;line-height:1.65;color:#1A2536"><h2 style="margin-bottom:10px">Data files not loaded</h2><p>GPUscale.net could not find its library. Keep <code>index.html</code> together with the <code>data/</code> and <code>assets/</code> folders: the four files <code>data/models.js</code>, <code>data/gpus.js</code>, <code>data/quants.js</code> and <code>data/usecases.js</code> must sit next to this page.</p><p>If you need one portable file instead, use <code>dist/gpuscale_standalone.html</code> or rebuild it with <code>python3 tools/build_single_file.py</code>.</p></div>';
   throw new Error('GPUscale.net data missing');
 }
-const STUDIO_VERSION = '5.10.0', ENGINE_VERSION = 24;
+const STUDIO_VERSION = '5.11.0', ENGINE_VERSION = 24;
 function newProjId(){ const L='abcdefghjkmnpqrstuvwxyz', D='0123456789';
   const pick=s=>s[Math.floor(Math.random()*s.length)];
   return 'Project_'+pick(L)+pick(L)+pick(D)+pick(D)+pick(D); }
@@ -1928,6 +1942,8 @@ function applyCase(i){
   if(c.visibleOut) $('inOut').value=c.visibleOut;
   $('selReason').value=REASON_TOK.hasOwnProperty(c.reasoning)?c.reasoning:'None';
   syncReason();
+  if(c.reasonTok){ $('selReason').value='Custom'; syncReason(); $('inReasonTok').value=c.reasonTok; refreshCtl('inReasonTok'); }
+  $('selPolicy').value = c.policy==='all' ? 'all' : 'running';
   $('sloTtft').value=c.ttftTarget; $('sloTps').value=c.tpsTarget; $('sloP95').value=c.p95Target;
   refreshCtl('inSeq'); refreshCtl('inOut');
   if(UC[activeUc]) applyNrmUsers();
@@ -2232,10 +2248,13 @@ function allocShared(pools, hw){
   // rebuild one unit-space packing: sliced-pool replicas first (bigger), then supports
   const items=[];
   pools.forEach((p,pi)=>{ if(!p.sliced) return;
+    const fill=Math.min(1, p.d.total/Math.max(1,p.d.avail)), useGb=fill*p.sliced.gb;
     for(let r2=0;r2<p.d.replicas;r2++) items.push({kind:'pool', pool:pi, units:p.sliced.units,
-      gb:p.sliced.gb, tip:`${p.state.model.name} replica ${r2+1} · ${sliceName(p.sliced)} (${fmt(p.sliced.gb)} GB)`}); });
-  sup.layout.forEach(bin=>bin.slices.forEach(sl=>items.push({kind:'sup', sub:sl.kind, model:sl.model,
-    units:sl.n, gb:sl.gb, inst:sl.inst, tip:`${KIND_LABEL[sl.kind]||sl.kind} ${sl.model}${sl.inst>1?' ×'+sl.inst:''} (${fmt(sl.gb)} GB slice)`})));
+      gb:p.sliced.gb, fill, tip:`${p.state.model.name} replica ${r2+1} · ${sliceName(p.sliced)} · ${fmt(useGb)} of ${fmt(p.sliced.gb)} GB slice memory (${Math.round(fill*100)}%)`}); });
+  sup.layout.forEach(bin=>bin.slices.forEach(sl=>{ const fl=sl.use!=null? Math.min(1,sl.use/Math.max(1,sl.gb)) : null;
+    items.push({kind:'sup', sub:sl.kind, model:sl.model,
+      units:sl.n, gb:sl.gb, use:sl.use, fill:fl, inst:sl.inst,
+      tip:`${KIND_LABEL[sl.kind]||sl.kind} ${sl.model}${sl.inst>1?' ×'+sl.inst:''} · ${fl!=null? fmt(sl.use)+' of '+fmt(sl.gb)+' GB slice memory ('+Math.round(fl*100)+'%)' : fmt(sl.gb)+' GB slice'}`}); }));
   const bins=[], cap=binCap(part);
   items.forEach(it=>{ it.mu=sliceCost(part, it.units); });
   items.sort((x,y)=>y.mu-x.mu).forEach(it=>{
@@ -2284,7 +2303,8 @@ function allocSupports(hw){
         let bin=layout.find(b=>b.used+mu<=cap);
         if(!bin){ bin={used:0, slices:[]}; layout.push(bin); }
         bin.used+=mu;
-        bin.slices.push({kind:it.kind, model:it.model.name, gb:it.sliceGb, n:it.units, mu, inst});
+        bin.slices.push({kind:it.kind, model:it.model.name, gb:it.sliceGb, n:it.units, mu, inst,
+          use:Math.min(it.sliceGb, inst*it.model.vram)});
       } });
     note = part.kind==='mig'
       ? `isolated MIG slices (${part.max} per GPU, ${part.min} GB granularity)`
@@ -2296,7 +2316,7 @@ function allocSupports(hw){
         let bin=layout.find(b=>b.used+it.model.vram<=cap);
         if(!bin){ bin={used:0, slices:[]}; layout.push(bin); }
         bin.used+=it.model.vram;
-        bin.slices.push({kind:it.kind, model:it.model.name, gb:it.model.vram, n:0});
+        bin.slices.push({kind:it.kind, model:it.model.name, gb:it.model.vram, n:0, use:it.model.vram});
       } });
     note = part.kind==='whole'
       ? `whole-card granularity: ${g.name} has no partitioning; co-residency within one card only via one serving container`
@@ -2547,11 +2567,14 @@ function renderFleet(prj){
       return `<div class="fm-gpu assigned" title="${esc(g2.tip)}"><div class="fill" style="height:${h}%;background:var(--pool${PC[g2.pool]});opacity:${g2.rep%2?0.72:1}"></div>${gp(g2.util)}</div>`; }
     if(g2.type==='idle'){ const col=g2.pool==null? 'var(--amber-border)' : (g2.mode==='drs'? 'var(--violet)' : `var(--pool${PC[g2.pool]})`);
       return `<div class="fm-gpu spare" title="${esc(g2.tip)}" style="border-color:${col}"></div>`; }
-    if(g2.type==='sup'||g2.type==='shared'){ let y=0;
+    if(g2.type==='sup'||g2.type==='shared'){ let y=0, memUsed=0;
       const bands=g2.bin.slices.map(sl=>{ const h=Math.max(10, partMax>1? (sl.mu||sl.units||sl.n||1)/binCap(hw.g.part)*100 : Math.min(100,(sl.gb||1)/Math.max(1,hw.g.vram)*100));
         const col = sl.kind==='pool'? `var(--pool${PC[sl.pool]})` : `var(--sup${sl.sub||sl.kind})`;
-        const b=`<div class="band${sl.kind==='pool'?' solid':''}" style="top:${y}%;height:${h}%;background:${col}"></div>`; y+=h; return b; }).join('');
-      const used=partMax>1? g2.bin.used/binCap(hw.g.part) : g2.bin.used/Math.max(1,hw.g.vram);
+        const fl = sl.fill!=null? Math.max(.08,Math.min(1,sl.fill)) : 1;
+        memUsed += sl.fill!=null? sl.fill*(sl.gb||0) : (sl.use!=null? sl.use : (sl.gb||0));
+        const b=`<div class="band" style="top:${y}%;height:${h}%;background-color:color-mix(in srgb,${col} 24%,transparent)"><div class="bfill${sl.kind==='pool'?' solid':''}" style="height:${Math.round(fl*100)}%;background-color:${col}"></div></div>`;
+        y+=h; return b; }).join('');
+      const used=partMax>1? memUsed/Math.max(1,hw.g.vram) : g2.bin.used/Math.max(1,hw.g.vram);
       return `<div class="fm-gpu assigned" title="${esc(g2.tip)}">${bands}${gp(Math.min(1,used))}</div>`; }
     return `<div class="fm-gpu spare" title="${esc(g2.tip)}"></div>`;
   };
@@ -2601,7 +2624,7 @@ function renderFleet(prj){
     ? `Each site keeps one idle spare: it covers a node failure in its own site, for any pool (hardware is uniform).`
     : `The ${info.add} spare node${info.add>1?'s are':' is'} shared${pools.length>1?` across all ${pools.length} pools`:''}: hardware is uniform, so any spare can take over any failed node.`);
   $('fmNote').className='fm-note dtl';
-  $('fmNote').innerHTML=notes.map(esc).join(' ')+` GPU fill height shows each pool's memory use.<span class="no-print"> Hover any GPU for its exact assignment.</span>`;
+  $('fmNote').innerHTML=notes.map(esc).join(' ')+` GPU fill height shows each pool's memory use; on shared GPUs each band is one slice, with the solid part showing how much of that slice's memory its model uses.<span class="no-print"> Hover any GPU for exact per-slice GB.</span>`;
   // economics, project level
   const agg=pools.reduce((x,p)=>x+p.d.agg,0), active=pools.reduce((x,p)=>x+p.d.active,0);
   const procW=fleet.procW, procG=fleet.procG, kW=fleet.kW;

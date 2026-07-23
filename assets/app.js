@@ -7,7 +7,7 @@ if(!MODELS.length || !GPUS.length || !QUANTS.length || !CASES.length){
   document.body.innerHTML = '<div style="font-family:system-ui,sans-serif;max-width:560px;margin:80px auto;padding:0 20px;line-height:1.65;color:#1A2536"><h2 style="margin-bottom:10px">Data files not loaded</h2><p>GPUscale.net could not find its library. Keep <code>index.html</code> together with the <code>data/</code> and <code>assets/</code> folders: the four files <code>data/models.js</code>, <code>data/gpus.js</code>, <code>data/quants.js</code> and <code>data/usecases.js</code> must sit next to this page.</p><p>If you need one portable file instead, use <code>dist/gpuscale_standalone.html</code> or rebuild it with <code>python3 tools/build_single_file.py</code>.</p></div>';
   throw new Error('GPUscale.net data missing');
 }
-const STUDIO_VERSION = '5.10.0', ENGINE_VERSION = 24;
+const STUDIO_VERSION = '5.11.0', ENGINE_VERSION = 24;
 function newProjId(){ const L='abcdefghjkmnpqrstuvwxyz', D='0123456789';
   const pick=s=>s[Math.floor(Math.random()*s.length)];
   return 'Project_'+pick(L)+pick(L)+pick(D)+pick(D)+pick(D); }
@@ -739,6 +739,8 @@ function applyCase(i){
   if(c.visibleOut) $('inOut').value=c.visibleOut;
   $('selReason').value=REASON_TOK.hasOwnProperty(c.reasoning)?c.reasoning:'None';
   syncReason();
+  if(c.reasonTok){ $('selReason').value='Custom'; syncReason(); $('inReasonTok').value=c.reasonTok; refreshCtl('inReasonTok'); }
+  $('selPolicy').value = c.policy==='all' ? 'all' : 'running';
   $('sloTtft').value=c.ttftTarget; $('sloTps').value=c.tpsTarget; $('sloP95').value=c.p95Target;
   refreshCtl('inSeq'); refreshCtl('inOut');
   if(UC[activeUc]) applyNrmUsers();
@@ -1043,10 +1045,13 @@ function allocShared(pools, hw){
   // rebuild one unit-space packing: sliced-pool replicas first (bigger), then supports
   const items=[];
   pools.forEach((p,pi)=>{ if(!p.sliced) return;
+    const fill=Math.min(1, p.d.total/Math.max(1,p.d.avail)), useGb=fill*p.sliced.gb;
     for(let r2=0;r2<p.d.replicas;r2++) items.push({kind:'pool', pool:pi, units:p.sliced.units,
-      gb:p.sliced.gb, tip:`${p.state.model.name} replica ${r2+1} · ${sliceName(p.sliced)} (${fmt(p.sliced.gb)} GB)`}); });
-  sup.layout.forEach(bin=>bin.slices.forEach(sl=>items.push({kind:'sup', sub:sl.kind, model:sl.model,
-    units:sl.n, gb:sl.gb, inst:sl.inst, tip:`${KIND_LABEL[sl.kind]||sl.kind} ${sl.model}${sl.inst>1?' ×'+sl.inst:''} (${fmt(sl.gb)} GB slice)`})));
+      gb:p.sliced.gb, fill, tip:`${p.state.model.name} replica ${r2+1} · ${sliceName(p.sliced)} · ${fmt(useGb)} of ${fmt(p.sliced.gb)} GB slice memory (${Math.round(fill*100)}%)`}); });
+  sup.layout.forEach(bin=>bin.slices.forEach(sl=>{ const fl=sl.use!=null? Math.min(1,sl.use/Math.max(1,sl.gb)) : null;
+    items.push({kind:'sup', sub:sl.kind, model:sl.model,
+      units:sl.n, gb:sl.gb, use:sl.use, fill:fl, inst:sl.inst,
+      tip:`${KIND_LABEL[sl.kind]||sl.kind} ${sl.model}${sl.inst>1?' ×'+sl.inst:''} · ${fl!=null? fmt(sl.use)+' of '+fmt(sl.gb)+' GB slice memory ('+Math.round(fl*100)+'%)' : fmt(sl.gb)+' GB slice'}`}); }));
   const bins=[], cap=binCap(part);
   items.forEach(it=>{ it.mu=sliceCost(part, it.units); });
   items.sort((x,y)=>y.mu-x.mu).forEach(it=>{
@@ -1095,7 +1100,8 @@ function allocSupports(hw){
         let bin=layout.find(b=>b.used+mu<=cap);
         if(!bin){ bin={used:0, slices:[]}; layout.push(bin); }
         bin.used+=mu;
-        bin.slices.push({kind:it.kind, model:it.model.name, gb:it.sliceGb, n:it.units, mu, inst});
+        bin.slices.push({kind:it.kind, model:it.model.name, gb:it.sliceGb, n:it.units, mu, inst,
+          use:Math.min(it.sliceGb, inst*it.model.vram)});
       } });
     note = part.kind==='mig'
       ? `isolated MIG slices (${part.max} per GPU, ${part.min} GB granularity)`
@@ -1107,7 +1113,7 @@ function allocSupports(hw){
         let bin=layout.find(b=>b.used+it.model.vram<=cap);
         if(!bin){ bin={used:0, slices:[]}; layout.push(bin); }
         bin.used+=it.model.vram;
-        bin.slices.push({kind:it.kind, model:it.model.name, gb:it.model.vram, n:0});
+        bin.slices.push({kind:it.kind, model:it.model.name, gb:it.model.vram, n:0, use:it.model.vram});
       } });
     note = part.kind==='whole'
       ? `whole-card granularity: ${g.name} has no partitioning; co-residency within one card only via one serving container`
@@ -1358,11 +1364,14 @@ function renderFleet(prj){
       return `<div class="fm-gpu assigned" title="${esc(g2.tip)}"><div class="fill" style="height:${h}%;background:var(--pool${PC[g2.pool]});opacity:${g2.rep%2?0.72:1}"></div>${gp(g2.util)}</div>`; }
     if(g2.type==='idle'){ const col=g2.pool==null? 'var(--amber-border)' : (g2.mode==='drs'? 'var(--violet)' : `var(--pool${PC[g2.pool]})`);
       return `<div class="fm-gpu spare" title="${esc(g2.tip)}" style="border-color:${col}"></div>`; }
-    if(g2.type==='sup'||g2.type==='shared'){ let y=0;
+    if(g2.type==='sup'||g2.type==='shared'){ let y=0, memUsed=0;
       const bands=g2.bin.slices.map(sl=>{ const h=Math.max(10, partMax>1? (sl.mu||sl.units||sl.n||1)/binCap(hw.g.part)*100 : Math.min(100,(sl.gb||1)/Math.max(1,hw.g.vram)*100));
         const col = sl.kind==='pool'? `var(--pool${PC[sl.pool]})` : `var(--sup${sl.sub||sl.kind})`;
-        const b=`<div class="band${sl.kind==='pool'?' solid':''}" style="top:${y}%;height:${h}%;background:${col}"></div>`; y+=h; return b; }).join('');
-      const used=partMax>1? g2.bin.used/binCap(hw.g.part) : g2.bin.used/Math.max(1,hw.g.vram);
+        const fl = sl.fill!=null? Math.max(.08,Math.min(1,sl.fill)) : 1;
+        memUsed += sl.fill!=null? sl.fill*(sl.gb||0) : (sl.use!=null? sl.use : (sl.gb||0));
+        const b=`<div class="band" style="top:${y}%;height:${h}%;background-color:color-mix(in srgb,${col} 24%,transparent)"><div class="bfill${sl.kind==='pool'?' solid':''}" style="height:${Math.round(fl*100)}%;background-color:${col}"></div></div>`;
+        y+=h; return b; }).join('');
+      const used=partMax>1? memUsed/Math.max(1,hw.g.vram) : g2.bin.used/Math.max(1,hw.g.vram);
       return `<div class="fm-gpu assigned" title="${esc(g2.tip)}">${bands}${gp(Math.min(1,used))}</div>`; }
     return `<div class="fm-gpu spare" title="${esc(g2.tip)}"></div>`;
   };
@@ -1412,7 +1421,7 @@ function renderFleet(prj){
     ? `Each site keeps one idle spare: it covers a node failure in its own site, for any pool (hardware is uniform).`
     : `The ${info.add} spare node${info.add>1?'s are':' is'} shared${pools.length>1?` across all ${pools.length} pools`:''}: hardware is uniform, so any spare can take over any failed node.`);
   $('fmNote').className='fm-note dtl';
-  $('fmNote').innerHTML=notes.map(esc).join(' ')+` GPU fill height shows each pool's memory use.<span class="no-print"> Hover any GPU for its exact assignment.</span>`;
+  $('fmNote').innerHTML=notes.map(esc).join(' ')+` GPU fill height shows each pool's memory use; on shared GPUs each band is one slice, with the solid part showing how much of that slice's memory its model uses.<span class="no-print"> Hover any GPU for exact per-slice GB.</span>`;
   // economics, project level
   const agg=pools.reduce((x,p)=>x+p.d.agg,0), active=pools.reduce((x,p)=>x+p.d.active,0);
   const procW=fleet.procW, procG=fleet.procG, kW=fleet.kW;
