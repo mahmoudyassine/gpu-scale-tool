@@ -1,5 +1,23 @@
 # Changelog
 
+## Studio 5.15 (2026-07-23)
+
+A Claude skill that turns plain-language requirements into a ready link.
+
+- New footer download: gpuscale-link.skill. Give the file to Claude
+  (claude.ai or Claude Code) and it can read a questionnaire, an email or
+  a meeting note, translate it into GPUscale inputs (library or custom
+  model geometries, quantization, presets, users or concurrency, SLO
+  targets, resilience, supporting models) and mint a verified share link,
+  always as a pair: the gpuscale.net URL plus the mirror URL for networks
+  that block the domain. The skill validates every value against the app's
+  own ranges, self-verifies each link by decoding it back, asks only for
+  genuinely missing essentials, and can also decode, edit or repair
+  existing links.
+- The skill's model/GPU/preset data is generated from the live libraries
+  by tools/build_skill_link.py, so it ships current (library v28, engine
+  v24) and is rebuilt on every release.
+
 ## Studio 5.14 (2026-07-23)
 
 Share links are now a one-shot import.

@@ -1,0 +1,226 @@
+# GPUscale libraries (generated · library v28 · engine v24 · studio 5.15.0)
+
+## Models (94)
+
+- Llama 3.1 8B · 8B total / 8B active · ctx 131072 · Dense (GQA) · Meta
+- Llama 3.1 70B · 70B total / 70B active · ctx 131072 · Dense (GQA) · Meta
+- Llama 3.1 405B · 405B total / 405B active · ctx 131072 · Dense (GQA) · Meta
+- Llama 4 Scout 109B (MoE) · 109B total / 17B active · ctx 10485760 · MoE (16E/1A) · Meta
+- Llama 4 Maverick 400B (MoE) · 400B total / 17B active · ctx 1048576 · MoE (128E/2A) · Meta
+- Qwen3 0.6B · 0.6B total / 0.6B active · ctx 32768 · Dense (GQA) · Alibaba Cloud
+- Qwen3 1.7B · 1.7B total / 1.7B active · ctx 32768 · Dense (GQA) · Alibaba Cloud
+- Qwen3 4B · 4B total / 4B active · ctx 32768 · Dense (GQA) · Alibaba Cloud
+- Qwen3 8B · 8B total / 8B active · ctx 131072 · Dense (GQA) · Alibaba Cloud
+- Qwen3 14B · 14B total / 14B active · ctx 131072 · Dense (GQA) · Alibaba Cloud
+- Qwen3 32B · 32B total / 32B active · ctx 131072 · Dense (GQA) · Alibaba Cloud
+- Qwen3 30B-A3B (MoE) · 30B total / 3B active · ctx 131072 · MoE (128E/8A) · Alibaba Cloud
+- Qwen3 235B-A22B (MoE) · 235B total / 22B active · ctx 262144 · MoE (128E/8A) · Alibaba Cloud
+- Qwen3.5 0.8B · 0.8B total / 0.8B active · ctx 262144 · Dense (Hybrid attn approx) · Alibaba Cloud
+- Qwen3.5 2B · 2B total / 2B active · ctx 262144 · Dense (Hybrid attn approx) · Alibaba Cloud
+- Qwen3.5 4B · 4B total / 4B active · ctx 262144 · Dense (Hybrid attn approx) · Alibaba Cloud
+- Qwen3.5 9B · 9B total / 9B active · ctx 262144 · Dense (Hybrid attn approx) · Alibaba Cloud
+- Qwen3.5 27B · 27B total / 27B active · ctx 262144 · Dense (Hybrid attn approx) · Alibaba Cloud
+- Qwen3.5 35B-A3B (MoE) · 35B total / 3B active · ctx 262144 · MoE (256E/8A, hybrid approx) · Alibaba Cloud
+- Qwen3.5 122B-A10B (MoE) · 122B total / 10B active · ctx 262144 · MoE (256E/8A, hybrid approx) · Alibaba Cloud
+- Qwen3.5 397B-A17B (MoE) · 397B total / 17B active · ctx 262144 · MoE (512E/10A, hybrid approx) · Alibaba Cloud
+- DeepSeek-V3 671B (MoE) · 671B total / 37B active · ctx 131072 · MoE (257E/9A, MLA eff.) · DeepSeek
+- DeepSeek-R1 671B (MoE) · 671B total / 37B active · ctx 131072 · MoE (257E/9A, MLA eff.) · DeepSeek
+- Kimi K2 1T-A32B (MoE) · 1000B total / 32B active · ctx 131072 · MoE (385E/9A, MLA eff.) · Moonshot AI
+- Kimi K2.5 1T-A32B (MoE) · 1000B total / 32B active · ctx 262144 · MoE (385E/9A, MLA eff.) · Moonshot AI
+- Mistral 7B v0.3 · 7.3B total / 7.3B active · ctx 32768 · Dense (GQA+SWA) · Mistral AI
+- Mixtral 8x7B (MoE) · 46.7B total / 12.9B active · ctx 32768 · MoE (8E/2A) · Mistral AI
+- Mistral Small 3 24B · 24B total / 24B active · ctx 32768 · Dense (GQA) · Mistral AI
+- Mistral Small 3.1 24B · 24B total / 24B active · ctx 131072 · Dense (GQA) · Mistral AI
+- Mistral Large 3 675B (MoE) · 675B total / 41B active · ctx 262144 · MoE (granular; cfg approx) · Mistral AI
+- Mixtral 8x22B (MoE) · 141B total / 39B active · ctx 65536 · MoE (8E/2A) · Mistral AI
+- Gemma 2 2B · 2B total / 2B active · ctx 8192 · Dense (GQA+SWA) · Google
+- Gemma 2 9B · 9B total / 9B active · ctx 8192 · Dense (GQA+SWA) · Google
+- Gemma 2 27B · 27B total / 27B active · ctx 8192 · Dense (GQA+SWA) · Google
+- Gemma 3 1B · 1B total / 1B active · ctx 32768 · Dense (GQA+SWA 5:1) · Google
+- Gemma 3 4B · 4.3B total / 4.3B active · ctx 131072 · Dense (GQA+SWA 5:1) · Google
+- Gemma 3 12B · 12.2B total / 12.2B active · ctx 131072 · Dense (GQA+SWA 5:1) · Google
+- Gemma 3 27B · 27.4B total / 27.4B active · ctx 131072 · Dense (GQA+SWA 5:1) · Google
+- Gemma 4 E2B · 5.1B total / 2.3B active · ctx 131072 · Dense (shared KV approx) · Google
+- Gemma 4 E4B · 8B total / 4.5B active · ctx 131072 · Dense (shared KV approx) · Google
+- Gemma 4 26B-A4B (MoE) · 25.2B total / 3.8B active · ctx 262144 · MoE (129E/9A; shared KV approx) · Google
+- Gemma 4 31B · 30.7B total / 30.7B active · ctx 262144 · Dense (shared KV approx) · Google
+- Phi-4-mini 3.8B · 3.8B total / 3.8B active · ctx 131072 · Dense (GQA) · Microsoft
+- Phi-4 14B · 14B total / 14B active · ctx 16384 · Dense (GQA) · Microsoft
+- GPT-OSS 20B · 21B total / 3.6B active · ctx 131072 · MoE (32E/4A, GQA) · OpenAI
+- GPT-OSS 120B · 117B total / 5.1B active · ctx 131072 · MoE (128E/4A, GQA) · OpenAI
+- Qwen3-Next 80B-A3B (MoE, hybrid) · 80B total / 3.9B active · ctx 262144 · MoE (512E/10A, hybrid attn) · Alibaba
+- Qwen3-Coder 480B-A35B (MoE) · 480B total / 35B active · ctx 262144 · MoE (160E/8A, GQA) · Alibaba
+- DeepSeek-V3.1 671B (MoE) · 671B total / 37B active · ctx 131072 · MoE (257E/9A, MLA eff.) · DeepSeek
+- DeepSeek-V3.2 671B (MoE, DSA) · 671B total / 37B active · ctx 131072 · MoE (DSA sparse attn, MLA eff.) · DeepSeek
+- GLM-4.5 355B-A32B (MoE) · 355B total / 32B active · ctx 131072 · MoE (160E/8A, GQA) · Z.ai (Zhipu)
+- GLM-4.6 357B-A32B (MoE) · 357B total / 32B active · ctx 200000 · MoE (160E/8A, GQA) · Z.ai (Zhipu)
+- MiniMax-M2 230B-A10B (MoE) · 230B total / 10B active · ctx 200000 · MoE (256E/8A, GQA) · MiniMax
+- Llama 3.3 70B Instruct · 70B total / 70B active · ctx 131072 · Dense (GQA) · Meta
+- Mistral Medium 3.5 128B · 128B total / 128B active · ctx 262144 · Dense (GQA, est. cfg) · Mistral AI
+- Cohere Command A 111B · 111B total / 111B active · ctx 262144 · Dense (hybrid SWA, est. cfg) · Cohere
+- Ministral 3 14B · 14B total / 14B active · ctx 32768 · Dense (GQA) · Mistral AI
+- DeepSeek-V4-Pro 1.6T-A49B (MoE) · 1600B total / 49B active · ctx 1048576 · MoE (385E/7A, hybrid CSA/HCA eff.) · DeepSeek
+- DeepSeek-V4-Flash 284B-A13B (MoE) · 284B total / 13B active · ctx 1048576 · MoE (257E/7A, hybrid CSA/HCA eff.) · DeepSeek
+- Kimi K2.6 1T-A32B (MoE) · 1000B total / 32B active · ctx 262144 · MoE (385E/9A, MLA eff.) · Moonshot AI
+- GLM-5.2 744B-A40B (MoE) · 744B total / 40B active · ctx 1048576 · MoE (257E/9A, MLA+DSA eff.) · Z.ai (Zhipu)
+- MiniMax-M3 230B-A10B (MoE) · 230B total / 10B active · ctx 1048576 · MoE (256E/8A, MSA sparse; cfg approx) · MiniMax
+- Qwen3.6 35B-A3B (MoE) · 35B total / 3B active · ctx 262144 · MoE (256E/8A, hybrid; cfg approx) · Alibaba Cloud
+- Nemotron 3 Super 120B-A12B (MoE) · 120B total / 12B active · ctx 1048576 · MoE hybrid Mamba-Attn (est. cfg) · NVIDIA
+- Nemotron 3 Ultra 550B-A55B (MoE) · 550B total / 55B active · ctx 1048576 · MoE hybrid Mamba+LatentMoE (est. cfg) · NVIDIA
+- Falcon-H1-34B · 34B total / 34B active · ctx 262144 · Dense hybrid Attn+SSM (GQA-4) · TII (UAE)
+- Falcon3-10B · 10B total / 10B active · ctx 32768 · Dense (GQA) · TII (UAE)
+- Jais-family-30B (Arabic, 16K) · 30B total / 30B active · ctx 16384 · Dense (MHA+ALiBi) · heavy KV · Inception / G42 (UAE)
+- ALLaM-7B (Arabic) · 7B total / 7B active · ctx 4096 · Dense (MHA, Llama-2 base) · SDAIA (KSA)
+- Fanar-1-9B (Arabic, Qatar) · 9.2B total / 9.2B active · ctx 8192 · Dense (GQA+SWA, Gemma2 base) · QCRI (Qatar)
+- K2-Think 32B (reasoning) · 32.8B total / 32.8B active · ctx 32768 · Dense (GQA, Qwen2.5 base) · MBZUAI / G42 (UAE)
+- Llama 3.2 3B · 3.2B total / 3.2B active · ctx 131072 · Dense (GQA) · Meta
+- Kimi K3 2.8T-A50B (MoE) · 2800B total / 50B active · ctx 1000000 · MoE (896E/16A, KDA hybrid + MLA eff., est. cfg) · Moonshot AI
+- Jais-2-70B (Arabic) · 70B total / 70B active · ctx 32768 · Dense (GQA, est. cfg) · from scratch, Cerebras-trained · Inception / G42 (UAE)
+- Jais-2-8B (Arabic) · 8B total / 8B active · ctx 32768 · Dense (GQA, est. cfg) · from scratch, Cerebras-trained · Inception / G42 (UAE)
+- Jais-adapted-70B (Arabic) · 70B total / 70B active · ctx 4096 · Dense (GQA, Llama-2 adapted) · Inception / G42 (UAE)
+- Fanar-2-27B (Arabic, Qatar) · 27.4B total / 27.4B active · ctx 131072 · Dense (GQA) · Gemma-3-27B continual pretrain · QCRI (Qatar)
+- ALLaM-34B (Arabic) · 34B total / 34B active · ctx 32768 · Dense (GQA, est. cfg) · from scratch · HUMAIN (KSA)
+- Falcon-H1-Arabic-34B · 34B total / 34B active · ctx 262144 · Dense hybrid Attn+SSM (GQA-4) · OALL #1 · TII (UAE)
+- Falcon-Arabic-7B · 7B total / 7B active · ctx 32768 · Dense (GQA) · Falcon3-7B base · TII (UAE)
+- SILMA-9B (Arabic) · 9B total / 9B active · ctx 8192 · Dense (GQA+SWA) · Gemma-2-9B base · SILMA AI (KSA)
+- Cohere Command A+ 218B-A25B (MoE) · 218B total / 25B active · ctx 131072 · MoE (25B active, est. cfg) · Apache 2.0, vision-in · Cohere
+- Cohere Command A Reasoning 111B · 111B total / 111B active · ctx 262144 · Dense (hybrid SWA, est. cfg) · reasoning · Cohere
+- Cohere Command R+ 104B · 104B total / 104B active · ctx 131072 · Dense (GQA) · Cohere
+- Cohere Command R 32B (08-2024) · 32.3B total / 32.3B active · ctx 131072 · Dense (GQA) · Cohere
+- Cohere Command R7B · 8B total / 8B active · ctx 131072 · Dense (GQA, 3:1 SWA) · Cohere
+- Cohere Command R7B Arabic · 8B total / 8B active · ctx 131072 · Dense (GQA, 3:1 SWA) · Arabic-optimized · Cohere
+- Aya Expanse 32B (multilingual) · 32.3B total / 32.3B active · ctx 131072 · Dense (GQA) · 23 languages incl. Arabic · Cohere
+- Aya Expanse 8B (multilingual) · 8B total / 8B active · ctx 8192 · Dense (GQA) · 23 languages incl. Arabic · Cohere
+- Mistral Saba 24B (MENA/S-Asia) · 24B total / 24B active · ctx 32768 · Dense (GQA, est. cfg) · Arabic-focused, on-prem · Mistral AI
+- Magistral Small 1.2 24B (reasoning) · 24B total / 24B active · ctx 131072 · Dense (GQA) · reasoning · Mistral AI
+- Mistral Large 2 123B · 123B total / 123B active · ctx 131072 · Dense (GQA) · Mistral AI
+- Ministral 8B · 8B total / 8B active · ctx 131072 · Dense (GQA, interleaved SWA) · Mistral AI
+- Mistral Small 4 24B · 24B total / 24B active · ctx 131072 · Dense (GQA, est. cfg) · Apache 2.0 · Mistral AI
+
+## GPUs (37)
+
+- RTX 4060 Ti 16GB · 16 GB · 0.288 TB/s · 44 TFLOPS · 165 W · Consumer
+- RTX 4070 Ti Super 16GB · 16 GB · 0.672 TB/s · 88 TFLOPS · 285 W · Consumer
+- RTX 4080 Super 16GB · 16 GB · 0.736 TB/s · 104 TFLOPS · 320 W · Consumer
+- RTX 4090 24GB · 24 GB · 1.008 TB/s · 165 TFLOPS · 450 W · Consumer
+- RTX 5070 Ti 16GB · 16 GB · 0.896 TB/s · 88 TFLOPS · 300 W · Consumer
+- RTX 5080 16GB · 16 GB · 0.96 TB/s · 113 TFLOPS · 360 W · Consumer
+- RTX 5090 32GB · 32 GB · 1.792 TB/s · 210 TFLOPS · 575 W · Consumer
+- RTX 6000 Ada 48GB · 48 GB · 0.96 TB/s · 182 TFLOPS · 300 W · Workstation
+- RTX PRO 6000 Blackwell Server Edition 96GB · 96 GB · 1.597 TB/s · 250 TFLOPS · 600 W · Server / Workstation
+- A100 40GB SXM · 40 GB · 1.555 TB/s · 312 TFLOPS · 400 W · Data Center
+- A100 80GB SXM · 80 GB · 2.039 TB/s · 312 TFLOPS · 400 W · Data Center
+- A100 80GB PCIe · 80 GB · 1.935 TB/s · 312 TFLOPS · 300 W · Data Center
+- L4 24GB · 24 GB · 0.3 TB/s · 60.5 TFLOPS · 72 W · Data Center
+- L40 48GB · 48 GB · 0.864 TB/s · 90.5 TFLOPS · 300 W · Data Center
+- L40S 48GB · 48 GB · 0.864 TB/s · 183 TFLOPS · 350 W · Data Center
+- H100 NVL 94GB · 94 GB · 3.9 TB/s · 835 TFLOPS · 350 W · Data Center
+- H100 80GB SXM · 80 GB · 3.35 TB/s · 989 TFLOPS · 700 W · Data Center
+- H100 80GB PCIe · 80 GB · 2 TB/s · 756 TFLOPS · 350 W · Data Center
+- H200 141GB NVL · 141 GB · 4.8 TB/s · 989 TFLOPS · 600 W · Data Center
+- H200 141GB SXM · 141 GB · 4.8 TB/s · 989 TFLOPS · 700 W · Data Center
+- B200 180GB · 180 GB · 8 TB/s · 2250 TFLOPS · 1000 W · Data Center
+- B300 288GB · 288 GB · 8 TB/s · 2250 TFLOPS · 1200 W · Data Center
+- Apple M2 Ultra 192GB · 192 GB · 0.8 TB/s · 27.2 TFLOPS · 215 W · Apple Silicon
+- Apple M4 Max 128GB · 128 GB · 0.546 TB/s · 38 TFLOPS · 150 W · Apple Silicon
+- AMD Instinct MI300X 192GB · 192 GB · 5.3 TB/s · 1307 TFLOPS · 750 W · Data Center
+- AMD Instinct MI325X 256GB · 256 GB · 6 TB/s · 1307 TFLOPS · 1000 W · Data Center
+- AMD Instinct MI355X 288GB · 288 GB · 8 TB/s · 2513 TFLOPS · 1400 W · Data Center
+- NVIDIA GB200 186GB (per GPU) · 186 GB · 8 TB/s · 2250 TFLOPS · 1200 W · Data Center
+- Apple M3 Ultra 256GB · 256 GB · 0.819 TB/s · 28 TFLOPS · 270 W · Apple Silicon
+- Intel Gaudi 3 128GB · 128 GB · 3.7 TB/s · 1835 TFLOPS · 900 W · Data Center
+- GH200 141GB · 141 GB · 4.9 TB/s · 989 TFLOPS · 1000 W · Data Center
+- GB300 288GB (per GPU) · 288 GB · 8 TB/s · 2250 TFLOPS · 1400 W · Data Center
+- AMD Instinct MI350X 288GB · 288 GB · 8 TB/s · 2300 TFLOPS · 1000 W · Data Center
+- AMD Instinct MI455X 432GB · 432 GB · 19.6 TB/s · 5000 TFLOPS · 2000 W · Data Center (H2 2026)
+- NVIDIA Rubin VR200 288GB · 288 GB · 20.5 TB/s · 8300 TFLOPS · 1800 W · Data Center (H2 2026)
+- NVIDIA DGX Spark 128GB (GB10) · 128 GB · 0.273 TB/s · 125 TFLOPS · 240 W · Desktop
+- Apple M3 Ultra 512GB · 512 GB · 0.819 TB/s · 28 TFLOPS · 270 W · Apple Silicon
+
+## Weight quants (19)
+
+- FP32 · 4 B/param · 100% (baseline) · Training / research only
+- FP16 · 2 B/param · ~99-100% · Default inference & training
+- BF16 · 2 B/param · ~99-100% · Default inference on BF16-native hardware
+- FP8 · 1 B/param · ~97-99% · Production inference
+- NV FP4 · 0.5625 B/param · ~94-97% · Blackwell native inference (incl. block scales)
+- INT8 · 1 B/param · ~95-98% · Optimized inference (bitsandbytes)
+- INT4 · 0.5 B/param · ~92-96% · GPTQ/AWQ deployment (+~6% group scales not counted)
+- Q8_0 · 1 B/param · ~99% · GGUF near-lossless
+- Q6_K · 0.8125 B/param · ~97-99% · GGUF high quality
+- Q5_K_M · 0.6875 B/param · ~96-98% · GGUF recommended balance
+- Q5_K_S · 0.69 B/param · ~95-97% · GGUF good quality, smaller
+- Q4_K_M · 0.575 B/param · ~93-96% · GGUF most popular (Ollama default)
+- Q4_K_S · 0.5375 B/param · ~92-95% · GGUF smaller Q4 variant
+- Q4_0 · 0.5 B/param · ~91-94% · GGUF basic 4-bit
+- Q3_K_M · 0.4375 B/param · ~88-93% · GGUF aggressive compression
+- Q3_K_L · 0.4875 B/param · ~90-94% · GGUF large Q3 variant
+- Q3_K_S · 0.425 B/param · ~85-90% · GGUF small Q3
+- Q2_K · 0.32 B/param · ~80-88% · GGUF extreme (quality loss)
+- MXFP4 · 0.53125 B/param · ~93-96% · GPT-OSS native / OCP microscaling (incl. scales)
+
+## KV quants
+
+- BF16 · 2 B/element
+- FP16 · 2 B/element
+- FP8 · 1 B/element
+- INT8 · 1 B/element
+- INT4 · 0.5 B/element
+
+## Workload presets (20)
+
+- Simple chatbot · seq 4096 · out 250 · reasoning None · SLO 400ms / 20tps / 18s · supports guard
+- Simple RAG · seq 8192 · out 300 · reasoning None · SLO 800ms / 25tps / 18s · supports embed,rerank
+- Advanced RAG · seq 32768 · out 400 · reasoning None · SLO 1200ms / 30tps / 32s · supports embed,rerank · reasonTok 250
+- Internal GPT / Copilot · seq 16384 · out 300 · reasoning None · SLO 600ms / 25tps / 18s · supports embed,rerank
+- Document Q&A · seq 32768 · out 300 · reasoning None · SLO 2500ms / 25tps / 20s · supports ocr,embed,rerank
+- Document generation · seq 8192 · out 1500 · reasoning None · SLO 1000ms / 40tps / 55s · supports -
+- Code generation · seq 8192 · out 150 · reasoning None · SLO 300ms / 60tps / 5s · supports embed
+- Code agent (Cline/Cursor-style) · seq 65536 · out 1000 · reasoning None · SLO 1000ms / 50tps / 120s · supports embed · reasonTok 3000
+- Voice agent (real-time) · seq 4096 · out 100 · reasoning None · SLO 300ms / 30tps / 5s · supports asr,tts · KV pinned per session
+- Reasoning agent (light) · seq 8192 · out 300 · reasoning Light reasoning · SLO 600ms / 60tps / 55s · supports -
+- Reasoning agent (heavy) · seq 16384 · out 500 · reasoning Heavy reasoning · SLO 800ms / 60tps / 200s · supports -
+- Video summarization · seq 16384 · out 500 · reasoning None · SLO 2000ms / 40tps / 90s · supports asr · reasonTok 2000
+- Long-doc analysis (legal/financial) · seq 65536 · out 800 · reasoning None · SLO 5000ms / 30tps / 90s · supports ocr · reasonTok 1000
+- Offline batch / extract · seq 4096 · out 500 · reasoning None · SLO 0ms / 0tps / 0s · supports ocr
+- Deep research agent (async) · seq 65536 · out 3000 · reasoning Heavy reasoning · SLO 1000ms / 50tps / 620s · supports embed,rerank · reasonTok 20000
+- Medical imaging report assistant · seq 8192 · out 400 · reasoning None · SLO 1500ms / 50tps / 15s · supports ocr,guard
+- Clinical knowledge assistant · seq 8192 · out 350 · reasoning None · SLO 800ms / 40tps / 22s · supports embed,rerank,guard · reasonTok 250
+- Real-time video analytics · seq 4096 · out 80 · reasoning None · SLO 700ms / 40tps / 4s · supports -
+- Translation / localization · seq 2048 · out 500 · reasoning None · SLO 500ms / 40tps / 18s · supports -
+- Contact-center agent assist · seq 16384 · out 60 · reasoning None · SLO 400ms / 40tps / 3s · supports asr,embed,rerank · KV pinned per session
+
+## Resilience modes (12)
+
+- n · N · N · capacity only
+- n1 · N+1 · N+1 · one standby worker
+- n2 · N+2 · N+2 · two standby workers
+- nn · N+N · N+N · in-site mirror (2N)
+- dr · DR · DR · full standby site (active/passive)
+- drh · DR ½ · DR · half-size standby site (1.5N)
+- aas · A/A ½+½ · Active/Active split · N across two sites (1x)
+- aas1 · A/A ½+½ +1 · Active/Active split · N across two sites + one spare (N+1)
+- aass · A/A ½+½ +1/site · Active/Active split · N across two sites + spare per site (N+2)
+- aa · A/A · Active/Active · two live sites (2N)
+- aan1 · A/A N+1 · Active/Active · N+1 in each of two sites (2N+2)
+- nndr · N+N+DR · N+N + DR · active/active twin sites (4N)
+
+## Supporting models
+
+- embed · BGE-M3 · 2.5 GB/instance · cap 400 · default
+- embed · Qwen3-Embedding 0.6B · 1.5 GB/instance · cap 400
+- embed · Qwen3-Embedding 8B · 16 GB/instance · cap 400
+- embed · nomic-embed-text v1.5 · 0.8 GB/instance · cap 400
+- rerank · bge-reranker-v2-m3 · 2.5 GB/instance · cap 50 · default
+- rerank · Qwen3-Reranker 0.6B · 1.5 GB/instance · cap 50
+- rerank · Qwen3-Reranker 8B · 16 GB/instance · cap 120
+- asr · Whisper large-v3-turbo · 1.6 GB/instance · cap 4 · default
+- asr · Parakeet-TDT 0.6B v3 · 1 GB/instance · cap 8
+- asr · Canary-1B v2 · 6.4 GB/instance · cap 6
+- tts · Kokoro-82M · 1 GB/instance · cap 10 · default
+- tts · Orpheus-3B · 6 GB/instance · cap 8
+- ocr · PaddleOCR PP-OCRv5 · 2 GB/instance · cap 8 · default
+- ocr · dots.ocr 3B · 8 GB/instance · cap 4
+- ocr · olmOCR-2 7B · 16 GB/instance · cap 2
+- guard · Llama Guard 3 1B · 2.5 GB/instance · cap 30 · default
+- guard · Llama Guard 3 8B FP8 · 10 GB/instance · cap 60

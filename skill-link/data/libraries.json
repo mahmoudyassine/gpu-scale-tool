@@ -1,0 +1,2957 @@
+{
+ "models": [
+  {
+   "name": "Llama 3.1 8B",
+   "params": 8,
+   "active": 8,
+   "hidden": 4096,
+   "layers": 32,
+   "kvHeads": 8,
+   "headDim": 128,
+   "ctx": 131072,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (GQA)",
+   "dev": "Meta",
+   "url": "https://ai.meta.com/blog/meta-llama-3-1/"
+  },
+  {
+   "name": "Llama 3.1 70B",
+   "params": 70,
+   "active": 70,
+   "hidden": 8192,
+   "layers": 80,
+   "kvHeads": 8,
+   "headDim": 128,
+   "ctx": 131072,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (GQA)",
+   "dev": "Meta",
+   "url": "https://ai.meta.com/blog/meta-llama-3-1/"
+  },
+  {
+   "name": "Llama 3.1 405B",
+   "params": 405,
+   "active": 405,
+   "hidden": 16384,
+   "layers": 126,
+   "kvHeads": 8,
+   "headDim": 128,
+   "ctx": 131072,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (GQA)",
+   "dev": "Meta",
+   "url": "https://ai.meta.com/blog/meta-llama-3-1/"
+  },
+  {
+   "name": "Llama 4 Scout 109B (MoE)",
+   "params": 109,
+   "active": 17,
+   "hidden": 5120,
+   "layers": 48,
+   "kvHeads": 8,
+   "headDim": 128,
+   "ctx": 10485760,
+   "experts": 16,
+   "activeExperts": 1,
+   "arch": "MoE (16E/1A)",
+   "dev": "Meta",
+   "url": "https://ai.meta.com/blog/llama-4-multimodal-intelligence/"
+  },
+  {
+   "name": "Llama 4 Maverick 400B (MoE)",
+   "params": 400,
+   "active": 17,
+   "hidden": 5120,
+   "layers": 48,
+   "kvHeads": 8,
+   "headDim": 128,
+   "ctx": 1048576,
+   "experts": 128,
+   "activeExperts": 2,
+   "arch": "MoE (128E/2A)",
+   "dev": "Meta",
+   "url": "https://ai.meta.com/blog/llama-4-multimodal-intelligence/"
+  },
+  {
+   "name": "Qwen3 0.6B",
+   "params": 0.6,
+   "active": 0.6,
+   "hidden": 1024,
+   "layers": 28,
+   "kvHeads": 8,
+   "headDim": 128,
+   "ctx": 32768,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (GQA)",
+   "dev": "Alibaba Cloud",
+   "url": "https://qwenlm.github.io/blog/qwen3/"
+  },
+  {
+   "name": "Qwen3 1.7B",
+   "params": 1.7,
+   "active": 1.7,
+   "hidden": 2048,
+   "layers": 28,
+   "kvHeads": 8,
+   "headDim": 128,
+   "ctx": 32768,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (GQA)",
+   "dev": "Alibaba Cloud",
+   "url": "https://qwenlm.github.io/blog/qwen3/"
+  },
+  {
+   "name": "Qwen3 4B",
+   "params": 4,
+   "active": 4,
+   "hidden": 2560,
+   "layers": 36,
+   "kvHeads": 8,
+   "headDim": 128,
+   "ctx": 32768,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (GQA)",
+   "dev": "Alibaba Cloud",
+   "url": "https://qwenlm.github.io/blog/qwen3/"
+  },
+  {
+   "name": "Qwen3 8B",
+   "params": 8,
+   "active": 8,
+   "hidden": 4096,
+   "layers": 36,
+   "kvHeads": 8,
+   "headDim": 128,
+   "ctx": 131072,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (GQA)",
+   "dev": "Alibaba Cloud",
+   "url": "https://qwenlm.github.io/blog/qwen3/"
+  },
+  {
+   "name": "Qwen3 14B",
+   "params": 14,
+   "active": 14,
+   "hidden": 5120,
+   "layers": 40,
+   "kvHeads": 8,
+   "headDim": 128,
+   "ctx": 131072,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (GQA)",
+   "dev": "Alibaba Cloud",
+   "url": "https://qwenlm.github.io/blog/qwen3/"
+  },
+  {
+   "name": "Qwen3 32B",
+   "params": 32,
+   "active": 32,
+   "hidden": 5120,
+   "layers": 64,
+   "kvHeads": 8,
+   "headDim": 128,
+   "ctx": 131072,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (GQA)",
+   "dev": "Alibaba Cloud",
+   "url": "https://qwenlm.github.io/blog/qwen3/"
+  },
+  {
+   "name": "Qwen3 30B-A3B (MoE)",
+   "params": 30,
+   "active": 3,
+   "hidden": 2048,
+   "layers": 48,
+   "kvHeads": 4,
+   "headDim": 128,
+   "ctx": 131072,
+   "experts": 128,
+   "activeExperts": 8,
+   "arch": "MoE (128E/8A)",
+   "dev": "Alibaba Cloud",
+   "url": "https://qwenlm.github.io/blog/qwen3/"
+  },
+  {
+   "name": "Qwen3 235B-A22B (MoE)",
+   "params": 235,
+   "active": 22,
+   "hidden": 4096,
+   "layers": 94,
+   "kvHeads": 4,
+   "headDim": 128,
+   "ctx": 262144,
+   "experts": 128,
+   "activeExperts": 8,
+   "arch": "MoE (128E/8A)",
+   "dev": "Alibaba Cloud",
+   "url": "https://qwenlm.github.io/blog/qwen3/"
+  },
+  {
+   "name": "Qwen3.5 0.8B",
+   "params": 0.8,
+   "active": 0.8,
+   "hidden": 1024,
+   "layers": 24,
+   "kvHeads": 2,
+   "headDim": 256,
+   "ctx": 262144,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (Hybrid attn approx)",
+   "dev": "Alibaba Cloud",
+   "url": "https://github.com/QwenLM/Qwen3.5"
+  },
+  {
+   "name": "Qwen3.5 2B",
+   "params": 2,
+   "active": 2,
+   "hidden": 2048,
+   "layers": 24,
+   "kvHeads": 2,
+   "headDim": 256,
+   "ctx": 262144,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (Hybrid attn approx)",
+   "dev": "Alibaba Cloud",
+   "url": "https://github.com/QwenLM/Qwen3.5"
+  },
+  {
+   "name": "Qwen3.5 4B",
+   "params": 4,
+   "active": 4,
+   "hidden": 2560,
+   "layers": 32,
+   "kvHeads": 4,
+   "headDim": 256,
+   "ctx": 262144,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (Hybrid attn approx)",
+   "dev": "Alibaba Cloud",
+   "url": "https://github.com/QwenLM/Qwen3.5"
+  },
+  {
+   "name": "Qwen3.5 9B",
+   "params": 9,
+   "active": 9,
+   "hidden": 4096,
+   "layers": 32,
+   "kvHeads": 4,
+   "headDim": 256,
+   "ctx": 262144,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (Hybrid attn approx)",
+   "dev": "Alibaba Cloud",
+   "url": "https://github.com/QwenLM/Qwen3.5"
+  },
+  {
+   "name": "Qwen3.5 27B",
+   "params": 27,
+   "active": 27,
+   "hidden": 5120,
+   "layers": 64,
+   "kvHeads": 4,
+   "headDim": 256,
+   "ctx": 262144,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (Hybrid attn approx)",
+   "dev": "Alibaba Cloud",
+   "url": "https://github.com/QwenLM/Qwen3.5"
+  },
+  {
+   "name": "Qwen3.5 35B-A3B (MoE)",
+   "params": 35,
+   "active": 3,
+   "hidden": 2048,
+   "layers": 40,
+   "kvHeads": 2,
+   "headDim": 256,
+   "ctx": 262144,
+   "experts": 256,
+   "activeExperts": 8,
+   "arch": "MoE (256E/8A, hybrid approx)",
+   "dev": "Alibaba Cloud",
+   "url": "https://github.com/QwenLM/Qwen3.5"
+  },
+  {
+   "name": "Qwen3.5 122B-A10B (MoE)",
+   "params": 122,
+   "active": 10,
+   "hidden": 3072,
+   "layers": 48,
+   "kvHeads": 2,
+   "headDim": 256,
+   "ctx": 262144,
+   "experts": 256,
+   "activeExperts": 8,
+   "arch": "MoE (256E/8A, hybrid approx)",
+   "dev": "Alibaba Cloud",
+   "url": "https://github.com/QwenLM/Qwen3.5"
+  },
+  {
+   "name": "Qwen3.5 397B-A17B (MoE)",
+   "params": 397,
+   "active": 17,
+   "hidden": 4096,
+   "layers": 60,
+   "kvHeads": 2,
+   "headDim": 256,
+   "ctx": 262144,
+   "experts": 512,
+   "activeExperts": 10,
+   "arch": "MoE (512E/10A, hybrid approx)",
+   "dev": "Alibaba Cloud",
+   "url": "https://github.com/QwenLM/Qwen3.5"
+  },
+  {
+   "name": "DeepSeek-V3 671B (MoE)",
+   "params": 671,
+   "active": 37,
+   "hidden": 7168,
+   "layers": 61,
+   "kvHeads": 1,
+   "headDim": 288,
+   "ctx": 131072,
+   "experts": 257,
+   "activeExperts": 9,
+   "arch": "MoE (257E/9A, MLA eff.)",
+   "dev": "DeepSeek",
+   "url": "https://huggingface.co/deepseek-ai/DeepSeek-V3"
+  },
+  {
+   "name": "DeepSeek-R1 671B (MoE)",
+   "params": 671,
+   "active": 37,
+   "hidden": 7168,
+   "layers": 61,
+   "kvHeads": 1,
+   "headDim": 288,
+   "ctx": 131072,
+   "experts": 257,
+   "activeExperts": 9,
+   "arch": "MoE (257E/9A, MLA eff.)",
+   "dev": "DeepSeek",
+   "url": "https://huggingface.co/deepseek-ai/DeepSeek-R1"
+  },
+  {
+   "name": "Kimi K2 1T-A32B (MoE)",
+   "params": 1000,
+   "active": 32,
+   "hidden": 7168,
+   "layers": 61,
+   "kvHeads": 1,
+   "headDim": 288,
+   "ctx": 131072,
+   "experts": 385,
+   "activeExperts": 9,
+   "arch": "MoE (385E/9A, MLA eff.)",
+   "dev": "Moonshot AI",
+   "url": "https://huggingface.co/moonshotai/Kimi-K2-Instruct"
+  },
+  {
+   "name": "Kimi K2.5 1T-A32B (MoE)",
+   "params": 1000,
+   "active": 32,
+   "hidden": 7168,
+   "layers": 61,
+   "kvHeads": 1,
+   "headDim": 288,
+   "ctx": 262144,
+   "experts": 385,
+   "activeExperts": 9,
+   "arch": "MoE (385E/9A, MLA eff.)",
+   "dev": "Moonshot AI",
+   "url": "https://huggingface.co/moonshotai/Kimi-K2.5"
+  },
+  {
+   "name": "Mistral 7B v0.3",
+   "params": 7.3,
+   "active": 7.3,
+   "hidden": 4096,
+   "layers": 32,
+   "kvHeads": 8,
+   "headDim": 128,
+   "ctx": 32768,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (GQA+SWA)",
+   "dev": "Mistral AI",
+   "url": "https://huggingface.co/mistralai/Mistral-7B-v0.3"
+  },
+  {
+   "name": "Mixtral 8x7B (MoE)",
+   "params": 46.7,
+   "active": 12.9,
+   "hidden": 4096,
+   "layers": 32,
+   "kvHeads": 8,
+   "headDim": 128,
+   "ctx": 32768,
+   "experts": 8,
+   "activeExperts": 2,
+   "arch": "MoE (8E/2A)",
+   "dev": "Mistral AI",
+   "url": "https://huggingface.co/mistralai/Mixtral-8x7B-Instruct-v0.1"
+  },
+  {
+   "name": "Mistral Small 3 24B",
+   "params": 24,
+   "active": 24,
+   "hidden": 5120,
+   "layers": 40,
+   "kvHeads": 8,
+   "headDim": 128,
+   "ctx": 32768,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (GQA)",
+   "dev": "Mistral AI",
+   "url": "https://mistral.ai/news/mistral-small-3"
+  },
+  {
+   "name": "Mistral Small 3.1 24B",
+   "params": 24,
+   "active": 24,
+   "hidden": 5120,
+   "layers": 40,
+   "kvHeads": 8,
+   "headDim": 128,
+   "ctx": 131072,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (GQA)",
+   "dev": "Mistral AI",
+   "url": "https://mistral.ai/news/mistral-small-3-1"
+  },
+  {
+   "name": "Mistral Large 3 675B (MoE)",
+   "params": 675,
+   "active": 41,
+   "hidden": 12288,
+   "layers": 88,
+   "kvHeads": 8,
+   "headDim": 128,
+   "ctx": 262144,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "MoE (granular; cfg approx)",
+   "dev": "Mistral AI",
+   "url": "https://mistral.ai/news/mistral-3"
+  },
+  {
+   "name": "Mixtral 8x22B (MoE)",
+   "params": 141,
+   "active": 39,
+   "hidden": 6144,
+   "layers": 56,
+   "kvHeads": 8,
+   "headDim": 128,
+   "ctx": 65536,
+   "experts": 8,
+   "activeExperts": 2,
+   "arch": "MoE (8E/2A)",
+   "dev": "Mistral AI",
+   "url": "https://huggingface.co/mistralai/Mixtral-8x22B-v0.1"
+  },
+  {
+   "name": "Gemma 2 2B",
+   "params": 2,
+   "active": 2,
+   "hidden": 2304,
+   "layers": 26,
+   "kvHeads": 4,
+   "headDim": 256,
+   "ctx": 8192,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (GQA+SWA)",
+   "dev": "Google",
+   "url": "https://ai.google.dev/gemma/docs/core/model_card_2"
+  },
+  {
+   "name": "Gemma 2 9B",
+   "params": 9,
+   "active": 9,
+   "hidden": 3584,
+   "layers": 42,
+   "kvHeads": 8,
+   "headDim": 256,
+   "ctx": 8192,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (GQA+SWA)",
+   "dev": "Google",
+   "url": "https://ai.google.dev/gemma/docs/core/model_card_2"
+  },
+  {
+   "name": "Gemma 2 27B",
+   "params": 27,
+   "active": 27,
+   "hidden": 4608,
+   "layers": 46,
+   "kvHeads": 16,
+   "headDim": 128,
+   "ctx": 8192,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (GQA+SWA)",
+   "dev": "Google",
+   "url": "https://ai.google.dev/gemma/docs/core/model_card_2"
+  },
+  {
+   "name": "Gemma 3 1B",
+   "params": 1,
+   "active": 1,
+   "hidden": 1152,
+   "layers": 26,
+   "kvHeads": 1,
+   "headDim": 256,
+   "ctx": 32768,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (GQA+SWA 5:1)",
+   "dev": "Google",
+   "url": "https://ai.google.dev/gemma/docs/core/model_card_3"
+  },
+  {
+   "name": "Gemma 3 4B",
+   "params": 4.3,
+   "active": 4.3,
+   "hidden": 2560,
+   "layers": 34,
+   "kvHeads": 4,
+   "headDim": 256,
+   "ctx": 131072,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (GQA+SWA 5:1)",
+   "dev": "Google",
+   "url": "https://ai.google.dev/gemma/docs/core/model_card_3"
+  },
+  {
+   "name": "Gemma 3 12B",
+   "params": 12.2,
+   "active": 12.2,
+   "hidden": 3840,
+   "layers": 48,
+   "kvHeads": 8,
+   "headDim": 256,
+   "ctx": 131072,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (GQA+SWA 5:1)",
+   "dev": "Google",
+   "url": "https://ai.google.dev/gemma/docs/core/model_card_3"
+  },
+  {
+   "name": "Gemma 3 27B",
+   "params": 27.4,
+   "active": 27.4,
+   "hidden": 5376,
+   "layers": 62,
+   "kvHeads": 16,
+   "headDim": 128,
+   "ctx": 131072,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (GQA+SWA 5:1)",
+   "dev": "Google",
+   "url": "https://ai.google.dev/gemma/docs/core/model_card_3"
+  },
+  {
+   "name": "Gemma 4 E2B",
+   "params": 5.1,
+   "active": 2.3,
+   "hidden": 1536,
+   "layers": 35,
+   "kvHeads": 1,
+   "headDim": 256,
+   "ctx": 131072,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (shared KV approx)",
+   "dev": "Google",
+   "url": "https://ai.google.dev/gemma/docs/core/model_card_4"
+  },
+  {
+   "name": "Gemma 4 E4B",
+   "params": 8,
+   "active": 4.5,
+   "hidden": 2560,
+   "layers": 42,
+   "kvHeads": 2,
+   "headDim": 256,
+   "ctx": 131072,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (shared KV approx)",
+   "dev": "Google",
+   "url": "https://ai.google.dev/gemma/docs/core/model_card_4"
+  },
+  {
+   "name": "Gemma 4 26B-A4B (MoE)",
+   "params": 25.2,
+   "active": 3.8,
+   "hidden": 2816,
+   "layers": 30,
+   "kvHeads": 8,
+   "headDim": 256,
+   "ctx": 262144,
+   "experts": 129,
+   "activeExperts": 9,
+   "arch": "MoE (129E/9A; shared KV approx)",
+   "dev": "Google",
+   "url": "https://ai.google.dev/gemma/docs/core/model_card_4"
+  },
+  {
+   "name": "Gemma 4 31B",
+   "params": 30.7,
+   "active": 30.7,
+   "hidden": 5376,
+   "layers": 60,
+   "kvHeads": 16,
+   "headDim": 256,
+   "ctx": 262144,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (shared KV approx)",
+   "dev": "Google",
+   "url": "https://ai.google.dev/gemma/docs/core/model_card_4"
+  },
+  {
+   "name": "Phi-4-mini 3.8B",
+   "params": 3.8,
+   "active": 3.8,
+   "hidden": 3072,
+   "layers": 32,
+   "kvHeads": 8,
+   "headDim": 128,
+   "ctx": 131072,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (GQA)",
+   "dev": "Microsoft",
+   "url": "https://huggingface.co/microsoft/Phi-4-mini-instruct"
+  },
+  {
+   "name": "Phi-4 14B",
+   "params": 14,
+   "active": 14,
+   "hidden": 5120,
+   "layers": 40,
+   "kvHeads": 10,
+   "headDim": 128,
+   "ctx": 16384,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (GQA)",
+   "dev": "Microsoft",
+   "url": "https://huggingface.co/microsoft/phi-4"
+  },
+  {
+   "name": "GPT-OSS 20B",
+   "params": 21,
+   "active": 3.6,
+   "hidden": 2880,
+   "layers": 24,
+   "kvHeads": 8,
+   "headDim": 64,
+   "ctx": 131072,
+   "experts": 32,
+   "activeExperts": 4,
+   "arch": "MoE (32E/4A, GQA)",
+   "dev": "OpenAI",
+   "url": "https://openai.com/index/gpt-oss-model-card/"
+  },
+  {
+   "name": "GPT-OSS 120B",
+   "params": 117,
+   "active": 5.1,
+   "hidden": 2880,
+   "layers": 36,
+   "kvHeads": 8,
+   "headDim": 64,
+   "ctx": 131072,
+   "experts": 128,
+   "activeExperts": 4,
+   "arch": "MoE (128E/4A, GQA)",
+   "dev": "OpenAI",
+   "url": "https://openai.com/index/gpt-oss-model-card/"
+  },
+  {
+   "name": "Qwen3-Next 80B-A3B (MoE, hybrid)",
+   "params": 80,
+   "active": 3.9,
+   "hidden": 2048,
+   "layers": 48,
+   "kvHeads": 2,
+   "headDim": 64,
+   "ctx": 262144,
+   "experts": 512,
+   "activeExperts": 10,
+   "arch": "MoE (512E/10A, hybrid attn)",
+   "dev": "Alibaba",
+   "url": "https://huggingface.co/Qwen/Qwen3-Next-80B-A3B-Instruct"
+  },
+  {
+   "name": "Qwen3-Coder 480B-A35B (MoE)",
+   "params": 480,
+   "active": 35,
+   "hidden": 6144,
+   "layers": 62,
+   "kvHeads": 8,
+   "headDim": 128,
+   "ctx": 262144,
+   "experts": 160,
+   "activeExperts": 8,
+   "arch": "MoE (160E/8A, GQA)",
+   "dev": "Alibaba",
+   "url": "https://huggingface.co/Qwen/Qwen3-Coder-480B-A35B-Instruct"
+  },
+  {
+   "name": "DeepSeek-V3.1 671B (MoE)",
+   "params": 671,
+   "active": 37,
+   "hidden": 7168,
+   "layers": 61,
+   "kvHeads": 1,
+   "headDim": 288,
+   "ctx": 131072,
+   "experts": 257,
+   "activeExperts": 9,
+   "arch": "MoE (257E/9A, MLA eff.)",
+   "dev": "DeepSeek",
+   "url": "https://huggingface.co/deepseek-ai/DeepSeek-V3.1"
+  },
+  {
+   "name": "DeepSeek-V3.2 671B (MoE, DSA)",
+   "params": 671,
+   "active": 37,
+   "hidden": 7168,
+   "layers": 61,
+   "kvHeads": 1,
+   "headDim": 288,
+   "ctx": 131072,
+   "experts": 257,
+   "activeExperts": 9,
+   "arch": "MoE (DSA sparse attn, MLA eff.)",
+   "dev": "DeepSeek",
+   "url": "https://huggingface.co/deepseek-ai/DeepSeek-V3.2"
+  },
+  {
+   "name": "GLM-4.5 355B-A32B (MoE)",
+   "params": 355,
+   "active": 32,
+   "hidden": 5120,
+   "layers": 92,
+   "kvHeads": 8,
+   "headDim": 128,
+   "ctx": 131072,
+   "experts": 160,
+   "activeExperts": 8,
+   "arch": "MoE (160E/8A, GQA)",
+   "dev": "Z.ai (Zhipu)",
+   "url": "https://huggingface.co/zai-org/GLM-4.5"
+  },
+  {
+   "name": "GLM-4.6 357B-A32B (MoE)",
+   "params": 357,
+   "active": 32,
+   "hidden": 5120,
+   "layers": 92,
+   "kvHeads": 8,
+   "headDim": 128,
+   "ctx": 200000,
+   "experts": 160,
+   "activeExperts": 8,
+   "arch": "MoE (160E/8A, GQA)",
+   "dev": "Z.ai (Zhipu)",
+   "url": "https://huggingface.co/zai-org/GLM-4.6"
+  },
+  {
+   "name": "MiniMax-M2 230B-A10B (MoE)",
+   "params": 230,
+   "active": 10,
+   "hidden": 3072,
+   "layers": 62,
+   "kvHeads": 8,
+   "headDim": 128,
+   "ctx": 200000,
+   "experts": 256,
+   "activeExperts": 8,
+   "arch": "MoE (256E/8A, GQA)",
+   "dev": "MiniMax",
+   "url": "https://huggingface.co/MiniMaxAI/MiniMax-M2"
+  },
+  {
+   "name": "Llama 3.3 70B Instruct",
+   "params": 70,
+   "active": 70,
+   "hidden": 8192,
+   "layers": 80,
+   "kvHeads": 8,
+   "headDim": 128,
+   "ctx": 131072,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (GQA)",
+   "dev": "Meta",
+   "url": "https://huggingface.co/meta-llama/Llama-3.3-70B-Instruct"
+  },
+  {
+   "name": "Mistral Medium 3.5 128B",
+   "params": 128,
+   "active": 128,
+   "hidden": 12288,
+   "layers": 80,
+   "kvHeads": 8,
+   "headDim": 128,
+   "ctx": 262144,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (GQA, est. cfg)",
+   "dev": "Mistral AI",
+   "url": "https://huggingface.co/mistralai/Mistral-Medium-3.5-128B"
+  },
+  {
+   "name": "Cohere Command A 111B",
+   "params": 111,
+   "active": 111,
+   "hidden": 12288,
+   "layers": 64,
+   "kvHeads": 8,
+   "headDim": 128,
+   "ctx": 262144,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (hybrid SWA, est. cfg)",
+   "dev": "Cohere",
+   "url": "https://huggingface.co/CohereLabs/c4ai-command-a-03-2025"
+  },
+  {
+   "name": "Ministral 3 14B",
+   "params": 14,
+   "active": 14,
+   "hidden": 5120,
+   "layers": 40,
+   "kvHeads": 8,
+   "headDim": 128,
+   "ctx": 32768,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (GQA)",
+   "dev": "Mistral AI",
+   "url": "https://huggingface.co/collections/mistralai/ministral-3"
+  },
+  {
+   "name": "DeepSeek-V4-Pro 1.6T-A49B (MoE)",
+   "params": 1600,
+   "active": 49,
+   "hidden": 7168,
+   "layers": 61,
+   "kvHeads": 1,
+   "headDim": 40,
+   "ctx": 1048576,
+   "experts": 385,
+   "activeExperts": 7,
+   "arch": "MoE (385E/7A, hybrid CSA/HCA eff.)",
+   "dev": "DeepSeek",
+   "url": "https://huggingface.co/deepseek-ai/DeepSeek-V4-Pro"
+  },
+  {
+   "name": "DeepSeek-V4-Flash 284B-A13B (MoE)",
+   "params": 284,
+   "active": 13,
+   "hidden": 4096,
+   "layers": 43,
+   "kvHeads": 1,
+   "headDim": 40,
+   "ctx": 1048576,
+   "experts": 257,
+   "activeExperts": 7,
+   "arch": "MoE (257E/7A, hybrid CSA/HCA eff.)",
+   "dev": "DeepSeek",
+   "url": "https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash"
+  },
+  {
+   "name": "Kimi K2.6 1T-A32B (MoE)",
+   "params": 1000,
+   "active": 32,
+   "hidden": 7168,
+   "layers": 61,
+   "kvHeads": 1,
+   "headDim": 288,
+   "ctx": 262144,
+   "experts": 385,
+   "activeExperts": 9,
+   "arch": "MoE (385E/9A, MLA eff.)",
+   "dev": "Moonshot AI",
+   "url": "https://huggingface.co/moonshotai/Kimi-K2.6"
+  },
+  {
+   "name": "GLM-5.2 744B-A40B (MoE)",
+   "params": 744,
+   "active": 40,
+   "hidden": 6144,
+   "layers": 78,
+   "kvHeads": 1,
+   "headDim": 288,
+   "ctx": 1048576,
+   "experts": 257,
+   "activeExperts": 9,
+   "arch": "MoE (257E/9A, MLA+DSA eff.)",
+   "dev": "Z.ai (Zhipu)",
+   "url": "https://huggingface.co/zai-org/GLM-5.2"
+  },
+  {
+   "name": "MiniMax-M3 230B-A10B (MoE)",
+   "params": 230,
+   "active": 10,
+   "hidden": 3072,
+   "layers": 62,
+   "kvHeads": 8,
+   "headDim": 128,
+   "ctx": 1048576,
+   "experts": 256,
+   "activeExperts": 8,
+   "arch": "MoE (256E/8A, MSA sparse; cfg approx)",
+   "dev": "MiniMax",
+   "url": "https://huggingface.co/MiniMaxAI/MiniMax-M3"
+  },
+  {
+   "name": "Qwen3.6 35B-A3B (MoE)",
+   "params": 35,
+   "active": 3,
+   "hidden": 2048,
+   "layers": 40,
+   "kvHeads": 2,
+   "headDim": 256,
+   "ctx": 262144,
+   "experts": 256,
+   "activeExperts": 8,
+   "arch": "MoE (256E/8A, hybrid; cfg approx)",
+   "dev": "Alibaba Cloud",
+   "url": "https://huggingface.co/Qwen"
+  },
+  {
+   "name": "Nemotron 3 Super 120B-A12B (MoE)",
+   "params": 120,
+   "active": 12,
+   "hidden": 6144,
+   "layers": 52,
+   "kvHeads": 2,
+   "headDim": 128,
+   "ctx": 1048576,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "MoE hybrid Mamba-Attn (est. cfg)",
+   "dev": "NVIDIA",
+   "url": "https://huggingface.co/nvidia"
+  },
+  {
+   "name": "Nemotron 3 Ultra 550B-A55B (MoE)",
+   "params": 550,
+   "active": 55,
+   "hidden": 8192,
+   "layers": 64,
+   "kvHeads": 2,
+   "headDim": 128,
+   "ctx": 1048576,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "MoE hybrid Mamba+LatentMoE (est. cfg)",
+   "dev": "NVIDIA",
+   "url": "https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-BF16"
+  },
+  {
+   "name": "Falcon-H1-34B",
+   "params": 34,
+   "active": 34,
+   "hidden": 5120,
+   "layers": 72,
+   "kvHeads": 4,
+   "headDim": 128,
+   "ctx": 262144,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense hybrid Attn+SSM (GQA-4)",
+   "dev": "TII (UAE)",
+   "url": "https://huggingface.co/tiiuae/Falcon-H1-34B-Instruct"
+  },
+  {
+   "name": "Falcon3-10B",
+   "params": 10,
+   "active": 10,
+   "hidden": 3072,
+   "layers": 40,
+   "kvHeads": 4,
+   "headDim": 256,
+   "ctx": 32768,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (GQA)",
+   "dev": "TII (UAE)",
+   "url": "https://huggingface.co/tiiuae/Falcon3-10B-Instruct"
+  },
+  {
+   "name": "Jais-family-30B (Arabic, 16K)",
+   "params": 30,
+   "active": 30,
+   "hidden": 7168,
+   "layers": 48,
+   "kvHeads": 56,
+   "headDim": 128,
+   "ctx": 16384,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (MHA+ALiBi) · heavy KV",
+   "dev": "Inception / G42 (UAE)",
+   "url": "https://huggingface.co/inceptionai/jais-family-30b-16k"
+  },
+  {
+   "name": "ALLaM-7B (Arabic)",
+   "params": 7,
+   "active": 7,
+   "hidden": 4096,
+   "layers": 32,
+   "kvHeads": 32,
+   "headDim": 128,
+   "ctx": 4096,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (MHA, Llama-2 base)",
+   "dev": "SDAIA (KSA)",
+   "url": "https://huggingface.co/ALLaM-AI/ALLaM-7B-Instruct-preview"
+  },
+  {
+   "name": "Fanar-1-9B (Arabic, Qatar)",
+   "params": 9.2,
+   "active": 9.2,
+   "hidden": 3584,
+   "layers": 42,
+   "kvHeads": 8,
+   "headDim": 256,
+   "ctx": 8192,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (GQA+SWA, Gemma2 base)",
+   "dev": "QCRI (Qatar)",
+   "url": "https://huggingface.co/QCRI/Fanar-1-9B-Instruct"
+  },
+  {
+   "name": "K2-Think 32B (reasoning)",
+   "params": 32.8,
+   "active": 32.8,
+   "hidden": 5120,
+   "layers": 64,
+   "kvHeads": 8,
+   "headDim": 128,
+   "ctx": 32768,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (GQA, Qwen2.5 base)",
+   "dev": "MBZUAI / G42 (UAE)",
+   "url": "https://huggingface.co/LLM360/K2-Think"
+  },
+  {
+   "name": "Llama 3.2 3B",
+   "params": 3.2,
+   "active": 3.2,
+   "hidden": 3072,
+   "layers": 28,
+   "kvHeads": 8,
+   "headDim": 128,
+   "ctx": 131072,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (GQA)",
+   "dev": "Meta",
+   "url": "https://huggingface.co/meta-llama/Llama-3.2-3B-Instruct"
+  },
+  {
+   "name": "Kimi K3 2.8T-A50B (MoE)",
+   "params": 2800,
+   "active": 50,
+   "hidden": 9216,
+   "layers": 80,
+   "kvHeads": 1,
+   "headDim": 72,
+   "ctx": 1000000,
+   "experts": 896,
+   "activeExperts": 16,
+   "arch": "MoE (896E/16A, KDA hybrid + MLA eff., est. cfg)",
+   "dev": "Moonshot AI",
+   "url": "https://huggingface.co/blog/ResterChed/kimi-k3-model-overview-mxfp4-quantization-open-wei"
+  },
+  {
+   "name": "Jais-2-70B (Arabic)",
+   "params": 70,
+   "active": 70,
+   "hidden": 8192,
+   "layers": 80,
+   "kvHeads": 8,
+   "headDim": 128,
+   "ctx": 32768,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (GQA, est. cfg) · from scratch, Cerebras-trained",
+   "dev": "Inception / G42 (UAE)",
+   "url": "https://huggingface.co/inceptionai"
+  },
+  {
+   "name": "Jais-2-8B (Arabic)",
+   "params": 8,
+   "active": 8,
+   "hidden": 4096,
+   "layers": 32,
+   "kvHeads": 8,
+   "headDim": 128,
+   "ctx": 32768,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (GQA, est. cfg) · from scratch, Cerebras-trained",
+   "dev": "Inception / G42 (UAE)",
+   "url": "https://huggingface.co/inceptionai"
+  },
+  {
+   "name": "Jais-adapted-70B (Arabic)",
+   "params": 70,
+   "active": 70,
+   "hidden": 8192,
+   "layers": 80,
+   "kvHeads": 8,
+   "headDim": 128,
+   "ctx": 4096,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (GQA, Llama-2 adapted)",
+   "dev": "Inception / G42 (UAE)",
+   "url": "https://huggingface.co/inceptionai/jais-adapted-70b"
+  },
+  {
+   "name": "Fanar-2-27B (Arabic, Qatar)",
+   "params": 27.4,
+   "active": 27.4,
+   "hidden": 5376,
+   "layers": 62,
+   "kvHeads": 16,
+   "headDim": 128,
+   "ctx": 131072,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (GQA) · Gemma-3-27B continual pretrain",
+   "dev": "QCRI (Qatar)",
+   "url": "https://huggingface.co/QCRI/Fanar-2-27B-Instruct"
+  },
+  {
+   "name": "ALLaM-34B (Arabic)",
+   "params": 34,
+   "active": 34,
+   "hidden": 7168,
+   "layers": 60,
+   "kvHeads": 8,
+   "headDim": 128,
+   "ctx": 32768,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (GQA, est. cfg) · from scratch",
+   "dev": "HUMAIN (KSA)",
+   "url": "https://www.middleeastainews.com/p/humain-chat-live-allam-34b-llm"
+  },
+  {
+   "name": "Falcon-H1-Arabic-34B",
+   "params": 34,
+   "active": 34,
+   "hidden": 5120,
+   "layers": 72,
+   "kvHeads": 4,
+   "headDim": 128,
+   "ctx": 262144,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense hybrid Attn+SSM (GQA-4) · OALL #1",
+   "dev": "TII (UAE)",
+   "url": "https://huggingface.co/blog/tiiuae/falcon-h1-arabic"
+  },
+  {
+   "name": "Falcon-Arabic-7B",
+   "params": 7,
+   "active": 7,
+   "hidden": 3072,
+   "layers": 28,
+   "kvHeads": 4,
+   "headDim": 256,
+   "ctx": 32768,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (GQA) · Falcon3-7B base",
+   "dev": "TII (UAE)",
+   "url": "https://www.tii.ae/news/middle-easts-leading-ai-powerhouse-tii-launches-two-new-ai-models-falcon-arabic-first-arabic"
+  },
+  {
+   "name": "SILMA-9B (Arabic)",
+   "params": 9,
+   "active": 9,
+   "hidden": 3584,
+   "layers": 42,
+   "kvHeads": 8,
+   "headDim": 256,
+   "ctx": 8192,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (GQA+SWA) · Gemma-2-9B base",
+   "dev": "SILMA AI (KSA)",
+   "url": "https://huggingface.co/silma-ai/SILMA-9B-Instruct-v1.0"
+  },
+  {
+   "name": "Cohere Command A+ 218B-A25B (MoE)",
+   "params": 218,
+   "active": 25,
+   "hidden": 6144,
+   "layers": 48,
+   "kvHeads": 8,
+   "headDim": 128,
+   "ctx": 131072,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "MoE (25B active, est. cfg) · Apache 2.0, vision-in",
+   "dev": "Cohere",
+   "url": "https://docs.cohere.com/docs/command-a-plus"
+  },
+  {
+   "name": "Cohere Command A Reasoning 111B",
+   "params": 111,
+   "active": 111,
+   "hidden": 12288,
+   "layers": 64,
+   "kvHeads": 8,
+   "headDim": 128,
+   "ctx": 262144,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (hybrid SWA, est. cfg) · reasoning",
+   "dev": "Cohere",
+   "url": "https://docs.cohere.com/docs/models"
+  },
+  {
+   "name": "Cohere Command R+ 104B",
+   "params": 104,
+   "active": 104,
+   "hidden": 12288,
+   "layers": 64,
+   "kvHeads": 8,
+   "headDim": 128,
+   "ctx": 131072,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (GQA)",
+   "dev": "Cohere",
+   "url": "https://huggingface.co/CohereLabs/c4ai-command-r-plus-08-2024"
+  },
+  {
+   "name": "Cohere Command R 32B (08-2024)",
+   "params": 32.3,
+   "active": 32.3,
+   "hidden": 8192,
+   "layers": 40,
+   "kvHeads": 8,
+   "headDim": 128,
+   "ctx": 131072,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (GQA)",
+   "dev": "Cohere",
+   "url": "https://huggingface.co/CohereLabs/c4ai-command-r-08-2024"
+  },
+  {
+   "name": "Cohere Command R7B",
+   "params": 8,
+   "active": 8,
+   "hidden": 4096,
+   "layers": 32,
+   "kvHeads": 8,
+   "headDim": 128,
+   "ctx": 131072,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (GQA, 3:1 SWA)",
+   "dev": "Cohere",
+   "url": "https://huggingface.co/CohereLabs/c4ai-command-r7b-12-2024"
+  },
+  {
+   "name": "Cohere Command R7B Arabic",
+   "params": 8,
+   "active": 8,
+   "hidden": 4096,
+   "layers": 32,
+   "kvHeads": 8,
+   "headDim": 128,
+   "ctx": 131072,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (GQA, 3:1 SWA) · Arabic-optimized",
+   "dev": "Cohere",
+   "url": "https://huggingface.co/CohereLabs/c4ai-command-r7b-arabic-02-2025"
+  },
+  {
+   "name": "Aya Expanse 32B (multilingual)",
+   "params": 32.3,
+   "active": 32.3,
+   "hidden": 8192,
+   "layers": 40,
+   "kvHeads": 8,
+   "headDim": 128,
+   "ctx": 131072,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (GQA) · 23 languages incl. Arabic",
+   "dev": "Cohere",
+   "url": "https://huggingface.co/CohereLabs/aya-expanse-32b"
+  },
+  {
+   "name": "Aya Expanse 8B (multilingual)",
+   "params": 8,
+   "active": 8,
+   "hidden": 4096,
+   "layers": 32,
+   "kvHeads": 8,
+   "headDim": 128,
+   "ctx": 8192,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (GQA) · 23 languages incl. Arabic",
+   "dev": "Cohere",
+   "url": "https://huggingface.co/CohereLabs/aya-expanse-8b"
+  },
+  {
+   "name": "Mistral Saba 24B (MENA/S-Asia)",
+   "params": 24,
+   "active": 24,
+   "hidden": 5120,
+   "layers": 40,
+   "kvHeads": 8,
+   "headDim": 128,
+   "ctx": 32768,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (GQA, est. cfg) · Arabic-focused, on-prem",
+   "dev": "Mistral AI",
+   "url": "https://mistral.ai/news/mistral-saba/"
+  },
+  {
+   "name": "Magistral Small 1.2 24B (reasoning)",
+   "params": 24,
+   "active": 24,
+   "hidden": 5120,
+   "layers": 40,
+   "kvHeads": 8,
+   "headDim": 128,
+   "ctx": 131072,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (GQA) · reasoning",
+   "dev": "Mistral AI",
+   "url": "https://huggingface.co/mistralai/Magistral-Small-2509"
+  },
+  {
+   "name": "Mistral Large 2 123B",
+   "params": 123,
+   "active": 123,
+   "hidden": 12288,
+   "layers": 88,
+   "kvHeads": 8,
+   "headDim": 128,
+   "ctx": 131072,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (GQA)",
+   "dev": "Mistral AI",
+   "url": "https://huggingface.co/mistralai/Mistral-Large-Instruct-2407"
+  },
+  {
+   "name": "Ministral 8B",
+   "params": 8,
+   "active": 8,
+   "hidden": 4096,
+   "layers": 36,
+   "kvHeads": 8,
+   "headDim": 128,
+   "ctx": 131072,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (GQA, interleaved SWA)",
+   "dev": "Mistral AI",
+   "url": "https://huggingface.co/mistralai/Ministral-8B-Instruct-2410"
+  },
+  {
+   "name": "Mistral Small 4 24B",
+   "params": 24,
+   "active": 24,
+   "hidden": 5120,
+   "layers": 40,
+   "kvHeads": 8,
+   "headDim": 128,
+   "ctx": 131072,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (GQA, est. cfg) · Apache 2.0",
+   "dev": "Mistral AI",
+   "url": "https://mistral.ai/news/"
+  }
+ ],
+ "gpus": [
+  {
+   "name": "RTX 4060 Ti 16GB",
+   "vram": 16,
+   "bw": 0.288,
+   "tflops": 44,
+   "mem": "GDDR6",
+   "arch": "Ada Lovelace",
+   "watts": 165,
+   "cls": "Consumer",
+   "link": "PCIe 4.0",
+   "url": "https://www.nvidia.com/en-us/geforce/graphics-cards/40-series/",
+   "part": {
+    "kind": "frac"
+   }
+  },
+  {
+   "name": "RTX 4070 Ti Super 16GB",
+   "vram": 16,
+   "bw": 0.672,
+   "tflops": 88,
+   "mem": "GDDR6X",
+   "arch": "Ada Lovelace",
+   "watts": 285,
+   "cls": "Consumer",
+   "link": "PCIe 4.0",
+   "url": "https://www.nvidia.com/en-us/geforce/graphics-cards/40-series/",
+   "part": {
+    "kind": "frac"
+   }
+  },
+  {
+   "name": "RTX 4080 Super 16GB",
+   "vram": 16,
+   "bw": 0.736,
+   "tflops": 104,
+   "mem": "GDDR6X",
+   "arch": "Ada Lovelace",
+   "watts": 320,
+   "cls": "Consumer",
+   "link": "PCIe 4.0",
+   "url": "https://www.nvidia.com/en-us/geforce/graphics-cards/40-series/",
+   "part": {
+    "kind": "frac"
+   }
+  },
+  {
+   "name": "RTX 4090 24GB",
+   "vram": 24,
+   "bw": 1.008,
+   "tflops": 165,
+   "mem": "GDDR6X",
+   "arch": "Ada Lovelace",
+   "watts": 450,
+   "cls": "Consumer",
+   "link": "PCIe 4.0",
+   "url": "https://www.nvidia.com/en-us/geforce/graphics-cards/40-series/",
+   "part": {
+    "kind": "frac"
+   }
+  },
+  {
+   "name": "RTX 5070 Ti 16GB",
+   "vram": 16,
+   "bw": 0.896,
+   "tflops": 88,
+   "mem": "GDDR7",
+   "arch": "Blackwell",
+   "watts": 300,
+   "cls": "Consumer",
+   "link": "PCIe 5.0",
+   "url": "https://www.nvidia.com/en-us/geforce/graphics-cards/50-series/",
+   "part": {
+    "kind": "frac"
+   }
+  },
+  {
+   "name": "RTX 5080 16GB",
+   "vram": 16,
+   "bw": 0.96,
+   "tflops": 113,
+   "mem": "GDDR7",
+   "arch": "Blackwell",
+   "watts": 360,
+   "cls": "Consumer",
+   "link": "PCIe 5.0",
+   "url": "https://www.nvidia.com/en-us/geforce/graphics-cards/50-series/",
+   "part": {
+    "kind": "frac"
+   }
+  },
+  {
+   "name": "RTX 5090 32GB",
+   "vram": 32,
+   "bw": 1.792,
+   "tflops": 210,
+   "mem": "GDDR7",
+   "arch": "Blackwell",
+   "watts": 575,
+   "cls": "Consumer",
+   "link": "PCIe 5.0",
+   "url": "https://www.nvidia.com/en-us/geforce/graphics-cards/50-series/",
+   "part": {
+    "kind": "frac"
+   }
+  },
+  {
+   "name": "RTX 6000 Ada 48GB",
+   "vram": 48,
+   "bw": 0.96,
+   "tflops": 182,
+   "mem": "GDDR6",
+   "arch": "Ada Lovelace",
+   "watts": 300,
+   "cls": "Workstation",
+   "link": "PCIe 4.0",
+   "url": "https://www.nvidia.com/en-us/products/workstations/rtx-6000/",
+   "part": {
+    "kind": "frac"
+   }
+  },
+  {
+   "name": "RTX PRO 6000 Blackwell Server Edition 96GB",
+   "vram": 96,
+   "bw": 1.597,
+   "tflops": 250,
+   "mem": "GDDR7",
+   "arch": "Blackwell",
+   "watts": 600,
+   "cls": "Server / Workstation",
+   "link": "PCIe 5.0",
+   "url": "https://www.nvidia.com/en-us/data-center/rtx-pro-6000-blackwell-server-edition/",
+   "part": {
+    "kind": "mig",
+    "max": 4,
+    "min": 24
+   }
+  },
+  {
+   "name": "A100 40GB SXM",
+   "vram": 40,
+   "bw": 1.555,
+   "tflops": 312,
+   "mem": "HBM2e",
+   "arch": "Ampere",
+   "watts": 400,
+   "cls": "Data Center",
+   "link": "NVLink Gen3",
+   "url": "https://www.nvidia.com/en-us/data-center/a100/",
+   "part": {
+    "kind": "mig",
+    "max": 7,
+    "min": 5
+   }
+  },
+  {
+   "name": "A100 80GB SXM",
+   "vram": 80,
+   "bw": 2.039,
+   "tflops": 312,
+   "mem": "HBM2e",
+   "arch": "Ampere",
+   "watts": 400,
+   "cls": "Data Center",
+   "link": "NVLink Gen3",
+   "url": "https://www.nvidia.com/en-us/data-center/a100/",
+   "part": {
+    "kind": "mig",
+    "max": 7,
+    "min": 10
+   }
+  },
+  {
+   "name": "A100 80GB PCIe",
+   "vram": 80,
+   "bw": 1.935,
+   "tflops": 312,
+   "mem": "HBM2e",
+   "arch": "Ampere",
+   "watts": 300,
+   "cls": "Data Center",
+   "link": "PCIe 4.0",
+   "url": "https://www.nvidia.com/en-us/data-center/a100/",
+   "part": {
+    "kind": "mig",
+    "max": 7,
+    "min": 10
+   }
+  },
+  {
+   "name": "L4 24GB",
+   "vram": 24,
+   "bw": 0.3,
+   "tflops": 60.5,
+   "mem": "GDDR6",
+   "arch": "Ada Lovelace",
+   "watts": 72,
+   "cls": "Data Center",
+   "link": "PCIe 4.0",
+   "url": "https://www.nvidia.com/en-us/data-center/l4/",
+   "part": {
+    "kind": "frac"
+   }
+  },
+  {
+   "name": "L40 48GB",
+   "vram": 48,
+   "bw": 0.864,
+   "tflops": 90.5,
+   "mem": "GDDR6",
+   "arch": "Ada Lovelace",
+   "watts": 300,
+   "cls": "Data Center",
+   "link": "PCIe 4.0",
+   "url": "https://www.nvidia.com/en-us/data-center/l40/",
+   "part": {
+    "kind": "frac"
+   }
+  },
+  {
+   "name": "L40S 48GB",
+   "vram": 48,
+   "bw": 0.864,
+   "tflops": 183,
+   "mem": "GDDR6",
+   "arch": "Ada Lovelace",
+   "watts": 350,
+   "cls": "Data Center",
+   "link": "PCIe 4.0",
+   "url": "https://www.nvidia.com/en-us/data-center/l40s/",
+   "part": {
+    "kind": "frac"
+   }
+  },
+  {
+   "name": "H100 NVL 94GB",
+   "vram": 94,
+   "bw": 3.9,
+   "tflops": 835,
+   "mem": "HBM3",
+   "arch": "Hopper",
+   "watts": 350,
+   "cls": "Data Center",
+   "link": "NVLink Gen4",
+   "url": "https://www.nvidia.com/en-us/data-center/h100/",
+   "part": {
+    "kind": "mig",
+    "max": 7,
+    "min": 12
+   }
+  },
+  {
+   "name": "H100 80GB SXM",
+   "vram": 80,
+   "bw": 3.35,
+   "tflops": 989,
+   "mem": "HBM3",
+   "arch": "Hopper",
+   "watts": 700,
+   "cls": "Data Center",
+   "link": "NVLink Gen4",
+   "url": "https://www.nvidia.com/en-us/data-center/h100/",
+   "part": {
+    "kind": "mig",
+    "max": 7,
+    "min": 10
+   }
+  },
+  {
+   "name": "H100 80GB PCIe",
+   "vram": 80,
+   "bw": 2,
+   "tflops": 756,
+   "mem": "HBM2e",
+   "arch": "Hopper",
+   "watts": 350,
+   "cls": "Data Center",
+   "link": "PCIe 5.0",
+   "url": "https://www.nvidia.com/en-us/data-center/h100/",
+   "part": {
+    "kind": "mig",
+    "max": 7,
+    "min": 10
+   }
+  },
+  {
+   "name": "H200 141GB NVL",
+   "vram": 141,
+   "bw": 4.8,
+   "tflops": 989,
+   "mem": "HBM3e",
+   "arch": "Hopper",
+   "watts": 600,
+   "cls": "Data Center",
+   "link": "NVLink Gen4",
+   "url": "https://www.nvidia.com/en-us/data-center/h200/",
+   "part": {
+    "kind": "mig",
+    "max": 7,
+    "min": 18
+   }
+  },
+  {
+   "name": "H200 141GB SXM",
+   "vram": 141,
+   "bw": 4.8,
+   "tflops": 989,
+   "mem": "HBM3e",
+   "arch": "Hopper",
+   "watts": 700,
+   "cls": "Data Center",
+   "link": "NVLink Gen4",
+   "url": "https://www.nvidia.com/en-us/data-center/h200/",
+   "part": {
+    "kind": "mig",
+    "max": 7,
+    "min": 18
+   }
+  },
+  {
+   "name": "B200 180GB",
+   "vram": 180,
+   "bw": 8,
+   "tflops": 2250,
+   "mem": "HBM3e",
+   "arch": "Blackwell",
+   "watts": 1000,
+   "cls": "Data Center",
+   "link": "NVLink Gen5",
+   "url": "https://www.nvidia.com/en-us/data-center/dgx-b200/",
+   "part": {
+    "kind": "mig",
+    "max": 7,
+    "min": 23
+   }
+  },
+  {
+   "name": "B300 288GB",
+   "vram": 288,
+   "bw": 8,
+   "tflops": 2250,
+   "mem": "HBM3e",
+   "arch": "Blackwell Ultra",
+   "watts": 1200,
+   "cls": "Data Center",
+   "link": "NVLink Gen5",
+   "url": "https://www.nvidia.com/en-us/data-center/dgx-b300/",
+   "part": {
+    "kind": "mig",
+    "max": 7,
+    "min": 34
+   }
+  },
+  {
+   "name": "Apple M2 Ultra 192GB",
+   "vram": 192,
+   "bw": 0.8,
+   "tflops": 27.2,
+   "mem": "Unified LPDDR5",
+   "arch": "Apple M2",
+   "watts": 215,
+   "cls": "Apple Silicon",
+   "link": "—",
+   "url": "https://www.apple.com/newsroom/2023/06/apple-introduces-m2-ultra/",
+   "part": {
+    "kind": "frac"
+   }
+  },
+  {
+   "name": "Apple M4 Max 128GB",
+   "vram": 128,
+   "bw": 0.546,
+   "tflops": 38,
+   "mem": "Unified LPDDR5X",
+   "arch": "Apple M4",
+   "watts": 150,
+   "cls": "Apple Silicon",
+   "link": "—",
+   "url": "https://www.apple.com/macbook-pro/",
+   "part": {
+    "kind": "frac"
+   }
+  },
+  {
+   "name": "AMD Instinct MI300X 192GB",
+   "vram": 192,
+   "bw": 5.3,
+   "tflops": 1307,
+   "mem": "HBM3",
+   "arch": "CDNA 3",
+   "watts": 750,
+   "cls": "Data Center",
+   "link": "Infinity Fabric",
+   "url": "https://www.amd.com/en/products/accelerators/instinct/mi300/mi300x.html",
+   "part": {
+    "kind": "cpx",
+    "max": 8,
+    "min": 24
+   }
+  },
+  {
+   "name": "AMD Instinct MI325X 256GB",
+   "vram": 256,
+   "bw": 6,
+   "tflops": 1307,
+   "mem": "HBM3E",
+   "arch": "CDNA 3",
+   "watts": 1000,
+   "cls": "Data Center",
+   "link": "Infinity Fabric",
+   "url": "https://www.amd.com/en/products/accelerators/instinct/mi325x.html",
+   "part": {
+    "kind": "cpx",
+    "max": 8,
+    "min": 32
+   }
+  },
+  {
+   "name": "AMD Instinct MI355X 288GB",
+   "vram": 288,
+   "bw": 8,
+   "tflops": 2513,
+   "mem": "HBM3E",
+   "arch": "CDNA 4",
+   "watts": 1400,
+   "cls": "Data Center",
+   "link": "Infinity Fabric",
+   "url": "https://www.amd.com/en/products/accelerators/instinct/mi350.html",
+   "part": {
+    "kind": "cpx",
+    "max": 8,
+    "min": 36
+   }
+  },
+  {
+   "name": "NVIDIA GB200 186GB (per GPU)",
+   "vram": 186,
+   "bw": 8,
+   "tflops": 2250,
+   "mem": "HBM3e",
+   "arch": "Blackwell (Grace)",
+   "watts": 1200,
+   "cls": "Data Center",
+   "link": "NVLink Gen5",
+   "url": "https://www.nvidia.com/en-us/data-center/gb200-nvl72/",
+   "part": {
+    "kind": "mig",
+    "max": 7,
+    "min": 23
+   }
+  },
+  {
+   "name": "Apple M3 Ultra 256GB",
+   "vram": 256,
+   "bw": 0.819,
+   "tflops": 28,
+   "mem": "Unified LPDDR5",
+   "arch": "Apple M3",
+   "watts": 270,
+   "cls": "Apple Silicon",
+   "link": "—",
+   "url": "https://www.apple.com/mac-studio/",
+   "part": {
+    "kind": "frac"
+   }
+  },
+  {
+   "name": "Intel Gaudi 3 128GB",
+   "vram": 128,
+   "bw": 3.7,
+   "tflops": 1835,
+   "mem": "HBM2e",
+   "arch": "Intel Gaudi 3",
+   "watts": 900,
+   "cls": "Data Center",
+   "link": "RoCE / Ethernet",
+   "url": "https://www.intel.com/content/www/us/en/products/details/processors/ai-accelerators/gaudi3.html",
+   "part": {
+    "kind": "whole"
+   }
+  },
+  {
+   "name": "GH200 141GB",
+   "vram": 141,
+   "bw": 4.9,
+   "tflops": 989,
+   "mem": "HBM3e",
+   "arch": "Grace Hopper",
+   "watts": 1000,
+   "cls": "Data Center",
+   "link": "NVLink-C2C",
+   "url": "https://www.nvidia.com/en-us/data-center/grace-hopper-superchip/",
+   "part": {
+    "kind": "mig",
+    "max": 7,
+    "min": 18
+   }
+  },
+  {
+   "name": "GB300 288GB (per GPU)",
+   "vram": 288,
+   "bw": 8,
+   "tflops": 2250,
+   "mem": "HBM3e",
+   "arch": "Blackwell Ultra",
+   "watts": 1400,
+   "cls": "Data Center",
+   "link": "NVLink Gen5",
+   "url": "https://www.nvidia.com/en-us/data-center/gb300-nvl72/",
+   "part": {
+    "kind": "mig",
+    "max": 7,
+    "min": 35
+   }
+  },
+  {
+   "name": "AMD Instinct MI350X 288GB",
+   "vram": 288,
+   "bw": 8,
+   "tflops": 2300,
+   "mem": "HBM3E",
+   "arch": "CDNA 4",
+   "watts": 1000,
+   "cls": "Data Center",
+   "link": "Infinity Fabric",
+   "url": "https://www.amd.com/en/products/accelerators/instinct/mi350.html",
+   "part": {
+    "kind": "cpx",
+    "max": 8,
+    "min": 36
+   }
+  },
+  {
+   "name": "AMD Instinct MI455X 432GB",
+   "vram": 432,
+   "bw": 19.6,
+   "tflops": 5000,
+   "mem": "HBM4",
+   "arch": "CDNA 5",
+   "watts": 2000,
+   "cls": "Data Center (H2 2026)",
+   "link": "IF + UALink",
+   "url": "https://www.amd.com/en/products/accelerators/instinct.html",
+   "part": {
+    "kind": "cpx",
+    "max": 8,
+    "min": 54
+   }
+  },
+  {
+   "name": "NVIDIA Rubin VR200 288GB",
+   "vram": 288,
+   "bw": 20.5,
+   "tflops": 8300,
+   "mem": "HBM4",
+   "arch": "Rubin",
+   "watts": 1800,
+   "cls": "Data Center (H2 2026)",
+   "link": "NVLink Gen6",
+   "url": "https://www.nvidia.com/en-us/data-center/vera-rubin/",
+   "part": {
+    "kind": "mig",
+    "max": 7,
+    "min": 36
+   }
+  },
+  {
+   "name": "NVIDIA DGX Spark 128GB (GB10)",
+   "vram": 128,
+   "bw": 0.273,
+   "tflops": 125,
+   "mem": "Unified LPDDR5x",
+   "arch": "Grace Blackwell",
+   "watts": 240,
+   "cls": "Desktop",
+   "link": "NVLink-C2C",
+   "url": "https://www.nvidia.com/en-us/products/workstations/dgx-spark/",
+   "part": {
+    "kind": "frac"
+   }
+  },
+  {
+   "name": "Apple M3 Ultra 512GB",
+   "vram": 512,
+   "bw": 0.819,
+   "tflops": 28,
+   "mem": "Unified LPDDR5",
+   "arch": "Apple M3",
+   "watts": 270,
+   "cls": "Apple Silicon",
+   "link": "—",
+   "url": "https://www.apple.com/mac-studio/",
+   "part": {
+    "kind": "frac"
+   }
+  }
+ ],
+ "quants": [
+  {
+   "name": "FP32",
+   "bits": 32,
+   "bytes": 4,
+   "quality": "100% (baseline)",
+   "speed": "Slowest",
+   "use": "Training / research only",
+   "hw": "All GPUs"
+  },
+  {
+   "name": "FP16",
+   "bits": 16,
+   "bytes": 2,
+   "quality": "~99-100%",
+   "speed": "Fast",
+   "use": "Default inference & training",
+   "hw": "All modern GPUs"
+  },
+  {
+   "name": "BF16",
+   "bits": 16,
+   "bytes": 2,
+   "quality": "~99-100%",
+   "speed": "Fast",
+   "use": "Default inference on BF16-native hardware",
+   "hw": "Ampere+ / BF16-capable GPUs"
+  },
+  {
+   "name": "FP8",
+   "bits": 8,
+   "bytes": 1,
+   "quality": "~97-99%",
+   "speed": "Very Fast",
+   "use": "Production inference",
+   "hw": "Hopper+ (H100/H200/B200, RTX 50)"
+  },
+  {
+   "name": "NV FP4",
+   "bits": 4.5,
+   "bytes": 0.5625,
+   "quality": "~94-97%",
+   "speed": "Fastest",
+   "use": "Blackwell native inference (incl. block scales)",
+   "hw": "Blackwell only (B200, RTX 50)"
+  },
+  {
+   "name": "INT8",
+   "bits": 8,
+   "bytes": 1,
+   "quality": "~95-98%",
+   "speed": "Fast",
+   "use": "Optimized inference (bitsandbytes)",
+   "hw": "All (Tensor Cores)"
+  },
+  {
+   "name": "INT4",
+   "bits": 4,
+   "bytes": 0.5,
+   "quality": "~92-96%",
+   "speed": "Fastest",
+   "use": "GPTQ/AWQ deployment (+~6% group scales not counted)",
+   "hw": "All GPUs (software)"
+  },
+  {
+   "name": "Q8_0",
+   "bits": 8,
+   "bytes": 1,
+   "quality": "~99%",
+   "speed": "Fast",
+   "use": "GGUF near-lossless",
+   "hw": "All (llama.cpp)"
+  },
+  {
+   "name": "Q6_K",
+   "bits": 6.5,
+   "bytes": 0.8125,
+   "quality": "~97-99%",
+   "speed": "Fast",
+   "use": "GGUF high quality",
+   "hw": "All (llama.cpp)"
+  },
+  {
+   "name": "Q5_K_M",
+   "bits": 5.5,
+   "bytes": 0.6875,
+   "quality": "~96-98%",
+   "speed": "Faster",
+   "use": "GGUF recommended balance",
+   "hw": "All (llama.cpp)"
+  },
+  {
+   "name": "Q5_K_S",
+   "bits": 5.5,
+   "bytes": 0.69,
+   "quality": "~95-97%",
+   "speed": "Faster",
+   "use": "GGUF good quality, smaller",
+   "hw": "All (llama.cpp)"
+  },
+  {
+   "name": "Q4_K_M",
+   "bits": 4.5,
+   "bytes": 0.575,
+   "quality": "~93-96%",
+   "speed": "Fastest",
+   "use": "GGUF most popular (Ollama default)",
+   "hw": "All (llama.cpp)"
+  },
+  {
+   "name": "Q4_K_S",
+   "bits": 4.3,
+   "bytes": 0.5375,
+   "quality": "~92-95%",
+   "speed": "Fastest",
+   "use": "GGUF smaller Q4 variant",
+   "hw": "All (llama.cpp)"
+  },
+  {
+   "name": "Q4_0",
+   "bits": 4,
+   "bytes": 0.5,
+   "quality": "~91-94%",
+   "speed": "Fastest",
+   "use": "GGUF basic 4-bit",
+   "hw": "All (llama.cpp)"
+  },
+  {
+   "name": "Q3_K_M",
+   "bits": 3.5,
+   "bytes": 0.4375,
+   "quality": "~88-93%",
+   "speed": "Fastest",
+   "use": "GGUF aggressive compression",
+   "hw": "All (llama.cpp)"
+  },
+  {
+   "name": "Q3_K_L",
+   "bits": 3.9,
+   "bytes": 0.4875,
+   "quality": "~90-94%",
+   "speed": "Fastest",
+   "use": "GGUF large Q3 variant",
+   "hw": "All (llama.cpp)"
+  },
+  {
+   "name": "Q3_K_S",
+   "bits": 3.4,
+   "bytes": 0.425,
+   "quality": "~85-90%",
+   "speed": "Fastest",
+   "use": "GGUF small Q3",
+   "hw": "All (llama.cpp)"
+  },
+  {
+   "name": "Q2_K",
+   "bits": 2.6,
+   "bytes": 0.32,
+   "quality": "~80-88%",
+   "speed": "Fastest",
+   "use": "GGUF extreme (quality loss)",
+   "hw": "All (llama.cpp)"
+  },
+  {
+   "name": "MXFP4",
+   "bits": 4.25,
+   "bytes": 0.53125,
+   "quality": "~93-96%",
+   "speed": "Fastest",
+   "use": "GPT-OSS native / OCP microscaling (incl. scales)",
+   "hw": "Blackwell native; Hopper via SW"
+  }
+ ],
+ "cases": [
+  {
+   "name": "Simple chatbot",
+   "resident": 4096,
+   "reasoning": "None",
+   "visibleOut": 250,
+   "ttftTarget": 400,
+   "tpsTarget": 20,
+   "p95Target": 18,
+   "note": "Short support chat. 20 tok/s outruns reading speed; a 250-tok reply streams in ~13 s.",
+   "supports": [
+    "guard"
+   ],
+   "traffic": {
+    "turns": 25,
+    "calls": 1.3,
+    "durS": 4,
+    "burst": 2,
+    "pct": "~8%"
+   }
+  },
+  {
+   "name": "Simple RAG",
+   "resident": 8192,
+   "reasoning": "None",
+   "visibleOut": 300,
+   "ttftTarget": 800,
+   "tpsTarget": 25,
+   "p95Target": 18,
+   "note": "Single-pass RAG. TTFT budget includes retrieval + rerank (~400 ms) ahead of prefill.",
+   "supports": [
+    "embed",
+    "rerank"
+   ],
+   "traffic": {
+    "turns": 18,
+    "calls": 2,
+    "durS": 5,
+    "burst": 2,
+    "pct": "~10%"
+   }
+  },
+  {
+   "name": "Advanced RAG",
+   "resident": 32768,
+   "reasoning": "None",
+   "reasonTok": 250,
+   "visibleOut": 400,
+   "ttftTarget": 1200,
+   "tpsTarget": 30,
+   "p95Target": 32,
+   "note": "Multi-hop RAG with tool calls: 16-32K context, short tool-plan budget, ~3 LLM calls per answer.",
+   "supports": [
+    "embed",
+    "rerank"
+   ],
+   "traffic": {
+    "turns": 10,
+    "calls": 6,
+    "durS": 4.5,
+    "burst": 2,
+    "pct": "~15%"
+   }
+  },
+  {
+   "name": "Internal GPT / Copilot",
+   "resident": 16384,
+   "reasoning": "None",
+   "visibleOut": 300,
+   "ttftTarget": 600,
+   "tpsTarget": 25,
+   "p95Target": 18,
+   "note": "Enterprise assistant with doc retrieval, multi-turn; prefix caching assumed for history.",
+   "supports": [
+    "embed",
+    "rerank"
+   ],
+   "traffic": {
+    "turns": 3,
+    "calls": 1.5,
+    "durS": 9,
+    "burst": 2.5,
+    "pct": "~3%"
+   }
+  },
+  {
+   "name": "Document Q&A",
+   "resident": 32768,
+   "reasoning": "None",
+   "visibleOut": 300,
+   "ttftTarget": 2500,
+   "tpsTarget": 25,
+   "p95Target": 20,
+   "note": "Long doc in context, factoid answers. TTFT is dominated by the 32K prefill (~2 s tuned).",
+   "supports": [
+    "ocr",
+    "embed",
+    "rerank"
+   ],
+   "traffic": {
+    "turns": 10,
+    "calls": 2,
+    "durS": 10,
+    "burst": 1.5,
+    "pct": "~8%"
+   }
+  },
+  {
+   "name": "Document generation",
+   "resident": 8192,
+   "reasoning": "None",
+   "visibleOut": 1500,
+   "ttftTarget": 1000,
+   "tpsTarget": 40,
+   "p95Target": 55,
+   "note": "Long-form drafting. Users skim, not read along: 40 tok/s, a 1.5K draft streams in ~40 s.",
+   "supports": [],
+   "traffic": {
+    "turns": 7,
+    "calls": 1.5,
+    "durS": 28,
+    "burst": 1.5,
+    "pct": "~12%"
+   }
+  },
+  {
+   "name": "Code generation",
+   "resident": 8192,
+   "reasoning": "None",
+   "visibleOut": 150,
+   "ttftTarget": 300,
+   "tpsTarget": 60,
+   "p95Target": 5,
+   "note": "IDE completion / small edits. Latency-critical: fast first token, 60+ tok/s streaming.",
+   "supports": [
+    "embed"
+   ],
+   "traffic": {
+    "turns": 65,
+    "calls": 1,
+    "durS": 0.4,
+    "burst": 3,
+    "pct": "~2.5%"
+   }
+  },
+  {
+   "name": "Code agent (Cline/Cursor-style)",
+   "resident": 65536,
+   "reasoning": "None",
+   "reasonTok": 3000,
+   "visibleOut": 1000,
+   "ttftTarget": 1000,
+   "tpsTarget": 50,
+   "p95Target": 120,
+   "note": "Repo-aware coding agent: 32-64K append-only context, ~3K tool/edit tokens per call, many calls per task.",
+   "supports": [
+    "embed"
+   ],
+   "traffic": {
+    "turns": 4,
+    "calls": 30,
+    "durS": 8,
+    "burst": 1.5,
+    "pct": "~40%"
+   }
+  },
+  {
+   "name": "Voice agent (real-time)",
+   "resident": 4096,
+   "reasoning": "None",
+   "visibleOut": 100,
+   "ttftTarget": 300,
+   "tpsTarget": 30,
+   "p95Target": 5,
+   "note": "Telephony/IVR. Voice-to-voice budget needs LLM TTFT under ~300 ms; decode only has to outpace TTS playback.",
+   "supports": [
+    "asr",
+    "tts"
+   ],
+   "policy": "all",
+   "traffic": {
+    "direct": 1,
+    "pct": "100%: callers are the concurrency"
+   }
+  },
+  {
+   "name": "Reasoning agent (light)",
+   "resident": 8192,
+   "reasoning": "Light reasoning",
+   "visibleOut": 300,
+   "ttftTarget": 600,
+   "tpsTarget": 60,
+   "p95Target": 55,
+   "note": "~2K hidden CoT + short answer. Nobody reads CoT: decode speed is the latency lever, so target 60 tok/s.",
+   "supports": [],
+   "traffic": {
+    "turns": 8,
+    "calls": 3.5,
+    "durS": 17,
+    "burst": 1.5,
+    "pct": "~20%"
+   }
+  },
+  {
+   "name": "Reasoning agent (heavy)",
+   "resident": 16384,
+   "reasoning": "Heavy reasoning",
+   "visibleOut": 500,
+   "ttftTarget": 800,
+   "tpsTarget": 60,
+   "p95Target": 200,
+   "note": "~8K CoT budget (math/coding/research). 8.5K tokens at 60 tok/s is a ~142 s physical floor.",
+   "supports": [],
+   "traffic": {
+    "turns": 3,
+    "calls": 5,
+    "durS": 50,
+    "burst": 1.5,
+    "pct": "~30%"
+   }
+  },
+  {
+   "name": "Video summarization",
+   "resident": 16384,
+   "reasoning": "None",
+   "reasonTok": 2000,
+   "visibleOut": 500,
+   "ttftTarget": 2000,
+   "tpsTarget": 40,
+   "p95Target": 90,
+   "note": "Chunked VLM captioning then aggregate; ~15K vision tokens per minute of video at ~2 fps sampling.",
+   "supports": [
+    "asr"
+   ],
+   "traffic": {
+    "turns": 2,
+    "calls": 12,
+    "durS": 10,
+    "burst": 1.5,
+    "pct": "~10%"
+   }
+  },
+  {
+   "name": "Long-doc analysis (legal/financial)",
+   "resident": 65536,
+   "reasoning": "None",
+   "reasonTok": 1000,
+   "visibleOut": 800,
+   "ttftTarget": 5000,
+   "tpsTarget": 30,
+   "p95Target": 90,
+   "note": "64-128K contracts/filings. TTFT is the long prefill (~5 s at 64K tuned); prefix caching helps repeat queries.",
+   "supports": [
+    "ocr"
+   ],
+   "traffic": {
+    "turns": 2.5,
+    "calls": 20,
+    "durS": 10,
+    "burst": 1.5,
+    "pct": "~20%"
+   }
+  },
+  {
+   "name": "Offline batch / extract",
+   "resident": 4096,
+   "reasoning": "None",
+   "visibleOut": 500,
+   "ttftTarget": 0,
+   "tpsTarget": 0,
+   "p95Target": 0,
+   "note": "Batch jobs (extraction, classification): 24 h job SLA, no interactive SLOs; size for throughput at max batch.",
+   "supports": [
+    "ocr"
+   ],
+   "traffic": {
+    "direct": 1,
+    "pct": "queue-set: enter jobs in flight, not people"
+   }
+  },
+  {
+   "name": "Deep research agent (async)",
+   "resident": 65536,
+   "reasoning": "Heavy reasoning",
+   "reasonTok": 20000,
+   "visibleOut": 3000,
+   "ttftTarget": 1000,
+   "tpsTarget": 50,
+   "p95Target": 620,
+   "note": "Multi-step autonomous research: ~20K thinking tokens across the task, big synthesis. Background load class.",
+   "supports": [
+    "embed",
+    "rerank"
+   ],
+   "traffic": {
+    "turns": 1,
+    "calls": 90,
+    "durS": 8,
+    "burst": 1.5,
+    "pct": "~30%"
+   }
+  },
+  {
+   "name": "Medical imaging report assistant",
+   "resident": 8192,
+   "reasoning": "None",
+   "visibleOut": 400,
+   "ttftTarget": 1500,
+   "tpsTarget": 50,
+   "p95Target": 15,
+   "note": "VLM reads a study (1-3K image tokens in context) and drafts findings/impression. Clinician-interactive.",
+   "supports": [
+    "ocr",
+    "guard"
+   ],
+   "traffic": {
+    "turns": 12,
+    "calls": 2,
+    "durS": 8,
+    "burst": 2,
+    "pct": "~7%"
+   }
+  },
+  {
+   "name": "Clinical knowledge assistant",
+   "resident": 8192,
+   "reasoning": "None",
+   "reasonTok": 250,
+   "visibleOut": 350,
+   "ttftTarget": 800,
+   "tpsTarget": 40,
+   "p95Target": 22,
+   "note": "Grounded medical Q&A with citations and a short verification budget; guardrails on both directions.",
+   "supports": [
+    "embed",
+    "rerank",
+    "guard"
+   ],
+   "traffic": {
+    "turns": 4,
+    "calls": 1.5,
+    "durS": 8,
+    "burst": 2.5,
+    "pct": "~4%"
+   }
+  },
+  {
+   "name": "Real-time video analytics",
+   "resident": 4096,
+   "reasoning": "None",
+   "visibleOut": 80,
+   "ttftTarget": 700,
+   "tpsTarget": 40,
+   "p95Target": 4,
+   "note": "VLM monitors streams in short clips; alert within seconds. Concurrency = camera streams; small models fit best.",
+   "supports": [],
+   "traffic": {
+    "direct": 1,
+    "pct": "100%: camera streams are the concurrency"
+   }
+  },
+  {
+   "name": "Translation / localization",
+   "resident": 2048,
+   "reasoning": "None",
+   "visibleOut": 500,
+   "ttftTarget": 500,
+   "tpsTarget": 40,
+   "p95Target": 18,
+   "note": "Segment/page translation, roughly symmetric input and output. Subtitle mode needs segments under ~2 s.",
+   "supports": [],
+   "traffic": {
+    "turns": 30,
+    "calls": 1.2,
+    "durS": 11,
+    "burst": 2,
+    "pct": "~10%"
+   }
+  },
+  {
+   "name": "Contact-center agent assist",
+   "resident": 16384,
+   "reasoning": "None",
+   "visibleOut": 60,
+   "ttftTarget": 400,
+   "tpsTarget": 40,
+   "p95Target": 3,
+   "note": "Live suggestions while a human talks: transcript + KB in context, tiny outputs, utterance-to-suggestion under ~2.5 s.",
+   "supports": [
+    "asr",
+    "embed",
+    "rerank"
+   ],
+   "policy": "all",
+   "traffic": {
+    "direct": 1,
+    "pct": "100%: live assisted calls are the concurrency"
+   }
+  }
+ ],
+ "support": {
+  "kinds": [
+   {
+    "key": "embed",
+    "label": "Embeddings",
+    "role": "turns text into vectors for retrieval"
+   },
+   {
+    "key": "rerank",
+    "label": "Reranker",
+    "role": "re-orders retrieved chunks by relevance"
+   },
+   {
+    "key": "asr",
+    "label": "ASR",
+    "role": "speech to text"
+   },
+   {
+    "key": "tts",
+    "label": "TTS",
+    "role": "text to speech"
+   },
+   {
+    "key": "ocr",
+    "label": "OCR",
+    "role": "documents and scans to text"
+   },
+   {
+    "key": "guard",
+    "label": "Guard",
+    "role": "input/output safety screening"
+   }
+  ],
+  "models": [
+   {
+    "kind": "embed",
+    "name": "BGE-M3",
+    "params": 0.568,
+    "vram": 2.5,
+    "cap": 400,
+    "default": true,
+    "note": "Multilingual dense+sparse retrieval; ~60k tokens/s per instance",
+    "url": "https://huggingface.co/BAAI/bge-m3"
+   },
+   {
+    "kind": "embed",
+    "name": "Qwen3-Embedding 0.6B",
+    "params": 0.6,
+    "vram": 1.5,
+    "cap": 400,
+    "note": "Lightweight MTEB top-tier",
+    "url": "https://huggingface.co/Qwen/Qwen3-Embedding-0.6B"
+   },
+   {
+    "kind": "embed",
+    "name": "Qwen3-Embedding 8B",
+    "params": 8,
+    "vram": 16,
+    "cap": 400,
+    "note": "MTEB multilingual leader; needs a large slice",
+    "url": "https://huggingface.co/Qwen/Qwen3-Embedding-8B"
+   },
+   {
+    "kind": "embed",
+    "name": "nomic-embed-text v1.5",
+    "params": 0.137,
+    "vram": 0.8,
+    "cap": 400,
+    "note": "Smallest footprint; CPU-viable",
+    "url": "https://huggingface.co/nomic-ai/nomic-embed-text-v1.5"
+   },
+   {
+    "kind": "rerank",
+    "name": "bge-reranker-v2-m3",
+    "params": 0.568,
+    "vram": 2.5,
+    "cap": 50,
+    "default": true,
+    "note": "Cross-encoder; ~150-250 ms per top-50 rerank",
+    "url": "https://huggingface.co/BAAI/bge-reranker-v2-m3"
+   },
+   {
+    "kind": "rerank",
+    "name": "Qwen3-Reranker 0.6B",
+    "params": 0.6,
+    "vram": 1.5,
+    "cap": 50,
+    "note": "Lightweight cross-encoder",
+    "url": "https://huggingface.co/Qwen/Qwen3-Reranker-0.6B"
+   },
+   {
+    "kind": "rerank",
+    "name": "Qwen3-Reranker 8B",
+    "params": 8,
+    "vram": 16,
+    "cap": 120,
+    "note": "~31 req/s under vLLM; needs a large slice",
+    "url": "https://huggingface.co/Qwen/Qwen3-Reranker-8B"
+   },
+   {
+    "kind": "asr",
+    "name": "Whisper large-v3-turbo",
+    "params": 0.809,
+    "vram": 1.6,
+    "cap": 4,
+    "default": true,
+    "note": "~130x real-time; the serving default",
+    "url": "https://huggingface.co/openai/whisper-large-v3-turbo"
+   },
+   {
+    "kind": "asr",
+    "name": "Parakeet-TDT 0.6B v3",
+    "params": 0.6,
+    "vram": 1,
+    "cap": 8,
+    "note": "Batch-throughput champion (RTFx ~3,300)",
+    "url": "https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3"
+   },
+   {
+    "kind": "asr",
+    "name": "Canary-1B v2",
+    "params": 1,
+    "vram": 6.4,
+    "cap": 6,
+    "note": "Adds speech translation",
+    "url": "https://huggingface.co/nvidia/canary-1b-v2"
+   },
+   {
+    "kind": "tts",
+    "name": "Kokoro-82M",
+    "params": 0.082,
+    "vram": 1,
+    "cap": 10,
+    "default": true,
+    "note": "~15x real-time; Apache license",
+    "url": "https://huggingface.co/hexgrad/Kokoro-82M"
+   },
+   {
+    "kind": "tts",
+    "name": "Orpheus-3B",
+    "params": 3,
+    "vram": 6,
+    "cap": 8,
+    "note": "Streaming, expressive; Apache license",
+    "url": "https://huggingface.co/canopylabs/orpheus-3b-0.1-ft"
+   },
+   {
+    "kind": "ocr",
+    "name": "PaddleOCR PP-OCRv5",
+    "params": 0.05,
+    "vram": 2,
+    "cap": 8,
+    "default": true,
+    "note": "~190 pages/min per instance; plain text",
+    "url": "https://github.com/PaddlePaddle/PaddleOCR"
+   },
+   {
+    "kind": "ocr",
+    "name": "dots.ocr 3B",
+    "params": 3,
+    "vram": 8,
+    "cap": 4,
+    "note": "Layout-aware VLM parser; MIT license",
+    "url": "https://github.com/rednote-hilab/dots.ocr"
+   },
+   {
+    "kind": "ocr",
+    "name": "olmOCR-2 7B",
+    "params": 7,
+    "vram": 16,
+    "cap": 2,
+    "note": "Highest-fidelity document parsing",
+    "url": "https://huggingface.co/allenai/olmOCR-2-7B-1025"
+   },
+   {
+    "kind": "guard",
+    "name": "Llama Guard 3 1B",
+    "params": 1,
+    "vram": 2.5,
+    "cap": 30,
+    "default": true,
+    "note": "Input/output moderation; CPU-viable",
+    "url": "https://huggingface.co/meta-llama/Llama-Guard-3-1B"
+   },
+   {
+    "kind": "guard",
+    "name": "Llama Guard 3 8B FP8",
+    "params": 8,
+    "vram": 10,
+    "cap": 60,
+    "note": "Higher accuracy; fits a 10 GB slice",
+    "url": "https://huggingface.co/meta-llama/Llama-Guard-3-8B"
+   }
+  ]
+ },
+ "meta": {
+  "library": "v28",
+  "engine": 24,
+  "updated": "2026-07-23"
+ },
+ "kv_quants": [
+  {
+   "name": "BF16",
+   "bytes": 2
+  },
+  {
+   "name": "FP16",
+   "bytes": 2
+  },
+  {
+   "name": "FP8",
+   "bytes": 1
+  },
+  {
+   "name": "INT8",
+   "bytes": 1
+  },
+  {
+   "name": "INT4",
+   "bytes": 0.5
+  }
+ ],
+ "resilience": [
+  {
+   "key": "n",
+   "code": 0,
+   "label": "N",
+   "long": "N · capacity only"
+  },
+  {
+   "key": "n1",
+   "code": 1,
+   "label": "N+1",
+   "long": "N+1 · one standby worker"
+  },
+  {
+   "key": "n2",
+   "code": 7,
+   "label": "N+2",
+   "long": "N+2 · two standby workers"
+  },
+  {
+   "key": "nn",
+   "code": 2,
+   "label": "N+N",
+   "long": "N+N · in-site mirror (2N)"
+  },
+  {
+   "key": "dr",
+   "code": 3,
+   "label": "DR",
+   "long": "DR · full standby site (active/passive)"
+  },
+  {
+   "key": "drh",
+   "code": 8,
+   "label": "DR ½",
+   "long": "DR · half-size standby site (1.5N)"
+  },
+  {
+   "key": "aas",
+   "code": 9,
+   "label": "A/A ½+½",
+   "long": "Active/Active split · N across two sites (1x)"
+  },
+  {
+   "key": "aas1",
+   "code": 11,
+   "label": "A/A ½+½ +1",
+   "long": "Active/Active split · N across two sites + one spare (N+1)"
+  },
+  {
+   "key": "aass",
+   "code": 10,
+   "label": "A/A ½+½ +1/site",
+   "long": "Active/Active split · N across two sites + spare per site (N+2)"
+  },
+  {
+   "key": "aa",
+   "code": 5,
+   "label": "A/A",
+   "long": "Active/Active · two live sites (2N)"
+  },
+  {
+   "key": "aan1",
+   "code": 6,
+   "label": "A/A N+1",
+   "long": "Active/Active · N+1 in each of two sites (2N+2)"
+  },
+  {
+   "key": "nndr",
+   "code": 4,
+   "label": "N+N+DR",
+   "long": "N+N + DR · active/active twin sites (4N)"
+  }
+ ],
+ "reason_tokens": {
+  "None": 0,
+  "Light reasoning": 2000,
+  "Heavy reasoning": 8000,
+  "Custom": 2000
+ },
+ "field_ranges": {
+  "residentSeq": {
+   "min": 128,
+   "max": 1048576,
+   "default": 4096
+  },
+  "visibleOut": {
+   "min": 16,
+   "max": 16384,
+   "default": 200
+  },
+  "reasoningTokens": {
+   "min": 0,
+   "max": 32768,
+   "default": 0
+  },
+  "concurrentCalls": {
+   "min": 1,
+   "max": 10000,
+   "default": 250
+  },
+  "maxBatchPerReplica": {
+   "min": 1,
+   "max": 512,
+   "default": 4
+  },
+  "workers": {
+   "min": 1,
+   "max": 64,
+   "default": 1
+  },
+  "gpusPerWorker": {
+   "min": 1,
+   "max": 72,
+   "default": 8
+  },
+  "tensorParallel": {
+   "min": 1,
+   "max": 72,
+   "default": 8
+  },
+  "prefillMFU": {
+   "min": 0.1,
+   "max": 0.9,
+   "default": 0.5
+  },
+  "decodeMBU": {
+   "min": 0.2,
+   "max": 0.95,
+   "default": 0.65
+  },
+  "interconnectEff": {
+   "min": 0.4,
+   "max": 1,
+   "default": 0.85
+  },
+  "frameworkOverheadMs": {
+   "min": 0,
+   "max": 200,
+   "default": 30
+  }
+ },
+ "versions": {
+  "schema": "gpuscale.net/5",
+  "engine": 24,
+  "studio": "5.15.0"
+ },
+ "kv_policies": [
+  "running",
+  "all"
+ ]
+}
