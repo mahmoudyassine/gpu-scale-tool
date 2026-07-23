@@ -1,5 +1,12 @@
 # Changelog
 
+## Studio 5.13.1 (2026-07-23)
+
+- Sizing bullets now explain the other half of GPU sharing: a TP-sharded
+  pool whose shards leave the GPU half-empty states that tensor parallel
+  cannot run across MIG slices (no peer-to-peer between partitions), so
+  its shards keep whole GPUs no matter how empty they look.
+
 ## Studio 5.13 (2026-07-23)
 
 The sizing decision reads as bullets, and shared GPUs show per-slice numbers.
