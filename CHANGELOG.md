@@ -1,5 +1,14 @@
 # Changelog
 
+## Studio 5.8.1 (2026-07-21)
+
+- A New-project button (+) sits next to the project name, beside the
+  saved-projects menu; one click starts a clean project (the previous one
+  stays in this browser's history).
+- Tagline updated: "Size multi-scenario, self-hosted LLM fleets · all in
+  your browser."
+
+
 ## Studio 5.8 (2026-07-21)
 
 Charts anyone can explain, and a clearer canvas.
