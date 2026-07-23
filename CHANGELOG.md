@@ -1,5 +1,25 @@
 # Changelog
 
+## Studio 5.12 (2026-07-23)
+
+Auto-size explains why replicas keep dedicated GPUs, and small polish.
+
+- When a TP1 pool stays on dedicated GPUs instead of MIG slices, the
+  auto-size summary now says exactly why: the copy does not fit the largest
+  slice, a slice's reduced compute misses the TTFT target (with the
+  measured prefill time), per-user speed or P95 fails even alone on the
+  largest usable slice, the KV cache cannot fit at any replica count,
+  sharing would not reduce hardware, or the selected GPU has no MIG
+  partitioning at all. Half-empty dedicated GPUs on the fleet map are no
+  longer an unexplained choice.
+- The light/dark choice is remembered: toggling the theme stores it in
+  this browser and it survives reload and reboot, taking priority over the
+  OS preference (which still drives the first visit). The Normal/Advanced
+  mode was already stored; both now persist.
+- The Reset-to-defaults button is gone. New project covers the need without
+  the risk of wiping a saved project's inputs.
+- The footer privacy note is a quiet text block instead of a tinted box.
+
 ## Studio 5.11 (2026-07-23) · library v28
 
 Research-refreshed workload presets, and shared GPUs that show their slice memory.

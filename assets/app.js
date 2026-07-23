@@ -7,7 +7,7 @@ if(!MODELS.length || !GPUS.length || !QUANTS.length || !CASES.length){
   document.body.innerHTML = '<div style="font-family:system-ui,sans-serif;max-width:560px;margin:80px auto;padding:0 20px;line-height:1.65;color:#1A2536"><h2 style="margin-bottom:10px">Data files not loaded</h2><p>GPUscale.net could not find its library. Keep <code>index.html</code> together with the <code>data/</code> and <code>assets/</code> folders: the four files <code>data/models.js</code>, <code>data/gpus.js</code>, <code>data/quants.js</code> and <code>data/usecases.js</code> must sit next to this page.</p><p>If you need one portable file instead, use <code>dist/gpuscale_standalone.html</code> or rebuild it with <code>python3 tools/build_single_file.py</code>.</p></div>';
   throw new Error('GPUscale.net data missing');
 }
-const STUDIO_VERSION = '5.11.0', ENGINE_VERSION = 24;
+const STUDIO_VERSION = '5.12.0', ENGINE_VERSION = 24;
 function newProjId(){ const L='abcdefghjkmnpqrstuvwxyz', D='0123456789';
   const pick=s=>s[Math.floor(Math.random()*s.length)];
   return 'Project_'+pick(L)+pick(L)+pick(D)+pick(D)+pick(D); }
@@ -2609,16 +2609,21 @@ function solvePool(s){
     let supU=[];
     try{ allocSupports({g:s.gpu}).layout.forEach(b=>b.slices.forEach(sl=>{ if(sl.n>0) supU.push(sliceCost(partS, sl.n)); })); }catch(e){}
     const supAlone=supU.length? binCount(supU, binCap(partS)) : 0;
-    let best=null;
+    // why (per largest profile examined) slicing was rejected: surfaced in the
+    // auto-size narrative so a half-empty dedicated GPU never looks arbitrary
+    let best=null, why=profs.length? null : {t:'nopart'};
     for(const prof of profs){
-      if(weights+actGB+1.4 > pack*prof.gb) continue;
+      if(weights+actGB+1.4 > pack*prof.gb){ why={t:'fit', need:weights+actGB+1.4, cap:pack*prof.gb}; continue; }
       const syn={...s, gpuVram:prof.gb, gpuBw:prof.bw, gpuTflops:prof.tflops, tp:1, perW:1, ic:1, multiGb:1.4};
       // a slice that cannot meet a target the dedicated plan CAN meet is out;
       // targets unachievable on any hardware are ignored here too (parity with
       // the dedicated path: we never buy or reject hardware for them)
       const aloneP=compute({...syn, gpus:1, workers:1, batch:1, concurrent:1});
       if((s.sloTps>0 && tpsCan && !aloneP.slo.tps.pass) ||
-         (s.sloP95>0 && p95Can && !aloneP.slo.p95.pass)) continue;
+         (s.sloP95>0 && p95Can && !aloneP.slo.p95.pass)){
+        why=!aloneP.slo.tps.pass? {t:'slo', m:'per-user speed', have:fmt(aloneP.tps)+' tok/s', want:fmt(s.sloTps)+' tok/s'}
+                                : {t:'slo', m:'P95 latency', have:fmt(aloneP.p95)+' s', want:fmt(s.sloP95)+' s'};
+        continue; }
       const SLICE_CAP=64;
       let slices=Math.max(1,Math.ceil(s.concurrent/SLICE_CAP)), sb=0, sd=null, okFit=false, stuck=null;
       for(let guard=0; guard<200; guard++){
@@ -2628,7 +2633,7 @@ function solvePool(s){
         if(slices>=SLICE_CAP) break;
         slices++;
       }
-      if(!okFit) continue;
+      if(!okFit){ why={t:'kv'}; continue; }
       for(let guard=0; guard<200; guard++){
         const missT2=s.sloTps>0&&tpsCan&&!sd.slo.tps.pass, missP2=s.sloP95>0&&p95Can&&!sd.slo.p95.pass, missF2=s.sloTtft>0&&!sd.slo.ttft.pass;
         if(!(missT2||missP2||missF2)) break;
@@ -2638,7 +2643,7 @@ function solvePool(s){
         sb=Math.min(64,Math.max(1,Math.ceil(s.concurrent/slices)));
         sd=compute({...syn, gpus:slices, workers:slices, batch:sb});
       }
-      if(stuck) continue;
+      if(stuck){ why= stuck==='TTFT'? {t:'ttft', ms:aloneP.ttft} : {t:'stuck', stuck}; continue; }
       const packed=binCount([...Array(slices).fill(sliceCost(partS, prof.units)), ...supU], binCap(partS));
       const phys=Math.max(0, packed-supAlone);
       if(!best || phys<best.physGpus) best={ok:true, mode:'sliced', tp:1, sliceU:prof.units, prof,
@@ -2649,7 +2654,18 @@ function solvePool(s){
     if(best){
       best.sloStuck=[!tpsCan?'per-user speed':null, !p95Can?'P95':null].filter(Boolean).join(' and ')||null;
       if(best.physGpus < dedicated.physGpus - 0.01) return best;
+      why={t:'nosave', phys:best.physGpus, ded:dedicated.physGpus};
     }
+    dedicated.sliceWhy =
+      !why? null
+      : why.t==='nopart'? `${s.gpu.name} has no isolated partitioning (MIG), so each replica keeps a whole GPU`
+      : why.t==='fit'? `its ${fmt(why.need)} GB copy does not fit even the largest slice (${fmt(why.cap)} GB usable at the ${packPct}% memory target)`
+      : why.t==='slo'? `even alone on the largest usable slice, ${why.m} reaches ${why.have} against the ${why.want} target`
+      : why.t==='ttft'? `a slice's reduced compute cannot meet the ${fmt(s.sloTtft)} ms TTFT target (${fmt(why.ms)} ms prefill on the largest usable slice)`
+      : why.t==='stuck'? `slices cannot meet the ${why.stuck} target at any replica count`
+      : why.t==='kv'? `the KV cache does not fit slice memory at any replica count`
+      : why.t==='nosave'? `sharing would not reduce hardware (${fmt(why.phys)} shared-GPU equivalents vs ${why.ded} dedicated GPUs)`
+      : null;
   }
   return dedicated;
 }
@@ -2666,7 +2682,7 @@ function autoSizeProject(quiet){
     const names=p.members.map(mi=>ucName(UC[mi])).join(' + ');
     lines.push(r.mode==='sliced'
       ? `${p.state.model.name} ${p.state.wq.name} (${names}): ${r.workers} replica${r.workers>1?'s':''} on ${sliceName(r.prof,r.workers>1)} (${fmt(r.prof.gb)} GB each) · batch ${r.batch} for ${p.state.concurrent} pooled calls · shares physical GPUs with other models and supports (${r.physGpus>0? '+'+r.physGpus+' GPU'+(r.physGpus>1?'s':'')+' beyond the shared support GPUs' : 'fits into spare slice capacity on the shared GPUs'})${r.sloStuck?`; the ${r.sloStuck} target is not achievable on any fleet size: trim output/reasoning tokens or relax the target`:''}.`
-      : `${p.state.model.name} ${p.state.wq.name} (${names}): TP${r.tp} · ${r.workers} worker${r.workers>1?'s':''} · batch ${r.batch} for ${p.state.concurrent} pooled calls${r.widened?', TP widened for the TTFT target':''}${r.grewForSlo?`, ${r.grewForSlo} node${r.grewForSlo>1?'s':''} added to meet speed/P95 targets`:''}${r.sloStuck?`; the ${r.sloStuck} target is not achievable on any fleet size (fails even alone at batch 1), so no hardware was added for it: trim output/reasoning tokens or relax the target`:''}${r.crossed?', one copy spans workers':''}.`);
+      : `${p.state.model.name} ${p.state.wq.name} (${names}): TP${r.tp} · ${r.workers} worker${r.workers>1?'s':''} · batch ${r.batch} for ${p.state.concurrent} pooled calls${r.widened?', TP widened for the TTFT target':''}${r.grewForSlo?`, ${r.grewForSlo} node${r.grewForSlo>1?'s':''} added to meet speed/P95 targets`:''}${r.sloStuck?`; the ${r.sloStuck} target is not achievable on any fleet size (fails even alone at batch 1), so no hardware was added for it: trim output/reasoning tokens or relax the target`:''}${r.crossed?', one copy spans workers':''}${r.sliceWhy?`. Kept on dedicated GPUs rather than shared slices: ${r.sliceWhy}`:''}.`);
   });
   if(anyCrossed&&+$('inIc').value>0.7){ $('inIc').value=0.7; refreshCtl('inIc'); }
   loadUc(activeUc); renderUcCards(); render();
@@ -2719,7 +2735,6 @@ function scheduleAuto(){
 $('btnAuto').addEventListener('click',()=>autoSize());
 { const mb=$('miniBar'); if(mb) mb.addEventListener('click',()=>{ $('verdict').scrollIntoView({behavior:'smooth'}); }); }
 document.querySelectorAll('#modeSeg button').forEach(b=>b.addEventListener('click',()=>{ setUxMode(b.dataset.mode); }));
-$('btnReset').addEventListener('click',()=>location.reload());
 
 const MOON='<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>';
 const SUN='<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>';
@@ -2729,7 +2744,9 @@ function setTheme(t){
   render();
 }
 $('btnTheme').addEventListener('click',()=>{ window.__themeLocked=true;
-  setTheme(document.documentElement.dataset.theme==='light'?'dark':'light'); });
+  const t=document.documentElement.dataset.theme==='light'?'dark':'light';
+  try{ localStorage.setItem('gpuscale-theme',t); }catch(e){}
+  setTheme(t); });
 try{ matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e=>{
   if(!window.__themeLocked) setTheme(e.matches?'dark':'light'); }); }catch(e){}
 let __rzT=null;
