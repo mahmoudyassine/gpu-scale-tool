@@ -1,5 +1,26 @@
 # Changelog
 
+## Studio 5.13 (2026-07-23)
+
+The sizing decision reads as bullets, and shared GPUs show per-slice numbers.
+
+- The Auto-size sizing decision is no longer a paragraph: one bullet per
+  pool (model · TP × workers · batch · calls · dedicated or shared GPUs)
+  with indented sub-points for the interesting parts (TP widened for TTFT,
+  nodes added for speed targets, "dedicated, not sliced: <reason>",
+  unachievable targets), then the shared-GPU and fleet totals. Same
+  structure in the Summary and the printable report; the note also now
+  appears immediately after Auto-size runs instead of on the next redraw.
+- Shared GPUs in the fleet map got a "memory per slice" breakdown under
+  the legend: identical GPUs grouped (16× GPU · Qwen3 14B 2g ×4 · 77% of
+  slice each), guard/embedding slices listed with instances per slice.
+  Bands inside shared GPU cells now stack from the bottom like every
+  other fill in the map, each band shows its own percentage when the
+  slice is tall enough, and the centered figure appears only when the
+  slices are too small to label.
+- Fixed the sizing-decision bullets inheriting the summary's flex layout
+  (sub-points used to float beside the text instead of underneath).
+
 ## Studio 5.12 (2026-07-23)
 
 Auto-size explains why replicas keep dedicated GPUs, and small polish.
