@@ -1,5 +1,40 @@
 # Changelog
 
+## Studio 5.9 (2026-07-23) · engine v24
+
+GPU sharing: replicas and models can now share physical GPUs, the way
+Triton and vLLM deployments do on MIG-partitioned clusters.
+
+- MIG-sliced pools: in a multi-use-case project, a TP1 pool whose model
+  copy fits a hardware slice can run one replica per slice. Auto-size
+  weighs a sliced plan against the dedicated one by pricing real
+  first-fit slice packing (whole slices, never fractional GPUs) including
+  co-residency with supporting models, and picks whichever needs fewer
+  physical GPUs. Sliced replicas keep honest per-slice speed: compute
+  scales with compute slices, bandwidth follows NVIDIA's memory-slice map
+  at 0.93 delivered efficiency, and each instance pays 1.4 GB overhead
+  instead of the whole-GPU multi-GPU term (engine v24's only new input,
+  default-identical to v23).
+- Only real slice geometries exist: 1g/2g/3g/4g on 7-slice MIG parts
+  with true profile memory (a 3g slice on an H100 is 40 GB, not 30),
+  1g/2g on 4-slice parts (RTX PRO 6000, A30), and uniform partitions on
+  AMD CPX parts, which are labeled partitions, not MIG. Supporting models
+  land on the smallest real profile that holds them.
+- One packed fleet: dedicated pool GPUs, sliced replicas and supporting
+  models pack together onto nodes; replicas beyond peak demand are
+  trimmed and their GPUs simply are not procured. The fleet map draws
+  shared GPUs as slice mosaics with per-slice tooltips (GB-based on
+  non-partitionable GPUs), and resilience multiplies the packed node
+  count everywhere: verdict, story, report, print and exports agree.
+- Excel exports carry the per-extra-GPU overhead as an input cell, so the
+  live formulas recalculate correctly for sliced pools too, and the
+  project sheet reports placement (dedicated GPUs vs slices on shared
+  GPUs) instead of raw worker settings.
+- Single-use-case mode is unchanged and Auto-size there never applies a
+  slice count as whole GPUs; a hint notes when a model would slice well
+  in a project.
+
+
 ## Studio 5.8.1 (2026-07-21)
 
 - A New-project button (+) sits next to the project name, beside the

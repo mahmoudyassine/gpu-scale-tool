@@ -106,10 +106,22 @@ that auto-attach when the preset is chosen.
 
 `part:{kind, max, min}`. `kind`: `mig` (NVIDIA MIG), `cpx` (AMD compute
 partitions), `frac` (time-slice/MPS, no isolation), `whole` (no partitioning,
-Gaudi). `max` = partitions per GPU, `min` = smallest partition in GB. The
-support allocator packs one slice unit per `min` GB: a model larger than one
-unit takes `ceil(vram/min)` units; smaller models co-host
-`floor(min/vram)` instances per unit.
+Gaudi). `max` = partitions per GPU, `min` = smallest partition in GB.
+
+Slice model (engine v24): only real profile geometries exist. On 7-slice MIG
+parts the profiles are 1g/2g/3g/4g with memory and bandwidth from the
+memory-slice map (1g:1, 2g:2, 3g:4, 4g:4 of 8 memory slices) at 0.93
+delivered bandwidth; on 4-slice parts only 1g/2g (1 or 2 of 4 memory
+slices); `cpx` parts partition uniformly, so only the single-partition
+profile (`min` GB, 1/max compute and bandwidth) is modeled. A slice is a
+synthetic smaller GPU: compute scales with compute slices/max, per-instance
+overhead is 1.4 GB instead of the whole-GPU multi-GPU term. TP1 pools whose
+copy fits a slice can be auto-placed on slices (multi-use-case projects
+only); slices from different pools and support models pack whole onto
+shared physical GPUs, and the sliced-vs-dedicated decision prices real
+first-fit bins, never fractional GPUs. Support instances land on the
+smallest real profile whose memory holds them; smaller models co-host
+`floor(profileGB/vram)` instances per slice.
 
 ## JSON schema gpuscale.net/5
 
