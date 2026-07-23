@@ -1,5 +1,12 @@
 # Changelog
 
+## Studio 5.13.2 (2026-07-23)
+
+- The TP-shard explanation now carries the full reasoning, in the sizing
+  bullets and in the fleet-map tooltip of every shard GPU: tensor parallel
+  needs NCCL peer-to-peer over NVLink, MIG partitions have no peer-to-peer
+  between them, so a TPn copy owns n whole GPUs however empty they look.
+
 ## Studio 5.13.1 (2026-07-23)
 
 - Sizing bullets now explain the other half of GPU sharing: a TP-sharded

@@ -7,7 +7,7 @@ if(!MODELS.length || !GPUS.length || !QUANTS.length || !CASES.length){
   document.body.innerHTML = '<div style="font-family:system-ui,sans-serif;max-width:560px;margin:80px auto;padding:0 20px;line-height:1.65;color:#1A2536"><h2 style="margin-bottom:10px">Data files not loaded</h2><p>GPUscale.net could not find its library. Keep <code>index.html</code> together with the <code>data/</code> and <code>assets/</code> folders: the four files <code>data/models.js</code>, <code>data/gpus.js</code>, <code>data/quants.js</code> and <code>data/usecases.js</code> must sit next to this page.</p><p>If you need one portable file instead, use <code>dist/gpuscale_standalone.html</code> or rebuild it with <code>python3 tools/build_single_file.py</code>.</p></div>';
   throw new Error('GPUscale.net data missing');
 }
-const STUDIO_VERSION = '5.13.1', ENGINE_VERSION = 24;
+const STUDIO_VERSION = '5.13.2', ENGINE_VERSION = 24;
 function newProjId(){ const L='abcdefghjkmnpqrstuvwxyz', D='0123456789';
   const pick=s=>s[Math.floor(Math.random()*s.length)];
   return 'Project_'+pick(L)+pick(L)+pick(D)+pick(D)+pick(D); }
@@ -1223,7 +1223,7 @@ function buildFleetSites(prj){
       for(let gi=0; gi<p.d.replicas*st.tp; gi++){
         const rep=Math.floor(gi/st.tp);
         list.push({type:'pool', pool:pi, rep, util,
-          tip:`${st.model.name} · replica ${rep+1} of ${p.d.replicas} (TP${st.tp} shard) · ${(util*100).toFixed(0)}% memory`}); } });
+          tip:`${st.model.name} · replica ${rep+1} of ${p.d.replicas} (TP${st.tp} shard) · ${(util*100).toFixed(0)}% memory${st.tp>1?` · a TP${st.tp} copy owns ${st.tp} whole GPUs: tensor parallel needs NCCL peer-to-peer, which MIG slices and shared GPUs do not offer`:''}`}); } });
     (shared.bins||[]).forEach(bin=>list.push({type:'shared', bin,
       tip:'shared GPU: '+bin.slices.map(sl=>sl.tip||`${KIND_LABEL[sl.kind]||sl.kind}${sl.model?' '+sl.model:''}${sl.inst>1?' ×'+sl.inst:''} (${fmt(sl.gb)} GB)`).join(' · ')}));
     return list;
@@ -2726,7 +2726,7 @@ function autoSizeProject(quiet){
       if(r.widened) subs.push('TP widened to meet the TTFT target');
       if(r.grewForSlo) subs.push(`${r.grewForSlo} node${r.grewForSlo>1?'s':''} added to meet the speed / P95 targets`);
       if(r.tp>1 && sliceProfiles(p.state.gpu).length && (r.weights+r.actGB)/r.tp <= 0.5*p.state.gpuVram)
-        subs.push(`TP${r.tp} shards need whole GPUs even when half-empty: tensor parallel cannot run across MIG slices (no peer-to-peer between partitions)`);
+        subs.push(`TP${r.tp} shards can never share a GPU or sit on MIG slices: tensor parallel needs NCCL peer-to-peer over NVLink, and MIG partitions have no peer-to-peer between them, so each copy owns ${r.tp} whole GPUs however empty they look`);
       if(r.sliceWhy) subs.push(`dedicated, not sliced: ${r.sliceWhy}`);
       if(r.crossed) subs.push('one copy spans workers (interconnect penalty)');
       if(r.sloStuck) subs.push(`the ${r.sloStuck} target is not achievable on any fleet size (fails even alone at batch 1): no hardware was added for it`);
