@@ -7,7 +7,7 @@ if(!MODELS.length || !GPUS.length || !QUANTS.length || !CASES.length){
   document.body.innerHTML = '<div style="font-family:system-ui,sans-serif;max-width:560px;margin:80px auto;padding:0 20px;line-height:1.65;color:#1A2536"><h2 style="margin-bottom:10px">Data files not loaded</h2><p>GPUscale.net could not find its library. Keep <code>index.html</code> together with the <code>data/</code> and <code>assets/</code> folders: the four files <code>data/models.js</code>, <code>data/gpus.js</code>, <code>data/quants.js</code> and <code>data/usecases.js</code> must sit next to this page.</p><p>If you need one portable file instead, use <code>dist/gpuscale_standalone.html</code> or rebuild it with <code>python3 tools/build_single_file.py</code>.</p></div>';
   throw new Error('GPUscale.net data missing');
 }
-const STUDIO_VERSION = '5.13.2', ENGINE_VERSION = 24;
+const STUDIO_VERSION = '5.14.0', ENGINE_VERSION = 24;
 function newProjId(){ const L='abcdefghjkmnpqrstuvwxyz', D='0123456789';
   const pick=s=>s[Math.floor(Math.random()*s.length)];
   return 'Project_'+pick(L)+pick(L)+pick(D)+pick(D)+pick(D); }
@@ -1709,6 +1709,18 @@ async function shareLink(){
   try{ await navigator.clipboard.writeText(url); toast('Share link copied: the project travels inside the link itself'+(url.length>2000?' (~'+(url.length/1024).toFixed(1)+' KB)':'')); }
   catch(e){ window.prompt('Copy this share link:', url); }
 }
+/* A share link is a one-shot import: the payload becomes a NEW local project
+   (never the sender's id, so it can't clobber existing local work), it is
+   saved immediately, and the data is stripped from the address bar. Refresh
+   then restores the edited copy from this browser, not the stale snapshot;
+   the Share button remains the one explicit way to mint a link. */
+function importShared(j){
+  setProjId(newProjId());
+  applyConfig(j); autoSize(true);
+  autosave();
+  try{ history.replaceState(null, '', location.pathname); }catch(e){}
+  toast('Shared project imported · saved as a copy in this browser');
+}
 async function loadSharedFromUrl(){
   const h=location.hash||'';
   const q=new URLSearchParams(location.search);
@@ -1722,15 +1734,12 @@ async function loadSharedFromUrl(){
       } else if(payload.indexOf('j:')===0) json=new TextDecoder().decode(b64uDec(payload.slice(2)));
       else return false;
       const j=JSON.parse(json);
-      if(j.projectId) setProjId(j.projectId);
-      applyConfig(j); autoSize(true);
-      toast('Shared project loaded from the link');
+      importShared(j);
       return true;
     }
     if(q.get('p') && SHARE_API){
       const r=await fetch(SHARE_API+'/'+encodeURIComponent(q.get('p')));
-      if(r.ok){ const j=await r.json(); if(j.projectId) setProjId(j.projectId);
-        applyConfig(j); autoSize(true); toast('Shared project loaded'); return true; }
+      if(r.ok){ const j=await r.json(); importShared(j); return true; }
     }
   }catch(e){ toast('Could not load the shared link', true); }
   return false;

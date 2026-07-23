@@ -1,5 +1,18 @@
 # Changelog
 
+## Studio 5.14 (2026-07-23)
+
+Share links are now a one-shot import.
+
+- Opening a share link imports the project as a NEW local copy (its own
+  project id, never the sender's) and immediately saves it to this
+  browser, then strips the payload from the address bar. Refreshing keeps
+  your edits instead of re-importing the stale snapshot, and the imported
+  copy can no longer overwrite an existing local project that happened to
+  carry the same id. The Share button remains the one explicit way to
+  mint a link, so the address bar never silently carries your current
+  configuration.
+
 ## Studio 5.13.2 (2026-07-23)
 
 - The TP-shard explanation now carries the full reasoning, in the sizing
