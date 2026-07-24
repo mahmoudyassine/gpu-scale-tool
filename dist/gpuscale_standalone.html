@@ -8,7 +8,7 @@
 <meta name="color-scheme" content="light dark">
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F6F7FA">
 <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0C1322">
-<meta name="description" content="Local open-source GPU VRAM calculator for self-hosted LLM fleets: memory fit, KV cache, tensor parallelism, MIG sharing, latency and throughput estimates, SLO checks and resilient topology. 94 models, 37 GPUs, runs entirely in your browser, no signup.">
+<meta name="description" content="Local open-source GPU VRAM calculator for self-hosted LLM fleets: memory fit, KV cache, tensor parallelism, MIG sharing, latency and throughput estimates, SLO checks and resilient topology. 101 models, 37 GPUs, runs entirely in your browser, no signup.">
 <script type="application/ld+json">{"@context": "https://schema.org", "@type": "WebApplication", "name": "GPUscale.net · Local Open-Source GPU VRAM Calculator for Self-Hosted LLM Fleets", "url": "https://gpuscale.net/", "description": "Local, open-source GPU VRAM calculator for self-hosted LLM fleets: memory fit, KV cache, tensor parallelism, MIG sharing, latency, throughput, SLO compliance and resilient worker topology. Fully client-side.", "applicationCategory": "DeveloperApplication", "operatingSystem": "Any (browser-based)", "browserRequirements": "Any modern browser; fully client-side", "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}, "creator": {"@type": "Person", "name": "Mahmoud Yassine", "url": "https://github.com/mahmoudyassine"}, "license": "https://github.com/mahmoudyassine/gpu-scale-tool/blob/main/LICENSE", "image": "https://gpuscale.net/assets/og-card.png", "featureList": "Multi-use-case projects with pooled deployments, fleet map per GPU and node, supporting models on MIG/partitioned GPUs, memory fit per replica, KV cache modeling (GQA/MLA/hybrid), tensor/data parallelism, auto-sizing from SLOs, resilience patterns (N+1 to N+N+DR), JSON/XLSX/PDF export", "codeRepository": "https://github.com/mahmoudyassine/gpu-scale-tool"}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -994,7 +994,7 @@ ul.sum li:has(.as-list){flex-wrap:wrap}
 // GPUscale.net · model library (params B · active B · hidden · layers · effective KV heads × head dim · max ctx)
 // One entry per line. Field reference: docs/DATA.md
 window.GPUSCALE_DATA = window.GPUSCALE_DATA || {};
-window.GPUSCALE_DATA.meta = {"library":"v30","engine":24,"updated":"2026-07-23"};
+window.GPUSCALE_DATA.meta = {"library":"v31","engine":24,"updated":"2026-07-23"};
 window.GPUSCALE_DATA.models = [
 {"name":"Llama 3.1 8B","params":8.0,"active":8.0,"hidden":4096,"layers":32,"kvHeads":8,"headDim":128,"ctx":131072,"experts":null,"activeExperts":null,"arch":"Dense (GQA)","dev":"Meta","url":"https://ai.meta.com/blog/meta-llama-3-1/"},
 {"name":"Llama 3.1 70B","params":70.0,"active":70.0,"hidden":8192,"layers":80,"kvHeads":8,"headDim":128,"ctx":131072,"experts":null,"activeExperts":null,"arch":"Dense (GQA)","dev":"Meta","url":"https://ai.meta.com/blog/meta-llama-3-1/"},
@@ -1086,6 +1086,13 @@ window.GPUSCALE_DATA.models = [
 {"name":"Aya Expanse 32B (multilingual)","params":32.3,"active":32.3,"hidden":8192,"layers":40,"kvHeads":8,"headDim":128,"ctx":131072,"experts":null,"activeExperts":null,"arch":"Dense (GQA) · 23 languages incl. Arabic","dev":"Cohere","url":"https://huggingface.co/CohereLabs/aya-expanse-32b"},
 {"name":"Aya Expanse 8B (multilingual)","params":8.0,"active":8.0,"hidden":4096,"layers":32,"kvHeads":8,"headDim":128,"ctx":8192,"experts":null,"activeExperts":null,"arch":"Dense (GQA) · 23 languages incl. Arabic","dev":"Cohere","url":"https://huggingface.co/CohereLabs/aya-expanse-8b"},
 {"name":"Mistral Saba 24B (MENA/S-Asia)","params":24.0,"active":24.0,"hidden":5120,"layers":40,"kvHeads":8,"headDim":128,"ctx":32768,"experts":null,"activeExperts":null,"arch":"Dense (GQA, est. cfg) · Arabic-focused, on-prem","dev":"Mistral AI","url":"https://mistral.ai/news/mistral-saba/"},
+{"name":"AceGPT-v2-32B (Arabic)","params":32.5,"active":32.5,"hidden":5120,"layers":64,"kvHeads":8,"headDim":128,"ctx":32768,"experts":null,"activeExperts":null,"arch":"Dense (GQA, Qwen1.5-32B base) · native-alignment pretrain","dev":"FreedomIntelligence + KAUST (KSA)","url":"https://huggingface.co/FreedomIntelligence/AceGPT-v2-32B-Chat"},
+{"name":"AceGPT-v2-70B (Arabic)","params":70.6,"active":70.6,"hidden":8192,"layers":80,"kvHeads":8,"headDim":128,"ctx":8192,"experts":null,"activeExperts":null,"arch":"Dense (GQA, Llama-3-70B base)","dev":"FreedomIntelligence + KAUST (KSA)","url":"https://huggingface.co/FreedomIntelligence/AceGPT-v2-70B-Chat"},
+{"name":"Falcon-H1R-7B (reasoning)","params":7.6,"active":7.6,"hidden":3072,"layers":44,"kvHeads":2,"headDim":128,"ctx":262144,"experts":null,"activeExperts":null,"arch":"Dense hybrid Attn+SSM (GQA-2) · reasoning, GRPO","dev":"TII (UAE)","url":"https://huggingface.co/tiiuae/Falcon-H1R-7B"},
+{"name":"Fanar-2-Oryx-IVU 7B (Arabic VLM)","params":8.3,"active":8.3,"hidden":3584,"layers":28,"kvHeads":4,"headDim":128,"ctx":128000,"experts":null,"activeExperts":null,"arch":"Dense (GQA) VLM · Qwen2.5-VL-7B base, image+video","dev":"QCRI (Qatar)","url":"https://huggingface.co/QCRI/Fanar-2-Oryx-IVU"},
+{"name":"AIN-7B (Arabic VLM)","params":8.3,"active":8.3,"hidden":3584,"layers":28,"kvHeads":4,"headDim":128,"ctx":32768,"experts":null,"activeExperts":null,"arch":"Dense (GQA) VLM · Qwen2-VL-7B base, MIT license","dev":"MBZUAI (UAE)","url":"https://huggingface.co/MBZUAI/AIN"},
+{"name":"SILMA-Kashif-2B (Arabic RAG)","params":2.6,"active":2.6,"hidden":2304,"layers":26,"kvHeads":4,"headDim":256,"ctx":12288,"experts":null,"activeExperts":null,"arch":"Dense (GQA+SWA) · Gemma-2-2B base, RAG-tuned","dev":"SILMA AI (KSA)","url":"https://huggingface.co/silma-ai/SILMA-Kashif-2B-Instruct-v1.0"},
+{"name":"Nile-Chat-3x4B MoE (Egyptian Arabic)","params":12.0,"active":6.0,"hidden":2560,"layers":34,"kvHeads":4,"headDim":43,"ctx":131072,"experts":3,"activeExperts":2,"arch":"MoE (3x Gemma-3-4B experts) · hybrid SWA eff. KV","dev":"MBZUAI-Paris (UAE)","url":"https://huggingface.co/MBZUAI-Paris/Nile-Chat-3x4B-A6B"},
 {"name":"Magistral Small 1.2 24B (reasoning)","params":24.0,"active":24.0,"hidden":5120,"layers":40,"kvHeads":8,"headDim":128,"ctx":131072,"experts":null,"activeExperts":null,"arch":"Dense (GQA) · reasoning","dev":"Mistral AI","url":"https://huggingface.co/mistralai/Magistral-Small-2509"},
 {"name":"Mistral Large 2 123B","params":123.0,"active":123.0,"hidden":12288,"layers":88,"kvHeads":8,"headDim":128,"ctx":131072,"experts":null,"activeExperts":null,"arch":"Dense (GQA)","dev":"Mistral AI","url":"https://huggingface.co/mistralai/Mistral-Large-Instruct-2407"},
 {"name":"Ministral 8B","params":8.0,"active":8.0,"hidden":4096,"layers":36,"kvHeads":8,"headDim":128,"ctx":131072,"experts":null,"activeExperts":null,"arch":"Dense (GQA, interleaved SWA)","dev":"Mistral AI","url":"https://huggingface.co/mistralai/Ministral-8B-Instruct-2410"},
@@ -1210,6 +1217,7 @@ models: [
 {"kind":"embed","name":"Qwen3-Embedding 0.6B","params":0.6,"vram":1.5,"cap":400,"note":"Lightweight MTEB top-tier","url":"https://huggingface.co/Qwen/Qwen3-Embedding-0.6B"},
 {"kind":"embed","name":"Qwen3-Embedding 4B","params":4.0,"vram":8.0,"cap":400,"note":"Near-8B MTEB scores at half the VRAM; 32k context, 2560 dims","url":"https://huggingface.co/Qwen/Qwen3-Embedding-4B"},
 {"kind":"embed","name":"Qwen3-Embedding 8B","params":8.0,"vram":16.0,"cap":400,"note":"MTEB multilingual leader; needs a large slice","url":"https://huggingface.co/Qwen/Qwen3-Embedding-8B"},
+{"kind":"embed","name":"Arabic-Triplet-Matryoshka-V2","params":0.135,"vram":0.8,"cap":400,"note":"Arabic-specialized AraBERT embedder (GATE); tops Arabic STS, Matryoshka dims, Apache 2.0","url":"https://huggingface.co/Omartificial-Intelligence-Space/Arabic-Triplet-Matryoshka-V2"},
 {"kind":"rerank","name":"gte-multilingual-reranker-base","params":0.306,"vram":1.0,"cap":60,"note":"Encoder-only 8k cross-encoder, ~10x faster than LLM rerankers; 70+ languages","url":"https://huggingface.co/Alibaba-NLP/gte-multilingual-reranker-base"},
 {"kind":"rerank","name":"bge-reranker-v2-m3","params":0.568,"vram":2.5,"cap":50,"default":true,"note":"Cross-encoder; ~150-250 ms per top-50 rerank","url":"https://huggingface.co/BAAI/bge-reranker-v2-m3"},
 {"kind":"rerank","name":"Qwen3-Reranker 0.6B","params":0.6,"vram":1.5,"cap":50,"note":"Lightweight cross-encoder","url":"https://huggingface.co/Qwen/Qwen3-Reranker-0.6B"},
@@ -1217,6 +1225,7 @@ models: [
 {"kind":"rerank","name":"zerank-1-small","params":1.7,"vram":4.0,"cap":50,"note":"Pairwise ELO-trained; beats cohere-rerank-v3.5 on finance/legal/code, Apache 2.0","url":"https://huggingface.co/zeroentropy/zerank-1-small-reranker"},
 {"kind":"rerank","name":"Qwen3-Reranker 4B","params":4.0,"vram":8.0,"cap":100,"note":"Nearly matches the 8B on half the slice; 32k context","url":"https://huggingface.co/Qwen/Qwen3-Reranker-4B"},
 {"kind":"rerank","name":"Qwen3-Reranker 8B","params":8.0,"vram":16.0,"cap":120,"note":"~31 req/s under vLLM; needs a large slice","url":"https://huggingface.co/Qwen/Qwen3-Reranker-8B"},
+{"kind":"rerank","name":"GATE-Reranker-V1","params":0.135,"vram":0.5,"cap":60,"note":"Arabic-only cross-encoder; beats multilingual rerankers on Arabic retrieval, Apache 2.0","url":"https://huggingface.co/NAMAA-Space/GATE-Reranker-V1"},
 {"kind":"asr","name":"Moonshine Base","params":0.062,"vram":0.5,"cap":6,"note":"61M MIT edge ASR, RTFx ~566; realtime even on CPU","url":"https://huggingface.co/UsefulSensors/moonshine-base"},
 {"kind":"asr","name":"Parakeet-TDT 0.6B v3","params":0.6,"vram":1.0,"cap":8,"note":"Batch-throughput champion (RTFx ~3,300)","url":"https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3"},
 {"kind":"asr","name":"Whisper large-v3-turbo","params":0.809,"vram":1.6,"cap":4,"default":true,"note":"~130x real-time; the serving default","url":"https://huggingface.co/openai/whisper-large-v3-turbo"},
@@ -1225,12 +1234,17 @@ models: [
 {"kind":"asr","name":"Canary-Qwen-2.5B","params":2.56,"vram":7.0,"cap":5,"note":"Open ASR leaderboard leader (5.63% WER en), RTFx ~418; LLM mode does post-ASR QA","url":"https://huggingface.co/nvidia/canary-qwen-2.5b"},
 {"kind":"asr","name":"Voxtral Mini 3B","params":4.7,"vram":9.5,"cap":3,"note":"Apache 2.0 transcription + translation + audio QA in 8 languages; 30-min files","url":"https://huggingface.co/mistralai/Voxtral-Mini-3B-2507"},
 {"kind":"asr","name":"Granite Speech 3.3 8B","params":8.65,"vram":19.0,"cap":4,"note":"Apache 2.0 multilingual ASR+AST at 5.74% leaderboard WER","url":"https://huggingface.co/ibm-granite/granite-speech-3.3-8b"},
+{"kind":"asr","name":"Whisper turbo Arabic-dialectal","params":0.809,"vram":1.6,"cap":4,"note":"Fine-tune for 7 Arabic dialect groups; 34% WER vs 59% stock turbo on dialects, Apache 2.0","url":"https://huggingface.co/oddadmix/whisper-large-v3-turbo-arabic-dialectal"},
+{"kind":"asr","name":"ArTST v3 ASR","params":0.2,"vram":1.0,"cap":4,"note":"MBZUAI Arabic-native ASR, MSA + dialectal variants; CC-BY-NC 4.0, research use only","url":"https://huggingface.co/MBZUAI/artst_asr_v3"},
+{"kind":"asr","name":"Tarteel whisper-base-ar-quran","params":0.074,"vram":0.5,"cap":6,"note":"Quranic Arabic recitation specialist, 5.75% WER; CPU-viable, Apache 2.0","url":"https://huggingface.co/tarteel-ai/whisper-base-ar-quran"},
 {"kind":"tts","name":"Kitten TTS Nano","params":0.015,"vram":0.5,"cap":12,"note":"15M params, sub-25MB, Apache 2.0; realtime on CPU, 8 voices","url":"https://huggingface.co/KittenML/kitten-tts-nano-0.2"},
 {"kind":"tts","name":"Kokoro-82M","params":0.082,"vram":1.0,"cap":10,"default":true,"note":"~15x real-time; Apache license","url":"https://huggingface.co/hexgrad/Kokoro-82M"},
 {"kind":"tts","name":"Fun-CosyVoice3-0.5B","params":0.5,"vram":5.0,"cap":6,"note":"Zero-shot multilingual cloning, bidirectional streaming, ~150 ms first packet","url":"https://huggingface.co/FunAudioLLM/Fun-CosyVoice3-0.5B-2512"},
 {"kind":"tts","name":"Chatterbox TTS","params":0.5,"vram":6.5,"cap":4,"note":"MIT zero-shot cloning with emotion control; preferred over ElevenLabs in blind evals","url":"https://huggingface.co/ResembleAI/chatterbox"},
 {"kind":"tts","name":"Dia-1.6B","params":1.6,"vram":10.0,"cap":2,"note":"Two-speaker dialogue with nonverbals in one pass; Apache 2.0","url":"https://huggingface.co/nari-labs/Dia-1.6B"},
 {"kind":"tts","name":"Orpheus-3B","params":3.0,"vram":6.0,"cap":8,"note":"Streaming, expressive; Apache license","url":"https://huggingface.co/canopylabs/orpheus-3b-0.1-ft"},
+{"kind":"tts","name":"SILMA TTS 150M","params":0.15,"vram":1.5,"cap":8,"note":"Bilingual Arabic MSA + English with tashkeel and cloning; RTF 0.12 on a 4090, Apache 2.0","url":"https://huggingface.co/silma-ai/silma-tts"},
+{"kind":"tts","name":"Habibi-TTS","params":0.34,"vram":3.0,"cap":6,"note":"F5-TTS fine-tunes for 12 Arabic dialects; MSA/EGY/IRQ/ALG/MAR Apache 2.0 (SAU/UAE CC-BY-NC-SA)","url":"https://huggingface.co/SWivid/Habibi-TTS"},
 {"kind":"ocr","name":"PaddleOCR PP-OCRv5","params":0.05,"vram":2.0,"cap":8,"default":true,"note":"~190 pages/min per instance; plain text","url":"https://github.com/PaddlePaddle/PaddleOCR"},
 {"kind":"ocr","name":"Granite-Docling 258M","params":0.258,"vram":1.0,"cap":6,"note":"One tiny VLM replaces the layout+table+formula pipeline; DocTags output, CPU-viable","url":"https://huggingface.co/ibm-granite/granite-docling-258M"},
 {"kind":"ocr","name":"PaddleOCR-VL","params":0.9,"vram":3.0,"cap":6,"note":"OmniDocBench leader across 109 languages; NaViT + ERNIE decoder, serves on vLLM","url":"https://huggingface.co/PaddlePaddle/PaddleOCR-VL-1.6"},
@@ -1238,13 +1252,17 @@ models: [
 {"kind":"ocr","name":"DeepSeek-OCR","params":3.0,"vram":8.0,"cap":8,"note":"Optical context compression cuts vision tokens ~10x; ~200k pages/day per A100, MIT","url":"https://huggingface.co/deepseek-ai/DeepSeek-OCR"},
 {"kind":"ocr","name":"dots.ocr 3B","params":3.0,"vram":8.0,"cap":4,"note":"Layout-aware VLM parser; MIT license","url":"https://github.com/rednote-hilab/dots.ocr"},
 {"kind":"ocr","name":"olmOCR-2 7B","params":7.0,"vram":16.0,"cap":2,"note":"Highest-fidelity document parsing","url":"https://huggingface.co/allenai/olmOCR-2-7B-1025"},
+{"kind":"ocr","name":"Qari-OCR v0.3 2B","params":2.2,"vram":6.0,"cap":4,"note":"Arabic OCR with full diacritics (Qwen2-VL-2B); layout-aware Markdown/HTML, Apache 2.0","url":"https://huggingface.co/NAMAA-Space/Qari-OCR-v0.3-VL-2B-Instruct"},
+{"kind":"ocr","name":"AIN 7B (Arabic)","params":7.0,"vram":16.0,"cap":2,"note":"Arabic-centric bilingual VLM; leads Arabic OCR + doc understanding, MIT license","url":"https://huggingface.co/MBZUAI/AIN"},
 {"kind":"guard","name":"Qwen3Guard-Gen-0.6B","params":0.752,"vram":2.0,"cap":25,"note":"Cheapest guard tier; 119-language moderation with severity levels, Apache 2.0","url":"https://huggingface.co/Qwen/Qwen3Guard-Gen-0.6B"},
 {"kind":"guard","name":"Llama Guard 3 1B","params":1.0,"vram":2.5,"cap":30,"default":true,"note":"Input/output moderation; CPU-viable","url":"https://huggingface.co/meta-llama/Llama-Guard-3-1B"},
 {"kind":"guard","name":"ShieldGemma 2 4B","params":4.3,"vram":10.0,"cap":20,"note":"IMAGE-only safety classifier for VLM inputs / image-gen outputs; does not moderate text","url":"https://huggingface.co/google/shieldgemma-2-4b-it"},
 {"kind":"guard","name":"Qwen3Guard-Gen-4B","params":4.4,"vram":10.0,"cap":50,"note":"Mid-tier 119-language moderator, SOTA multilingual safety; adds severity tiers","url":"https://huggingface.co/Qwen/Qwen3Guard-Gen-4B"},
 {"kind":"guard","name":"Llama Guard 3 8B FP8","params":8.0,"vram":10.0,"cap":60,"note":"Higher accuracy; fits a 10 GB slice","url":"https://huggingface.co/meta-llama/Llama-Guard-3-8B"},
 {"kind":"guard","name":"Granite Guardian 3.3 8B","params":8.2,"vram":18.0,"cap":50,"note":"Moderation + RAG groundedness + function-call hallucination checks; Apache 2.0","url":"https://huggingface.co/ibm-granite/granite-guardian-3.3-8b"},
-{"kind":"guard","name":"Llama Guard 4 12B","params":12.0,"vram":26.0,"cap":60,"note":"Natively multimodal text+image on the MLCommons 14-hazard taxonomy; single-GPU","url":"https://huggingface.co/meta-llama/Llama-Guard-4-12B"}
+{"kind":"guard","name":"Llama Guard 4 12B","params":12.0,"vram":26.0,"cap":60,"note":"Natively multimodal text+image on the MLCommons 14-hazard taxonomy; single-GPU","url":"https://huggingface.co/meta-llama/Llama-Guard-4-12B"},
+{"kind":"guard","name":"Ara-Prompt-Guard V1","params":0.278,"vram":1.0,"cap":30,"note":"Arabic prompt-injection and jailbreak classifier; 13k Arabic attack samples, Apache 2.0","url":"https://huggingface.co/NAMAA-Space/Ara-Prompt-Guard_V1"},
+{"kind":"guard","name":"Nemotron Safety Guard 8B v3","params":8.03,"vram":18.0,"cap":50,"note":"Culturally adapted moderation in 9 languages incl Arabic (CultureGuard); commercial OK","url":"https://huggingface.co/nvidia/Llama-3.1-Nemotron-Safety-Guard-8B-v3"},
 ]
 };
 'use strict';
@@ -1256,7 +1274,7 @@ if(!MODELS.length || !GPUS.length || !QUANTS.length || !CASES.length){
   document.body.innerHTML = '<div style="font-family:system-ui,sans-serif;max-width:560px;margin:80px auto;padding:0 20px;line-height:1.65;color:#1A2536"><h2 style="margin-bottom:10px">Data files not loaded</h2><p>GPUscale.net could not find its library. Keep <code>index.html</code> together with the <code>data/</code> and <code>assets/</code> folders: the four files <code>data/models.js</code>, <code>data/gpus.js</code>, <code>data/quants.js</code> and <code>data/usecases.js</code> must sit next to this page.</p><p>If you need one portable file instead, use <code>dist/gpuscale_standalone.html</code> or rebuild it with <code>python3 tools/build_single_file.py</code>.</p></div>';
   throw new Error('GPUscale.net data missing');
 }
-const STUDIO_VERSION = '5.17.0', ENGINE_VERSION = 24;
+const STUDIO_VERSION = '5.18.0', ENGINE_VERSION = 24;
 function newProjId(){ const L='abcdefghjkmnpqrstuvwxyz', D='0123456789';
   const pick=s=>s[Math.floor(Math.random()*s.length)];
   return 'Project_'+pick(L)+pick(L)+pick(D)+pick(D)+pick(D); }

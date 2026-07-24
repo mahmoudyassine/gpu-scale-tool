@@ -1,5 +1,27 @@
 # Changelog
 
+## Studio 5.18 (2026-07-23) · library v31
+
+Arabic across the whole stack: LLMs, VLMs and supporting models.
+
+- Seven Arabic/GCC LLM additions (library now 101 models), configs read
+  from each repo: AceGPT-v2 32B and 70B (KAUST-backed dense tiers),
+  Falcon-H1R-7B (TII reasoning model with 256K hybrid-SSM context),
+  Fanar-2-Oryx-IVU 7B and AIN-7B (the first hostable Arabic VLMs, from
+  Qatar and the UAE), SILMA-Kashif-2B (Arabic RAG edge tier) and
+  Nile-Chat-3x4B (Egyptian-dialect MoE).
+- Eleven Arabic supporting models (now 54 total), every kind covered:
+  Arabic-Triplet-Matryoshka-V2 embeddings, GATE-Reranker-V1, dialectal
+  Whisper turbo (7 dialect groups), ArTST v3 ASR (flagged research-only),
+  Tarteel Quranic ASR, SILMA TTS (MSA + English with tashkeel), Habibi-TTS
+  (12 dialects), Qari-OCR (full diacritics), AIN 7B document OCR,
+  Ara-Prompt-Guard (Arabic jailbreak classifier) and Nemotron Safety
+  Guard 8B v3 (culturally adapted moderation incl. Arabic).
+- Licenses vetted per model for on-prem commercial hosting; restricted
+  ones are labeled in their notes. Excluded on license or availability
+  grounds: Hala-9B and Command A (CC-BY-NC), Yehia (gated duplicate),
+  Munsit (API-only), XTTS-v2 and OpenAudio (non-commercial).
+
 ## Studio 5.17 (2026-07-23) · library v30
 
 Supporting-model library grown from 17 to 43, research-vetted.

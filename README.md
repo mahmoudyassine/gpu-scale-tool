@@ -39,7 +39,7 @@ static: no backend, no build step, nothing uploaded.
 - 💾 **Projects persist**: autosaved to your browser's local storage, surviving reboots; a history menu lists, reloads and deletes them
 - 🔗 **Share links**: the whole project travels compressed inside the URL itself; send the link, they see your project (an optional self-hosted backend for short links ships in docs/share-worker.js)
 - 🔒 **Private by design**: everything runs and stays in your browser; nothing is uploaded or tracked
-- 📚 **Library**: 94 models (GQA, MoE, MLA, SSM hybrids, Arabic/GCC sovereign set), 37 GPUs with partitioning profiles, and 43 supporting models (embeddings, rerankers, ASR, TTS, OCR, guards from tiny CPU-viable to flagship tiers), one line each
+- 📚 **Library**: 101 models (GQA, MoE, MLA, SSM hybrids, a deep Arabic/GCC sovereign set incl. VLMs and dialect models), 37 GPUs with partitioning profiles, and 54 supporting models (with Arabic-specialized ASR, TTS, OCR, embeddings, rerankers and guards) (embeddings, rerankers, ASR, TTS, OCR, guards from tiny CPU-viable to flagship tiers), one line each
 - 📤 **Exports**: JSON configs, an Excel template with live formulas, and a print-ready PDF report
 - 🪄 **Auto-size**: one click picks the TP that fits one copy of the model and the workers that admit your peak load
 - 🌓 **Polished**: light and dark themes, mobile friendly, installable, keyboard accessible

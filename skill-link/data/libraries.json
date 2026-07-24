@@ -1351,6 +1351,111 @@
    "url": "https://mistral.ai/news/mistral-saba/"
   },
   {
+   "name": "AceGPT-v2-32B (Arabic)",
+   "params": 32.5,
+   "active": 32.5,
+   "hidden": 5120,
+   "layers": 64,
+   "kvHeads": 8,
+   "headDim": 128,
+   "ctx": 32768,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (GQA, Qwen1.5-32B base) · native-alignment pretrain",
+   "dev": "FreedomIntelligence + KAUST (KSA)",
+   "url": "https://huggingface.co/FreedomIntelligence/AceGPT-v2-32B-Chat"
+  },
+  {
+   "name": "AceGPT-v2-70B (Arabic)",
+   "params": 70.6,
+   "active": 70.6,
+   "hidden": 8192,
+   "layers": 80,
+   "kvHeads": 8,
+   "headDim": 128,
+   "ctx": 8192,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (GQA, Llama-3-70B base)",
+   "dev": "FreedomIntelligence + KAUST (KSA)",
+   "url": "https://huggingface.co/FreedomIntelligence/AceGPT-v2-70B-Chat"
+  },
+  {
+   "name": "Falcon-H1R-7B (reasoning)",
+   "params": 7.6,
+   "active": 7.6,
+   "hidden": 3072,
+   "layers": 44,
+   "kvHeads": 2,
+   "headDim": 128,
+   "ctx": 262144,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense hybrid Attn+SSM (GQA-2) · reasoning, GRPO",
+   "dev": "TII (UAE)",
+   "url": "https://huggingface.co/tiiuae/Falcon-H1R-7B"
+  },
+  {
+   "name": "Fanar-2-Oryx-IVU 7B (Arabic VLM)",
+   "params": 8.3,
+   "active": 8.3,
+   "hidden": 3584,
+   "layers": 28,
+   "kvHeads": 4,
+   "headDim": 128,
+   "ctx": 128000,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (GQA) VLM · Qwen2.5-VL-7B base, image+video",
+   "dev": "QCRI (Qatar)",
+   "url": "https://huggingface.co/QCRI/Fanar-2-Oryx-IVU"
+  },
+  {
+   "name": "AIN-7B (Arabic VLM)",
+   "params": 8.3,
+   "active": 8.3,
+   "hidden": 3584,
+   "layers": 28,
+   "kvHeads": 4,
+   "headDim": 128,
+   "ctx": 32768,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (GQA) VLM · Qwen2-VL-7B base, MIT license",
+   "dev": "MBZUAI (UAE)",
+   "url": "https://huggingface.co/MBZUAI/AIN"
+  },
+  {
+   "name": "SILMA-Kashif-2B (Arabic RAG)",
+   "params": 2.6,
+   "active": 2.6,
+   "hidden": 2304,
+   "layers": 26,
+   "kvHeads": 4,
+   "headDim": 256,
+   "ctx": 12288,
+   "experts": null,
+   "activeExperts": null,
+   "arch": "Dense (GQA+SWA) · Gemma-2-2B base, RAG-tuned",
+   "dev": "SILMA AI (KSA)",
+   "url": "https://huggingface.co/silma-ai/SILMA-Kashif-2B-Instruct-v1.0"
+  },
+  {
+   "name": "Nile-Chat-3x4B MoE (Egyptian Arabic)",
+   "params": 12,
+   "active": 6,
+   "hidden": 2560,
+   "layers": 34,
+   "kvHeads": 4,
+   "headDim": 43,
+   "ctx": 131072,
+   "experts": 3,
+   "activeExperts": 2,
+   "arch": "MoE (3x Gemma-3-4B experts) · hybrid SWA eff. KV",
+   "dev": "MBZUAI-Paris (UAE)",
+   "url": "https://huggingface.co/MBZUAI-Paris/Nile-Chat-3x4B-A6B"
+  },
+  {
    "name": "Magistral Small 1.2 24B (reasoning)",
    "params": 24,
    "active": 24,
@@ -2690,6 +2795,15 @@
     "url": "https://huggingface.co/Qwen/Qwen3-Embedding-8B"
    },
    {
+    "kind": "embed",
+    "name": "Arabic-Triplet-Matryoshka-V2",
+    "params": 0.135,
+    "vram": 0.8,
+    "cap": 400,
+    "note": "Arabic-specialized AraBERT embedder (GATE); tops Arabic STS, Matryoshka dims, Apache 2.0",
+    "url": "https://huggingface.co/Omartificial-Intelligence-Space/Arabic-Triplet-Matryoshka-V2"
+   },
+   {
     "kind": "rerank",
     "name": "gte-multilingual-reranker-base",
     "params": 0.306,
@@ -2752,6 +2866,15 @@
     "cap": 120,
     "note": "~31 req/s under vLLM; needs a large slice",
     "url": "https://huggingface.co/Qwen/Qwen3-Reranker-8B"
+   },
+   {
+    "kind": "rerank",
+    "name": "GATE-Reranker-V1",
+    "params": 0.135,
+    "vram": 0.5,
+    "cap": 60,
+    "note": "Arabic-only cross-encoder; beats multilingual rerankers on Arabic retrieval, Apache 2.0",
+    "url": "https://huggingface.co/NAMAA-Space/GATE-Reranker-V1"
    },
    {
     "kind": "asr",
@@ -2827,6 +2950,33 @@
     "url": "https://huggingface.co/ibm-granite/granite-speech-3.3-8b"
    },
    {
+    "kind": "asr",
+    "name": "Whisper turbo Arabic-dialectal",
+    "params": 0.809,
+    "vram": 1.6,
+    "cap": 4,
+    "note": "Fine-tune for 7 Arabic dialect groups; 34% WER vs 59% stock turbo on dialects, Apache 2.0",
+    "url": "https://huggingface.co/oddadmix/whisper-large-v3-turbo-arabic-dialectal"
+   },
+   {
+    "kind": "asr",
+    "name": "ArTST v3 ASR",
+    "params": 0.2,
+    "vram": 1,
+    "cap": 4,
+    "note": "MBZUAI Arabic-native ASR, MSA + dialectal variants; CC-BY-NC 4.0, research use only",
+    "url": "https://huggingface.co/MBZUAI/artst_asr_v3"
+   },
+   {
+    "kind": "asr",
+    "name": "Tarteel whisper-base-ar-quran",
+    "params": 0.074,
+    "vram": 0.5,
+    "cap": 6,
+    "note": "Quranic Arabic recitation specialist, 5.75% WER; CPU-viable, Apache 2.0",
+    "url": "https://huggingface.co/tarteel-ai/whisper-base-ar-quran"
+   },
+   {
     "kind": "tts",
     "name": "Kitten TTS Nano",
     "params": 0.015,
@@ -2880,6 +3030,24 @@
     "cap": 8,
     "note": "Streaming, expressive; Apache license",
     "url": "https://huggingface.co/canopylabs/orpheus-3b-0.1-ft"
+   },
+   {
+    "kind": "tts",
+    "name": "SILMA TTS 150M",
+    "params": 0.15,
+    "vram": 1.5,
+    "cap": 8,
+    "note": "Bilingual Arabic MSA + English with tashkeel and cloning; RTF 0.12 on a 4090, Apache 2.0",
+    "url": "https://huggingface.co/silma-ai/silma-tts"
+   },
+   {
+    "kind": "tts",
+    "name": "Habibi-TTS",
+    "params": 0.34,
+    "vram": 3,
+    "cap": 6,
+    "note": "F5-TTS fine-tunes for 12 Arabic dialects; MSA/EGY/IRQ/ALG/MAR Apache 2.0 (SAU/UAE CC-BY-NC-SA)",
+    "url": "https://huggingface.co/SWivid/Habibi-TTS"
    },
    {
     "kind": "ocr",
@@ -2946,6 +3114,24 @@
     "url": "https://huggingface.co/allenai/olmOCR-2-7B-1025"
    },
    {
+    "kind": "ocr",
+    "name": "Qari-OCR v0.3 2B",
+    "params": 2.2,
+    "vram": 6,
+    "cap": 4,
+    "note": "Arabic OCR with full diacritics (Qwen2-VL-2B); layout-aware Markdown/HTML, Apache 2.0",
+    "url": "https://huggingface.co/NAMAA-Space/Qari-OCR-v0.3-VL-2B-Instruct"
+   },
+   {
+    "kind": "ocr",
+    "name": "AIN 7B (Arabic)",
+    "params": 7,
+    "vram": 16,
+    "cap": 2,
+    "note": "Arabic-centric bilingual VLM; leads Arabic OCR + doc understanding, MIT license",
+    "url": "https://huggingface.co/MBZUAI/AIN"
+   },
+   {
     "kind": "guard",
     "name": "Qwen3Guard-Gen-0.6B",
     "params": 0.752,
@@ -3008,11 +3194,29 @@
     "cap": 60,
     "note": "Natively multimodal text+image on the MLCommons 14-hazard taxonomy; single-GPU",
     "url": "https://huggingface.co/meta-llama/Llama-Guard-4-12B"
+   },
+   {
+    "kind": "guard",
+    "name": "Ara-Prompt-Guard V1",
+    "params": 0.278,
+    "vram": 1,
+    "cap": 30,
+    "note": "Arabic prompt-injection and jailbreak classifier; 13k Arabic attack samples, Apache 2.0",
+    "url": "https://huggingface.co/NAMAA-Space/Ara-Prompt-Guard_V1"
+   },
+   {
+    "kind": "guard",
+    "name": "Nemotron Safety Guard 8B v3",
+    "params": 8.03,
+    "vram": 18,
+    "cap": 50,
+    "note": "Culturally adapted moderation in 9 languages incl Arabic (CultureGuard); commercial OK",
+    "url": "https://huggingface.co/nvidia/Llama-3.1-Nemotron-Safety-Guard-8B-v3"
    }
   ]
  },
  "meta": {
-  "library": "v30",
+  "library": "v31",
   "engine": 24,
   "updated": "2026-07-23"
  },
@@ -3183,7 +3387,7 @@
  "versions": {
   "schema": "gpuscale.net/5",
   "engine": 24,
-  "studio": "5.17.0"
+  "studio": "5.18.0"
  },
  "kv_policies": [
   "running",

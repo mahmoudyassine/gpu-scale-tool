@@ -24,7 +24,7 @@ pester the user for TP/worker counts; only pin them if volunteered.
    already stated.
 2. **Resolve names** against the libraries (`references/libraries.md`, or
    `python3 scripts/gpuscale_url.py list models|gpus|presets [filter]`).
-   94 models, 37 GPUs, 19 weight quants, 20 presets. Never silently
+   101 models, 37 GPUs, 19 weight quants, 20 presets. Never silently
    substitute a different model or GPU than the user named - if it's not in
    the library, say so and offer the closest matches or a custom geometry.
 3. **Ask follow-ups only for missing essentials** (next section) - one

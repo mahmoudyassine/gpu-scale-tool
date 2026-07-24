@@ -1,6 +1,6 @@
-# GPUscale libraries (generated · library v30 · engine v24 · studio 5.17.0)
+# GPUscale libraries (generated · library v31 · engine v24 · studio 5.18.0)
 
-## Models (94)
+## Models (101)
 
 - Llama 3.1 8B · 8B total / 8B active · ctx 131072 · Dense (GQA) · Meta
 - Llama 3.1 70B · 70B total / 70B active · ctx 131072 · Dense (GQA) · Meta
@@ -92,6 +92,13 @@
 - Aya Expanse 32B (multilingual) · 32.3B total / 32.3B active · ctx 131072 · Dense (GQA) · 23 languages incl. Arabic · Cohere
 - Aya Expanse 8B (multilingual) · 8B total / 8B active · ctx 8192 · Dense (GQA) · 23 languages incl. Arabic · Cohere
 - Mistral Saba 24B (MENA/S-Asia) · 24B total / 24B active · ctx 32768 · Dense (GQA, est. cfg) · Arabic-focused, on-prem · Mistral AI
+- AceGPT-v2-32B (Arabic) · 32.5B total / 32.5B active · ctx 32768 · Dense (GQA, Qwen1.5-32B base) · native-alignment pretrain · FreedomIntelligence + KAUST (KSA)
+- AceGPT-v2-70B (Arabic) · 70.6B total / 70.6B active · ctx 8192 · Dense (GQA, Llama-3-70B base) · FreedomIntelligence + KAUST (KSA)
+- Falcon-H1R-7B (reasoning) · 7.6B total / 7.6B active · ctx 262144 · Dense hybrid Attn+SSM (GQA-2) · reasoning, GRPO · TII (UAE)
+- Fanar-2-Oryx-IVU 7B (Arabic VLM) · 8.3B total / 8.3B active · ctx 128000 · Dense (GQA) VLM · Qwen2.5-VL-7B base, image+video · QCRI (Qatar)
+- AIN-7B (Arabic VLM) · 8.3B total / 8.3B active · ctx 32768 · Dense (GQA) VLM · Qwen2-VL-7B base, MIT license · MBZUAI (UAE)
+- SILMA-Kashif-2B (Arabic RAG) · 2.6B total / 2.6B active · ctx 12288 · Dense (GQA+SWA) · Gemma-2-2B base, RAG-tuned · SILMA AI (KSA)
+- Nile-Chat-3x4B MoE (Egyptian Arabic) · 12B total / 6B active · ctx 131072 · MoE (3x Gemma-3-4B experts) · hybrid SWA eff. KV · MBZUAI-Paris (UAE)
 - Magistral Small 1.2 24B (reasoning) · 24B total / 24B active · ctx 131072 · Dense (GQA) · reasoning · Mistral AI
 - Mistral Large 2 123B · 123B total / 123B active · ctx 131072 · Dense (GQA) · Mistral AI
 - Ministral 8B · 8B total / 8B active · ctx 131072 · Dense (GQA, interleaved SWA) · Mistral AI
@@ -215,6 +222,7 @@
 - embed · Qwen3-Embedding 0.6B · 1.5 GB/instance · cap 400
 - embed · Qwen3-Embedding 4B · 8 GB/instance · cap 400
 - embed · Qwen3-Embedding 8B · 16 GB/instance · cap 400
+- embed · Arabic-Triplet-Matryoshka-V2 · 0.8 GB/instance · cap 400
 - rerank · gte-multilingual-reranker-base · 1 GB/instance · cap 60
 - rerank · bge-reranker-v2-m3 · 2.5 GB/instance · cap 50 · default
 - rerank · Qwen3-Reranker 0.6B · 1.5 GB/instance · cap 50
@@ -222,6 +230,7 @@
 - rerank · zerank-1-small · 4 GB/instance · cap 50
 - rerank · Qwen3-Reranker 4B · 8 GB/instance · cap 100
 - rerank · Qwen3-Reranker 8B · 16 GB/instance · cap 120
+- rerank · GATE-Reranker-V1 · 0.5 GB/instance · cap 60
 - asr · Moonshine Base · 0.5 GB/instance · cap 6
 - asr · Parakeet-TDT 0.6B v3 · 1 GB/instance · cap 8
 - asr · Whisper large-v3-turbo · 1.6 GB/instance · cap 4 · default
@@ -230,12 +239,17 @@
 - asr · Canary-Qwen-2.5B · 7 GB/instance · cap 5
 - asr · Voxtral Mini 3B · 9.5 GB/instance · cap 3
 - asr · Granite Speech 3.3 8B · 19 GB/instance · cap 4
+- asr · Whisper turbo Arabic-dialectal · 1.6 GB/instance · cap 4
+- asr · ArTST v3 ASR · 1 GB/instance · cap 4
+- asr · Tarteel whisper-base-ar-quran · 0.5 GB/instance · cap 6
 - tts · Kitten TTS Nano · 0.5 GB/instance · cap 12
 - tts · Kokoro-82M · 1 GB/instance · cap 10 · default
 - tts · Fun-CosyVoice3-0.5B · 5 GB/instance · cap 6
 - tts · Chatterbox TTS · 6.5 GB/instance · cap 4
 - tts · Dia-1.6B · 10 GB/instance · cap 2
 - tts · Orpheus-3B · 6 GB/instance · cap 8
+- tts · SILMA TTS 150M · 1.5 GB/instance · cap 8
+- tts · Habibi-TTS · 3 GB/instance · cap 6
 - ocr · PaddleOCR PP-OCRv5 · 2 GB/instance · cap 8 · default
 - ocr · Granite-Docling 258M · 1 GB/instance · cap 6
 - ocr · PaddleOCR-VL · 3 GB/instance · cap 6
@@ -243,6 +257,8 @@
 - ocr · DeepSeek-OCR · 8 GB/instance · cap 8
 - ocr · dots.ocr 3B · 8 GB/instance · cap 4
 - ocr · olmOCR-2 7B · 16 GB/instance · cap 2
+- ocr · Qari-OCR v0.3 2B · 6 GB/instance · cap 4
+- ocr · AIN 7B (Arabic) · 16 GB/instance · cap 2
 - guard · Qwen3Guard-Gen-0.6B · 2 GB/instance · cap 25
 - guard · Llama Guard 3 1B · 2.5 GB/instance · cap 30 · default
 - guard · ShieldGemma 2 4B · 10 GB/instance · cap 20
@@ -250,3 +266,5 @@
 - guard · Llama Guard 3 8B FP8 · 10 GB/instance · cap 60
 - guard · Granite Guardian 3.3 8B · 18 GB/instance · cap 50
 - guard · Llama Guard 4 12B · 26 GB/instance · cap 60
+- guard · Ara-Prompt-Guard V1 · 1 GB/instance · cap 30
+- guard · Nemotron Safety Guard 8B v3 · 18 GB/instance · cap 50
