@@ -1,5 +1,32 @@
 # Changelog
 
+## Studio 5.17 (2026-07-23) · library v30
+
+Supporting-model library grown from 17 to 43, research-vetted.
+
+- Every kind now spans tiny CPU-viable to flagship tiers, all open-weights
+  with licenses verified for commercial self-hosting:
+  - Embeddings (8): + granite-embedding-english-r2, EmbeddingGemma 300M,
+    snowflake-arctic-embed-l-v2.0, Qwen3-Embedding 4B.
+  - Rerankers (7): + gte-multilingual-reranker-base, mxbai-rerank-large-v2,
+    zerank-1-small, Qwen3-Reranker 4B.
+  - ASR (8): + Moonshine Base (61M edge), Kyutai STT 1B (streaming-native,
+    400 streams per H100), Canary-Qwen-2.5B (Open ASR leaderboard leader),
+    Voxtral Mini 3B, Granite Speech 3.3 8B.
+  - TTS (6): + Kitten TTS Nano (15M, CPU realtime), Fun-CosyVoice3-0.5B
+    (150 ms first packet), Chatterbox TTS, Dia-1.6B.
+  - OCR (7): + Granite-Docling 258M, PaddleOCR-VL (OmniDocBench leader),
+    MonkeyOCR-pro-1.2B, DeepSeek-OCR (~200k pages/day per A100).
+  - Guards (7): + Qwen3Guard-Gen 0.6B and 4B (119 languages, severity
+    tiers), ShieldGemma 2 4B (image-only, labeled as such), Granite
+    Guardian 3.3 8B (adds RAG groundedness checks), Llama Guard 4 12B
+    (multimodal).
+- Candidates with non-commercial or research-only weights (F5-TTS,
+  jina v4, Nanonets-OCR2, MinerU AGPL, VibeVoice) were evaluated and
+  excluded deliberately. Capacity allowances follow the library's existing
+  conventions (RTFx-derived ASR streams, pages/min OCR, per-GB guard curve).
+- Defaults are unchanged, so existing projects resolve identically.
+
 ## Studio 5.16 (2026-07-23) · library v29
 
 Preset library re-verified against 2026 production evidence.
