@@ -1,5 +1,37 @@
 # Changelog
 
+## Studio 5.16 (2026-07-23) · library v29
+
+Preset library re-verified against 2026 production evidence.
+
+- Three web-grounded research passes audited every field of all 20 presets
+  (voice-latency literature, NVIDIA VSS RT-VLM measurements, SWE-agent and
+  Cline traces, GitHub Copilot latency telemetry, OpenAI/Gemini deep-research
+  norms, medical test-time-scaling studies). Twelve presets corrected:
+  - Advanced RAG carries a real ~800-token thinking/tool-plan budget per
+    call (was 250, roughly 3x too low for 2026 reasoning-model traces),
+    at 40 tok/s and P95 45 s. Document Q&A gains a 500-token grounded
+    verification budget; the clinical assistant rises to 1000 (a 250-token
+    chain is not a chain).
+  - Deep research no longer conflates per-task totals with the per-request
+    class: ~2K thinking per call across ~40 calls (~35 min per task),
+    P95 75 s per request instead of 620.
+  - Code agent right-sized from traces: ~2K tokens per tool step, P95 60 s,
+    two 20-30 min tasks per hour (the old traffic shape implied more agent
+    seconds per hour than an hour has). IDE completion tightened to 60-token
+    suggestions and a 2 s P95: slower suggestions get discarded, not read.
+  - Voice streams at 50 tok/s to feed sentence-chunked TTS without gaps.
+    Video presets get honest vision-token counts (a 10 s clip is ~8K tokens;
+    a minute of native-sampled video is 30-47K), raising resident context.
+  - Every traffic durS is now consistent with its own preset's token budget
+    at its own speed target; concurrency notes updated.
+- Presets that pin an exact budget now declare reasoning class Custom in
+  the data itself, so "reasoning: None" can never sit next to a real
+  thinking budget again (this is what made Advanced RAG look like it had
+  no reasoning).
+- All values still satisfy the hard consistency rule
+  p95 >= 1.3 x (TTFT + (thinking + visible) / speed), verified in tests.
+
 ## Studio 5.15.3 (2026-07-23)
 
 - Logos reworked: the ".net" no longer sits beside the wordmark; a small

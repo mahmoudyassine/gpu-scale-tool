@@ -74,8 +74,9 @@ weights FP8 / KV BF16, SLOs from the preset, resilience `n` (capacity only),
   (direct: conc = jobs in flight).
 - "thinking / reasoning model usage" → reasoning `Light reasoning` (2K tok)
   or `Heavy reasoning` (8K) if "deep/heavy/o1-style" is implied. Several
-  presets pin an exact budget via `reasonTok` (Advanced RAG 250, code agent
-  3K, deep research 20K); leaving `reasoning` unset keeps that.
+  presets pin an exact per-request budget via `reasonTok` (Advanced RAG 800,
+  Document Q&A 500, code agent 1.5K per step, clinical assistant 1K, deep
+  research 2K per call); leaving `reasoning` unset keeps that.
 - Healthcare: "radiology / imaging reports" → `Medical imaging report
   assistant`; "clinical Q&A / guidelines" → `Clinical knowledge assistant`.
   "camera / CCTV / stream monitoring" → `Real-time video analytics`

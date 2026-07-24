@@ -153,8 +153,9 @@ demand a p95 its own TTFT/TPS targets make impossible. tpsTarget reflects
 per-user streaming needs (20 tok/s reading pace for chat, 40-60 for
 skim/agent flows), not batch throughput. Optional per-preset fields:
 `reasonTok` overrides the reasoning-class token budget through the Custom
-class (e.g. Advanced RAG 250 tool-plan tokens, code agent 3000, deep
-research 20000); `policy:"all"` pins per-session KV in VRAM for the whole
+class (per-request budgets, research-grounded in v29: Advanced RAG 800,
+Document Q&A 500, code agent 1500 per tool step, clinical assistant 1000,
+deep research 2000 per call); `policy:"all"` pins per-session KV in VRAM for the whole
 session, used only where an idle-turn eviction would break the latency
 budget (real-time voice, contact-center agent assist). v28 also adds five
 presets: medical imaging reports, clinical knowledge assistant, real-time

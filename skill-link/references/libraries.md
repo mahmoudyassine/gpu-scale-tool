@@ -1,4 +1,4 @@
-# GPUscale libraries (generated · library v28 · engine v24 · studio 5.15.3)
+# GPUscale libraries (generated · library v29 · engine v24 · studio 5.16.0)
 
 ## Models (94)
 
@@ -171,22 +171,22 @@
 
 - Simple chatbot · seq 4096 · out 250 · reasoning None · SLO 400ms / 20tps / 18s · supports guard
 - Simple RAG · seq 8192 · out 300 · reasoning None · SLO 800ms / 25tps / 18s · supports embed,rerank
-- Advanced RAG · seq 32768 · out 400 · reasoning None · SLO 1200ms / 30tps / 32s · supports embed,rerank · reasonTok 250
+- Advanced RAG · seq 32768 · out 400 · reasoning Custom · SLO 1200ms / 40tps / 45s · supports embed,rerank · reasonTok 800
 - Internal GPT / Copilot · seq 16384 · out 300 · reasoning None · SLO 600ms / 25tps / 18s · supports embed,rerank
-- Document Q&A · seq 32768 · out 300 · reasoning None · SLO 2500ms / 25tps / 20s · supports ocr,embed,rerank
-- Document generation · seq 8192 · out 1500 · reasoning None · SLO 1000ms / 40tps / 55s · supports -
-- Code generation · seq 8192 · out 150 · reasoning None · SLO 300ms / 60tps / 5s · supports embed
-- Code agent (Cline/Cursor-style) · seq 65536 · out 1000 · reasoning None · SLO 1000ms / 50tps / 120s · supports embed · reasonTok 3000
-- Voice agent (real-time) · seq 4096 · out 100 · reasoning None · SLO 300ms / 30tps / 5s · supports asr,tts · KV pinned per session
+- Document Q&A · seq 32768 · out 300 · reasoning Custom · SLO 2500ms / 30tps / 40s · supports ocr,embed,rerank · reasonTok 500
+- Document generation · seq 8192 · out 2000 · reasoning None · SLO 1000ms / 40tps / 70s · supports -
+- Code generation · seq 8192 · out 60 · reasoning None · SLO 300ms / 60tps / 2s · supports embed
+- Code agent (Cline/Cursor-style) · seq 65536 · out 500 · reasoning Custom · SLO 1000ms / 50tps / 60s · supports embed · reasonTok 1500
+- Voice agent (real-time) · seq 4096 · out 100 · reasoning None · SLO 300ms / 50tps / 3.5s · supports asr,tts · KV pinned per session
 - Reasoning agent (light) · seq 8192 · out 300 · reasoning Light reasoning · SLO 600ms / 60tps / 55s · supports -
 - Reasoning agent (heavy) · seq 16384 · out 500 · reasoning Heavy reasoning · SLO 800ms / 60tps / 200s · supports -
-- Video summarization · seq 16384 · out 500 · reasoning None · SLO 2000ms / 40tps / 90s · supports asr · reasonTok 2000
-- Long-doc analysis (legal/financial) · seq 65536 · out 800 · reasoning None · SLO 5000ms / 30tps / 90s · supports ocr · reasonTok 1000
+- Video summarization · seq 32768 · out 500 · reasoning Custom · SLO 3000ms / 40tps / 90s · supports asr · reasonTok 2000
+- Long-doc analysis (legal/financial) · seq 65536 · out 800 · reasoning Custom · SLO 5000ms / 30tps / 90s · supports ocr · reasonTok 1000
 - Offline batch / extract · seq 4096 · out 500 · reasoning None · SLO 0ms / 0tps / 0s · supports ocr
-- Deep research agent (async) · seq 65536 · out 3000 · reasoning Heavy reasoning · SLO 1000ms / 50tps / 620s · supports embed,rerank · reasonTok 20000
+- Deep research agent (async) · seq 65536 · out 500 · reasoning Custom · SLO 1000ms / 50tps / 75s · supports embed,rerank · reasonTok 2000
 - Medical imaging report assistant · seq 8192 · out 400 · reasoning None · SLO 1500ms / 50tps / 15s · supports ocr,guard
-- Clinical knowledge assistant · seq 8192 · out 350 · reasoning None · SLO 800ms / 40tps / 22s · supports embed,rerank,guard · reasonTok 250
-- Real-time video analytics · seq 4096 · out 80 · reasoning None · SLO 700ms / 40tps / 4s · supports -
+- Clinical knowledge assistant · seq 8192 · out 350 · reasoning Custom · SLO 800ms / 40tps / 50s · supports embed,rerank,guard · reasonTok 1000
+- Real-time video analytics · seq 8192 · out 80 · reasoning None · SLO 700ms / 40tps / 4s · supports -
 - Translation / localization · seq 2048 · out 500 · reasoning None · SLO 500ms / 40tps / 18s · supports -
 - Contact-center agent assist · seq 16384 · out 60 · reasoning None · SLO 400ms / 40tps / 3s · supports asr,embed,rerank · KV pinned per session
 
