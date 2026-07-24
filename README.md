@@ -1,4 +1,9 @@
-<p align="center"><img src="assets/logo-robot.svg" alt="GPUscale.net" width="380"></p>
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/logo-robot-dark.svg">
+    <img src="assets/logo-robot.svg" alt="GPUscale · gpuscale.net" width="300">
+  </picture>
+</p>
 
 <p align="center">
   <a href="https://gpuscale.net/"><img src="https://img.shields.io/badge/live-gpuscale.net-2dd4bf?style=flat-square" alt="Live site"></a>

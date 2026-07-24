@@ -1,5 +1,12 @@
 # Changelog
 
+## Studio 5.15.3 (2026-07-23)
+
+- Logos reworked: the ".net" no longer sits beside the wordmark; a small
+  teal "gpuscale.net" line now runs underneath, in all four SVG variants
+  (robot and chip marks, light and dark). The README logo is theme-aware:
+  GitHub dark mode gets the dark variant.
+
 ## Studio 5.15.2 (2026-07-23)
 
 Branding pass around the new tagline.
