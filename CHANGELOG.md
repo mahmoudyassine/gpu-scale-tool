@@ -1,5 +1,82 @@
 # Changelog
 
+## Studio 5.22.1 (2026-07-27)
+
+An independent 14-agent adversarial audit re-checked 5.22.0. It confirmed the ten
+findings that release closed, and found nine defects in the new work plus two
+over-claims in the release notes. All are fixed here.
+
+### The fleet-map legend reads
+
+Eighteen entries wrapped raggedly across five rows from fourteen different left
+edges. They now fill two aligned columns top to bottom, so the pool colours, the
+node states and the memory key each stay together; one column below 1020px.
+
+### What the audit found in the new work
+
+- **Undo could hand back a bigger fleet than you started with.** The snapshot
+  omitted each use case's slice geometry, so undoing an apply that had moved a
+  pool onto MIG slices restored the targets but not the plan: measured 3 serving
+  cards before, 22 after the undo, with a speed target now missed. It now
+  snapshots every use case's whole allocation and restores it exactly.
+- **"Relax the P95 promises" could tighten one.** The paired promise was computed
+  from the proposed speed and written unconditionally, so a use case whose P95
+  had slack had it rewritten downwards - a 120 s promise became 28 s, on a button
+  labelled "relax". A promise is now never moved in the tightening direction.
+- **A MIG-sliced pool was re-solved on top of its own slice.** `poolSolveState`
+  exists to hand the solver a real card back, and three call sites bypassed it,
+  including auto-size itself, so a sliced pool could never leave the geometry a
+  previous run had put it in.
+- **The give-back after growth compared categories, not targets.** A pool mixing
+  a reachable speed target with an unreachable one had the hardware that met the
+  reachable one handed straight back, and was then told the target was
+  impossible. It now compares the set of missed targets: growth that met one has
+  earned its cards.
+- **"Fails even alone at batch 1" was said of targets that do not.** A target can
+  also be out of reach because meeting it would need more replicas than the
+  hardware allows; that now says so instead.
+- **The quoted saving ignored node packing and resilience.** Cards are what a
+  suggestion moves, but nodes are what you buy: the default single-use-case
+  project showed "8 cards to 4" while the order went 16 GPUs to 8, and a real
+  four-card saving could leave the order untouched. Every suggestion now quotes
+  both, the buttons promise the procurement figure when it moves, and a saving
+  that does not reach the order says so in those words.
+- **The recommendation memo could outlive its inputs.** Custom-model geometry,
+  the KV-extension flag, the preset, the tensor-parallel width and the attached
+  supporting models all changed the answer without changing the key, so a card
+  could quote a fleet that no longer existed.
+- **The workload floor read the preset dropdown, not the workload.** Switching a
+  voice agent to "Custom (manual inputs)" changes nothing about it, but dropped
+  its floor from 30 to 15 tok/s and offered 26. The floor is now derived from the
+  use case's own KV policy, P95 and reasoning budget.
+- **The co-residency note could still lead with a generic gate.** The measured
+  pairwise reasons now outrank them, the blocking tenant is the one actually in
+  the way rather than whichever landed first, and two pools of the same model at
+  the same width are told apart.
+- Both spreadsheet exports still sized the fleet as workers x GPUs-per-worker, so
+  the workbook contradicted the card plan the studio reports; they now carry the
+  card count as an input with a live fallback formula. The XLSX fleet grid also
+  emitted `rgb="FFundefined"` for a dedicated GPU inside a mixed node, and
+  painted co-resident and shared cards as spare.
+
+### Corrections to the 5.22.0 notes
+
+- The band-label bullet described a fix that shipped in 5.21.2; 5.22.0 only added
+  a comment. Dropped.
+- "Every sampled sliced win was more expensive than the plan it beat" overstated
+  it. Measured over 120 random projects: 5.21.3 picked sliced 39 times, of which
+  17 bought nothing - 16 ties and one strictly more expensive.
+
+### Docs
+
+`llms.txt` (served to agents), the README diagram and the engine banner still said
+engine v23, 94 models, 38 accelerators and JSON schema 4; the KV formula was
+quoted in the pre-v25 uniform form. The Auto-size help text still described
+buying whole nodes. `docs/DATA.md` and the README layout listed four data files
+when there are five. The bundled `skill/` CLI is genuinely behind (engine v23,
+library v25) and over-states KV for sliding-window models, so the README now says
+so instead of claiming the same math and libraries.
+
 ## Studio 5.22.0 (2026-07-27)
 
 The SLO targets are now a sizing lever you can act on, and the last of the audit
@@ -33,8 +110,9 @@ the target that would fill the card:
 
 - **Sliced-versus-dedicated was priced in whole nodes.** Since 5.21 a pool owns
   cards, but the MIG comparison still rounded the dedicated plan up to a node, so
-  three slices could "save" hardware against a single card. It cost real GPUs:
-  every sampled sliced win was more expensive than the plan it beat.
+  three slices could "save" hardware against a single card. Measured over 120
+  random projects: 39 sliced wins on 5.21.3, of which 17 bought nothing (16 ties
+  and one strictly more expensive); on this build all 22 are strictly cheaper.
 - **The SLA growth loop could buy 400 replicas and report success.** Its
   iteration guard was the binding exit on wide nodes, and leaving through it
   recorded nothing, so a plan that still missed its target claimed to meet it.
@@ -64,8 +142,6 @@ the target that would fill the card:
   merge. On the reference project it blamed first-token headroom when every pair
   was over the decode-bandwidth ceiling; the binding reason is now recorded where
   the rejection happens and named with its numbers.
-- The fleet-map label test still held the pre-5.21 cell sizes, so bands lost
-  their percentage labels early.
 - `gpuFitScan` re-solved sliced pools against the slice instead of the card, and
   its memo ignored the GPU and the tuning inputs.
 

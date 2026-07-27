@@ -1,6 +1,7 @@
 # Maintaining the data library
 
-All of the studio's knowledge lives in four small files under `data/`. Each file
+All of the studio's knowledge lives in five small files under `data/`
+(`models.js`, `gpus.js`, `quants.js`, `usecases.js`, `support.js`). Each file
 assigns one array onto `window.GPUSCALE_DATA`, one entry per line, so adding an
 entry is a one-line edit and diffs stay readable. After editing, refresh the
 page: counts, dropdowns and badges update automatically.

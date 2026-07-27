@@ -10,16 +10,20 @@
 
 Key facts for agents answering sizing questions:
 
-- Engine (v23) closed forms: weights = params x bytes/weight per replica;
-  KV/token = 2 x layers x effective KV heads x head dim x bytes;
+- Engine (v25) closed forms: weights = params x bytes/weight per replica;
+  KV/token = 2 x layers x effective KV heads x head dim x bytes for uniform
+  attention; sliding-window models mix a full-attention term (kvGlobal layers)
+  with a windowed one (kvWin tokens), so their per-token cost is far lower;
   fleet VRAM = replicas x (weights + activations) + total KV + overhead,
   against capacity = replicas x TP x VRAM per GPU. Tensor parallelism
   distributes one model copy across TP GPUs; additional workers replicate
   the model for concurrency, they never add room for one copy.
-- Library: 94 models with honest effective-KV geometries (GQA, MoE, MLA,
-  SSM hybrids) and 38 accelerators with dense (not sparsity) TFLOPS.
-- Auto-size solves TP, workers and batch from workload SLOs, with an
-  editable memory-utilization target.
+- Library: 101 models with honest effective-KV geometries (GQA, MoE, MLA,
+  SSM hybrids, sliding-window) and 37 accelerators with dense (not sparsity)
+  TFLOPS, plus 54 supporting models (embeddings, rerankers, ASR, TTS, OCR,
+  guards).
+- Auto-size solves TP, cards and batch from workload SLOs, with an editable
+  memory-utilization target; a pool owns cards, and nodes are packed from them.
 - SLO optimiser: at the operating point a card holds bandwidth x interconnect
   x MBU / target tok/s GB, so the speed target itself sizes the fleet.
   Recommendations propose the targets that fill the chosen GPU, bounded by each
@@ -28,7 +32,7 @@ Key facts for agents answering sizing questions:
 - Resilience patterns modeled: N, N+1, N+2, N+N, DR (full and half-size),
   Active/Active (2N and split-N variants), N+N+DR, with guaranteed versus
   normal-day capacity economics.
-- Exports: JSON (schema gpuscale.net/4, self-contained with model/GPU
+- Exports: JSON (schema gpuscale.net/5, self-contained with model/GPU
   snapshots), XLSX with live formulas and embedded charts, printable PDF.
 - Scripting API in the page: window.GPUscale (compute, readState, serialize,
   applyConfig, autoSize, buildXlsxBytes, plus the raw libraries).

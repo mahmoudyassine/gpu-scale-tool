@@ -7,7 +7,7 @@ if(!MODELS.length || !GPUS.length || !QUANTS.length || !CASES.length){
   document.body.innerHTML = '<div style="font-family:system-ui,sans-serif;max-width:560px;margin:80px auto;padding:0 20px;line-height:1.65;color:#1A2536"><h2 style="margin-bottom:10px">Data files not loaded</h2><p>GPUscale.net could not find its library. Keep <code>index.html</code> together with the <code>data/</code> and <code>assets/</code> folders: the four files <code>data/models.js</code>, <code>data/gpus.js</code>, <code>data/quants.js</code> and <code>data/usecases.js</code> must sit next to this page.</p><p>If you need one portable file instead, use <code>dist/gpuscale_standalone.html</code> or rebuild it with <code>python3 tools/build_single_file.py</code>.</p></div>';
   throw new Error('GPUscale.net data missing');
 }
-const STUDIO_VERSION = '5.22.0', ENGINE_VERSION = 25;
+const STUDIO_VERSION = '5.22.1', ENGINE_VERSION = 25;
 function newProjId(){ const L='abcdefghjkmnpqrstuvwxyz', D='0123456789';
   const pick=s=>s[Math.floor(Math.random()*s.length)];
   return 'Project_'+pick(L)+pick(L)+pick(D)+pick(D)+pick(D); }
@@ -47,7 +47,7 @@ const RESIL = {
 };
 Object.values(RESIL).forEach(r=>{ r.extraW = n => r.mult(n)+r.add; });
 
-/* ================= ENGINE (pure · v23: workbook v22 + per-replica weight/activation accounting) ================= */
+/* ================= ENGINE (pure · v25: per-replica weight/activation accounting, sliding-window KV, multiGb) ================= */
 /*ENGINE-START*/
 function compute(s){
   const bw = s.bytesW, bk = s.bytesK;
@@ -474,11 +474,18 @@ function poolSolveState(p, hw, extra){
 /* signature for anything that re-solves the whole project: every input the
    solver reads, so a memoised scan can never outlive the fleet it describes */
 function prjSolveSig(prj){
-  return prj.pools.map(p=>[p.state.model.name,p.state.wq.name,p.state.kq.name,
+  // Every field the solver reads has to be in here. A custom model is always
+  // named "Custom", extend/selCase/tp/cards never appeared, and a memo that
+  // outlives its inputs quotes a fleet that no longer exists.
+  const geo=st=>[st.params,st.active,st.hidden,st.layers,st.kvHeads,st.headDim,st.ctx,
+    st.kvGlobal||0,st.kvWin||0,st.kvgHeads||0,st.kvgDim||0,st.kvgKeyOnly?1:0,st.kvLayers||0].join('.');
+  return prj.pools.map(p=>[p.state.model.name,geo(p.state),p.state.wq.name,p.state.kq.name,
       Math.round(p.state.concurrent),Math.round(p.state.resident),Math.round(p.state.visibleOut),
-      Math.round(p.state.reasonTok),p.state.policy,
-      p.members.map(i=>[UC[i].f.sloTtft,UC[i].f.sloTps,UC[i].f.sloP95].join(',')).join(';')].join('/')).join('|')
-    +'#'+[prj.hw.perW,prj.hw.g.name,prj.hw.ic,prj.hw.mbu,prj.hw.mfu,prj.hw.ovh,
+      Math.round(p.state.reasonTok),p.state.extend?1:0,p.state.policy,
+      p.state.tp,p.state.gpus,p.sliced? p.sliced.units:0,
+      p.members.map(i=>[UC[i].f.selCase,UC[i].f.sloTtft,UC[i].f.sloTps,UC[i].f.sloP95,
+        UC[i].f.chkExtend?1:0,(UC[i].supports||[]).map(sp=>sp.kind+':'+sp.model).join('+')].join(',')).join(';')].join('/')).join('|')
+    +'#'+[prj.hw.perW,prj.hw.g.name,prj.hw.ic,prj.hw.mbu,prj.hw.mfu,prj.hw.ovh,prj.hw.resil,
       (($('autoUtil')&&$('autoUtil').value)||80)].join('/');
 }
 let __fitMemo={key:'',rows:null};
@@ -519,13 +526,20 @@ function gpuFitScan(prj){
    against its own workload class (live speech cannot read at 19 tok/s) and its
    own P95 promise is kept intact, then the whole project is re-solved so the
    saving quoted is the real one. */
+/* Classify by what the use case IS, not by which preset it was started from:
+   switching the dropdown to "Custom (manual)" changes nothing about the workload
+   but used to drop a voice agent to the reading floor. The preset is only a
+   fallback for fields the card does not carry. */
 function sloTpsFloor(uc){
-  const ci=+((uc.f||{}).selCase);
-  const c=(ci>=0&&CASES[ci])? CASES[ci] : null;
+  const f=uc.f||{};
+  const ci=+f.selCase, c=(ci>=0&&CASES[ci])? CASES[ci] : null;
   const tr=(c&&c.traffic)||{};
-  if(c && (c.policy==='all' || (tr.direct && c.p95Target>0 && c.p95Target<=6)))
-    return {tps:30, why:'a live speech path: the token stream has to stay ahead of the audio'};
-  if(c && (c.reasonTok||0)>0 && c.p95Target>=55)
+  const p95=+f.sloP95||0, reason=+f.inReasonTok||0;
+  // a live path: KV pinned for the whole session, or a P95 measured in seconds
+  if(f.selPolicy==='all' || (p95>0&&p95<=6) || (tr.direct && c.p95Target>0 && c.p95Target<=6))
+    return {tps:30, why:'this is a live path: the token stream has to stay ahead of the conversation'};
+  // most tokens hidden and a long budget: total time matters, stream speed does not
+  if(reason>0 && (p95>=55 || (!p95 && c && c.p95Target>=55)))
     return {tps:10, why:'most of its tokens are hidden thinking, so total time matters more than stream speed'};
   return {tps:15, why:'a person reads at roughly 15 tok/s'};
 }
@@ -541,18 +555,31 @@ function sloOverride(p, over){
     sloTtft:nz(ms.map(m=>+m.sloTtft||0)),
     sloP95:nz(ms.map(m=>+m.sloP95||0))};
 }
-/* what Auto-size would buy for the whole project with these per-use-case targets */
+/* What Auto-size would buy for the whole project with these per-use-case targets:
+   serving CARDS, and the fleet those cards actually pack into. Quoting cards
+   alone was misleading - nodes are bought whole and resilience multiplies them,
+   so a real four-card saving can leave the procurement line untouched, and the
+   default single-use-case project shows a flat 2x between the two numbers. */
 function sloPrice(prj, over){
+  const hw=prj.hw;
   let cards=0, stuck=false;
   for(const p of prj.pools){
     let r;
-    try{ r=solvePool(poolSolveState(p, prj.hw, sloOverride(p, over))); }
+    try{ r=solvePool(poolSolveState(p, hw, sloOverride(p, over))); }
     catch(e){ return null; }
     if(!r||!r.ok) return null;
     if(r.sloStuck) stuck=true;
     cards += (r.cards||r.physGpus||0);
   }
-  return {cards:Math.round(cards*100)/100, stuck};
+  // a sliced pool's physGpus is already its MARGINAL cost beyond the support
+  // GPUs, so the supports' own bins are added exactly once
+  let supG=0; try{ supG=allocSupports(hw).gpus||0; }catch(e){}
+  const activeG=cards+supG;
+  const info=RESIL[hw.resil]||RESIL.n;
+  const servW=Math.max(1, Math.ceil(activeG/hw.perW));
+  const procW=servW+info.mult(servW)+info.add;
+  return {cards:Math.round(cards*100)/100, stuck, activeG,
+    servW, procW, procG:procW*hw.perW};
 }
 let __sloMemo={key:'', recs:null};
 function sloOptScan(prj){
@@ -569,7 +596,7 @@ function sloOptBuild(prj){
   const U=Math.min(95,Math.max(50,+($('autoUtil')&&$('autoUtil').value)||80))/100;
   const P95_FACTOR=1.5;   // the most a P95 promise may be relaxed in one suggestion
   const base=sloPrice(prj,{});
-  if(!base||!base.cards) return out;
+  if(!base) return out;
   const secs=x=>fmt(x)+' s';
   // a drop nobody would act on is noise: at least 2 tok/s and at least a tenth
   const worth=(from,to)=>to<from-Math.max(2, 0.1*from);
@@ -590,10 +617,16 @@ function sloOptBuild(prj){
     const atU=(g.bw*1000*p.state.ic*hw.mbu)/(U*g.vram);
     const fill=Math.max(fl.tps, Math.floor(atU));
     const cap=t=>Math.min(cur, Math.max(fill, Math.ceil(t)));
-    return {x, cur, gen, lat, atU, floor:fl, p95,
-      keep:cap(minFor(1)), relax:cap(minFor(P95_FACTOR)),
-      // round the paired promise the safe way: always a little looser than needed
-      p95For:t=>{ const v=1.3*(lat+gen/t); return v>=10? Math.ceil(v) : Math.ceil(v*10)/10; }};
+    // round the paired promise the safe way: always a little looser than needed,
+    // because writing one the recommended speed cannot meet would be a lie
+    const p95For=t=>{ const v=1.3*(lat+gen/t); return v>=10? Math.ceil(v) : Math.ceil(v*10)/10; };
+    const relax=cap(minFor(P95_FACTOR));
+    // A use case whose P95 already has slack must KEEP that slack: pairing the
+    // promise with the new speed unconditionally tightened it, on a button that
+    // says "relax".
+    return {x, cur, gen, lat, atU, floor:fl, p95, p95For,
+      keep:cap(minFor(1)), relax,
+      relaxP95: p95>0? Math.max(p95, p95For(relax)) : 0};
   };
   const applyBtn=(label, sets, msg, primary)=>
     `<button type="button" class="btn-rec no-print${primary?' pri':''}" data-apply="${esc(JSON.stringify({sets, msg}))}">${esc(label)}</button>`;
@@ -604,6 +637,17 @@ function sloOptBuild(prj){
   // these are counts and targets, not measurements: print 48, not 48.0
   const num=n=>Number.isInteger(+n)? (+n).toLocaleString('en-US') : fmt(n);
   const cards=n=>`${num(n)} card${n===1?'':'s'}`;
+  /* Cards are what a suggestion moves; nodes are what you buy. Say both, and say
+     plainly when the saving does not reach the procurement line. */
+  const outcome=(pr)=>{
+    if(!pr) return '';
+    const same=pr.procG===base.procG;
+    return `<br>Auto-size buys <b>${cards(base.cards)}</b> at today's targets and <b>${cards(pr.cards)}</b> at these`
+      +(same
+        ? `, which pack onto the same <b>${base.procW} node${base.procW>1?'s':''} · ${base.procG} GPUs</b>: the saving is headroom on cards you already own, not a smaller order`
+        : `: <b>${base.procW} node${base.procW>1?'s':''} · ${base.procG} GPUs</b> procured today versus <b>${pr.procW} node${pr.procW>1?'s':''} · ${pr.procG} GPUs</b>`)
+      +`${pr.stuck?', with some targets still out of reach':''}.`;
+  };
   // ---- 1. speed targets, per pool, priced by re-solving the whole project ----
   const rows=[];
   prj.pools.forEach((p,pi)=>{
@@ -612,7 +656,7 @@ function sloOptBuild(prj){
     const curMax=Math.max.apply(null, props.map(q=>q.cur));
     const keepSet={}, relaxSet={};
     props.forEach(q=>{ if(q.keep<q.cur-0.5) keepSet[q.x.i]={sloTps:q.keep};
-      if(q.relax<q.cur-0.5) relaxSet[q.x.i]={sloTps:q.relax, sloP95:q.p95>0? q.p95For(q.relax) : 0}; });
+      if(q.relax<q.cur-0.5) relaxSet[q.x.i]={sloTps:q.relax, sloP95:q.p95>0? q.relaxP95 : 0}; });
     const keepMax=Math.max.apply(null, props.map(q=>q.keep));
     const relaxMax=Math.max.apply(null, props.map(q=>q.relax));
     const keepPr=(Object.keys(keepSet).length && worth(curMax,keepMax))? sloPrice(prj,keepSet) : null;
@@ -641,7 +685,7 @@ function sloOptBuild(prj){
     const lines=listed.slice(0,3).map(q=>{
       const t=row.keepPr? q.keep : q.relax;
       const p95txt=(!row.keepPr&&q.p95>0&&q.relax<q.cur-0.5)
-        ? ` and its P95 promise from ${num(q.p95)} to ${num(q.p95For(q.relax))} s`
+        ? (q.relaxP95>q.p95+1e-9? ` and its P95 promise from ${num(q.p95)} to ${num(q.relaxP95)} s` : ` · its ${num(q.p95)} s P95 promise still holds`)
         : (q.p95>0? ` · its ${num(q.p95)} s P95 promise is untouched`:'');
       const why=(t<=q.floor.tps+0.001&&q.floor.tps>Math.floor(q.atU))? ` · no lower, because ${esc(q.floor.why)}`:'';
       return `<br><b>${esc(ucName(q.x.uc))}</b>: ${num(q.cur)} → <b>${num(t)} tok/s</b>${p95txt}`
@@ -649,15 +693,21 @@ function sloOptBuild(prj){
     }).join('');
     const more=listed.length>3? `<br>…and ${listed.length-3} more use case${listed.length-3>1?'s':''} in this pool.`:'';
     const acts=[];
+    // the promise on a button is the number that changes: the order if it moves,
+    // otherwise the cards
+    const gain=pr=>pr.procG<base.procG? `${pr.procG} GPUs` : cards(pr.cards);
+    const done=pr=>pr.procG<base.procG
+      ? `Applied: ${base.procG} → ${pr.procG} GPUs procured (${cards(base.cards)} → ${cards(pr.cards)})`
+      : `Applied: ${cards(base.cards)} → ${cards(pr.cards)}, same ${base.procG}-GPU order`;
     if(row.keepPr) acts.push(applyBtn(
-      `Apply to ${Object.keys(row.keepSet).length} use case${Object.keys(row.keepSet).length>1?'s':''} → ${cards(row.keepPr.cards)}`,
-      row.keepSet, `Speed targets applied: ${cards(base.cards)} → ${cards(row.keepPr.cards)}`, true));
+      `Apply to ${Object.keys(row.keepSet).length} use case${Object.keys(row.keepSet).length>1?'s':''} → ${gain(row.keepPr)}`,
+      row.keepSet, done(row.keepPr), true));
     if(row.relaxPr && (!row.keepPr || row.relaxPr.cards<row.keepPr.cards-0.01)) acts.push(applyBtn(
-      `Relax P95 by up to ${Math.round((P95_FACTOR-1)*100)}% too → ${cards(row.relaxPr.cards)}`,
-      row.relaxSet, `Speed and P95 targets applied: ${cards(base.cards)} → ${cards(row.relaxPr.cards)}`, !row.keepPr));
+      `Relax the P95 promises too → ${gain(row.relaxPr)}`,
+      row.relaxSet, done(row.relaxPr), !row.keepPr));
     if(!allOffered && allPr && best && allPr.cards<best.cards-0.01){
-      acts.push(applyBtn(`Apply to all ${Object.keys(allSet).length} use cases → ${cards(allPr.cards)}`,
-        allSet, `Speed targets applied project-wide: ${cards(base.cards)} → ${cards(allPr.cards)}`));
+      acts.push(applyBtn(`Apply to all ${Object.keys(allSet).length} use cases → ${gain(allPr)}`,
+        allSet, done(allPr)));
       allOffered=true;
     }
     if(!acts.length) return;
@@ -667,8 +717,7 @@ function sloOptBuild(prj){
         +`<b>${fmt(holds)} GB</b> of its ${fmt(g.vram)} GB (${ceilPct.toFixed(0)}%): the rest is memory the target forbids you to fill. `
         +`Filling ${(U*100).toFixed(0)}% of the card asks for about <b>${fmt(props[0].atU)} tok/s</b>.`
         +lines+more
-        +`<br>Auto-size buys <b>${cards(base.cards)}</b> at today's targets and <b>${cards(best.cards)}</b> at these`
-        +`${best.stuck?', with some targets still out of reach on any fleet size':''}.`,
+        +outcome(best),
       acts});
   });
   // ---- 2. a first-token target that widened the tensor-parallel group ----
@@ -688,10 +737,12 @@ function sloOptBuild(prj){
         b:`<b>${esc(ucName(x.uc))}</b> asks for its first token within ${num(x.s.sloTtft)} ms, and a ${fmtTok(x.s.resident)}-token prefill only makes that at `
           +`TP${r0.tp}; TP${r0.tpFit} is all the model needs to fit. Tensor parallel widens every replica in the pool, so all of it pays for that one target. `
           +`At TP${r0.tpFit} the first token lands in about <b>${fmt(at)} ms</b>. `
-          +`Auto-size buys <b>${cards(base.cards)}</b> today and <b>${cards(pr.cards)}</b> with a ${num(prop)} ms target. `
-          +`Prefix caching, chunked prefill or a disaggregated prefill pool attack the same number without relaxing the promise.`,
-        acts:[applyBtn(`Set ${ucName(x.uc)} to ${num(prop)} ms → ${cards(pr.cards)}`,
-          set, `First-token target applied: ${cards(base.cards)} → ${cards(pr.cards)}`, true)]});
+          +`Prefix caching, chunked prefill or a disaggregated prefill pool attack the same number without relaxing the promise.`
+          +outcome(pr),
+        acts:[applyBtn(`Set ${ucName(x.uc)} to ${num(prop)} ms → ${pr.procG<base.procG? pr.procG+' GPUs' : cards(pr.cards)}`,
+          set, pr.procG<base.procG
+            ? `First-token target applied: ${base.procG} → ${pr.procG} GPUs procured`
+            : `First-token target applied: ${cards(base.cards)} → ${cards(pr.cards)}, same ${base.procG}-GPU order`, true)]});
     }catch(e){}
   });
   return out.slice(0,4);
@@ -707,7 +758,11 @@ function applySloAction(act){
   const keys=Object.keys(sets);
   if(!keys.length) return;
   captureUc();
-  const before=keys.map(k=>({i:+k, f:Object.assign({}, (UC[+k]||{f:{}}).f), cards:+((UC[+k]||{}).cards)||0, key:(UC[+k]||{}).cardsKey||''}));
+  // snapshot EVERY use case, not just the ones being written: applying re-solves
+  // the whole project, so a pool that is not in scope can still change geometry.
+  // Undo that restored only the targets handed back a different fleet.
+  const before=UC.map((u,i)=>({i, f:Object.assign({}, u.f), cards:+u.cards||0,
+    key:u.cardsKey||'', sliceU:+u.sliceU||0}));
   keys.forEach(k=>{ const u=UC[+k]; if(!u) return;
     Object.keys(sets[k]).forEach(f=>{ u.f[f]=String(sets[k][f]); });
     u.cards=0; u.cardsKey='';        // the old plan was solved against the old targets
@@ -715,8 +770,9 @@ function applySloAction(act){
   loadUc(activeUc);
   autoSize(true);
   toast(act.msg||'Targets applied', false, {label:'Undo', fn:()=>{
-    before.forEach(b=>{ const u=UC[b.i]; if(!u) return; u.f=b.f; u.cards=b.cards; u.cardsKey=b.key; });
-    loadUc(activeUc); renderUcCards(); autoSize(true); toast('Targets restored');
+    before.forEach(b=>{ const u=UC[b.i]; if(!u) return;
+      u.f=b.f; u.cards=b.cards; u.cardsKey=b.key; u.sliceU=b.sliceU; });
+    loadUc(activeUc); renderUcCards(); render(); toast('Targets and fleet restored');
   }});
 }
 { const rp=$('recs');
@@ -1118,7 +1174,7 @@ function addUc(){ captureUc(); const base=UC[activeUc];
   captureUc();
   const prj=computeProject();
   const p=prj.pools.find(p2=>p2.members.includes(UC.length-1));
-  if(p && p.members.length===1){ const r=solvePool(p.state);
+  if(p && p.members.length===1){ const r=solvePool(poolSolveState(p, prj.hw));
     if(r.ok){ u.f.inTp=r.tp; u.f.inWorkers=r.workers; u.f.inBatch=r.batch;
       u.sliceU = r.mode==='sliced'? r.sliceU : 0; loadUc(UC.length-1); } }
   renderUcCards(); render();
@@ -1483,10 +1539,17 @@ function coPack(pools, hw){
           placed=true; break; }
         // the block that came closest names the binding limit for this pairing
         if(!block.some(g=>g.slots.length)) continue;
-        const hostPool=(block.find(g=>g.slots.length)||{slots:[{}]}).slots[0].pool;
+        // name the tenant that is actually in the way (the heaviest on the
+        // blocking card), not whichever happened to land there first
+        const host=block.reduce((w,g)=>(g.duty>w.duty? g:w), block[0]);
+        const hostSlot=(host.slots||[]).slice().sort((x,y)=>y.duty-x.duty)[0]||{};
+        const hostPool=hostSlot.pool!=null? hostSlot.pool : it.pool;
         const maxMem=Math.max.apply(null, block.map(g=>g.mem))+it.mem;
         const maxDuty=Math.max.apply(null, block.map(g=>g.duty))+it.duty;
-        const t = maxDuty>DUTY_CAP+1e-9? 'duty'
+        // a card that already runs this very pool is refused for that reason,
+        // whatever else is also true of it
+        const t = samePool&&hostPool===it.pool? 'samePool'
+          : maxDuty>DUTY_CAP+1e-9? 'duty'
           : maxMem>cap+1e-9? 'mem'
           : !allSafe? 'unsafe'
           : samePool? 'samePool' : 'ttft';
@@ -1504,16 +1567,20 @@ function coPack(pools, hw){
   // why no card took a second tenant, in order of how many pairings each limit
   // blocked: the pool-level gates first (a pool that can never share), then the
   // pairwise limits actually measured during placement.
-  const blockers=[], shared1=new Set();
+  const blockers=[], poolGates=[], shared1=new Set();
   used.forEach(g=>{ if(new Set(g.slots.map(s=>s.pool)).size>1) g.slots.forEach(s=>shared1.add(s.pool)); });
+  // two pools of the same model are a real configuration: add the width, and an
+  // ordinal when even that collides, so a reason always points at ONE of them
   const nm=pi=>{ const p=pools[pi]; if(!p) return 'a pool';
     const n=p.state.model.name;
-    // two pools of the same model are a real configuration: name the width so the
-    // reason points at one of them
-    return pools.some((q,qi)=>qi!==pi&&!q.sliced&&q.state.model.name===n)? `${n} (TP${p.state.tp})` : n; };
+    const sameName=pools.filter((q,qi)=>!q.sliced&&q.state.model.name===n);
+    if(sameName.length<2) return n;
+    const sameTp=sameName.filter(q=>q.state.tp===p.state.tp);
+    if(sameTp.length<2) return `${n} (TP${p.state.tp})`;
+    return `${n} (TP${p.state.tp}, pool ${pi+1})`; };
   pools.forEach((p,pi)=>{ if(p.sliced) return;
-    if(!(+p.state.sloTps>0)){ blockers.push(`${nm(pi)} has no per-user speed target, so there is no share to guarantee it`); return; }
-    if(!coShareSafe(p)) blockers.push(`${nm(pi)} would miss its P95 at the speed a shared card guarantees`);
+    if(!(+p.state.sloTps>0)){ poolGates.push(`${nm(pi)} has no per-user speed target, so there is no share to guarantee it`); return; }
+    if(!coShareSafe(p)) poolGates.push(`${nm(pi)} would miss its P95 at the speed a shared card guarantees`);
   });
   { const tally={};
     why.forEach(w=>{ const k=w.t+'|'+Math.min(w.a,w.b)+'|'+Math.max(w.a,w.b);
@@ -1526,7 +1593,10 @@ function coPack(pools, hw){
       else if(w.t==='ttft') blockers.push(`sharing a card would stretch the first token of ${nm(w.a)} or ${nm(w.b)} past its target`);
       else if(w.t==='unsafe') blockers.push(`${nm(w.b)} cannot hold its P95 at the speed a shared card guarantees, so nothing may join its cards`);
       else blockers.push(`only cards already running ${nm(w.a)} had room, and two replicas of one model on a card add nothing`);
-    }); }
+    });
+    // measured pairings first, generic pool gates after: the note prints
+    // blockers[0] as THE reason, and it used to be whichever gate came first
+    poolGates.forEach(g2=>blockers.push(g2)); }
   const dedicatedG=pools.reduce((t,p)=>t+(p.sliced?0:p.d.replicas*Math.max(1,p.state.tp)),0);
   return {gpus:used, count:used.length, dedicatedG, saved:Math.max(0,dedicatedG-used.length),
     blockers:[...new Set(blockers)],
@@ -1971,7 +2041,11 @@ function renderFleet(prj){
     `<span class="lg-li"><span class="lg-sw mem-w"></span><span class="k">model weights</span></span>`+
     `<span class="lg-li"><span class="lg-sw mem-kv"></span><span class="k">KV cache (grows with traffic)</span></span>`+
     `<span class="lg-li"><span class="lg-sw mem-o"></span><span class="k">working set</span></span>`+
-    `<span class="lg-li">empty space above = memory the speed target cannot spend</span>`;
+    `<span class="lg-li note">empty space above = memory the speed target cannot spend</span>`;
+  // two aligned columns, filled top-to-bottom so the pool colours, the node
+  // states and the memory key each stay together instead of wrapping raggedly
+  { const lg=$('fmLegend'), n=lg.querySelectorAll('.lg-li').length;
+    lg.style.setProperty('--lg-rows', Math.max(1, Math.ceil(n/2))); }
   $('fmTotals').textContent=`${fleet.procW} nodes · ${fleet.procG} GPUs · ≈${fmt(fleet.kW)} kW TDP`;
   // semantic text form
   $('fleetList').innerHTML='<h3>Deployment, text form</h3>'+sites.map(s2=>`<h4>${esc(s2.title)}</h4><ul>`+s2.nodes.map(n2=>{
@@ -2195,7 +2269,7 @@ function renderProjectReport(prj){
   try{
     const def=FIELDS.inIc.val;
     if(hw.ic < def-1e-9){
-      const cardsAt=ic=>pools.reduce((t,p2)=>{ const r=solvePool({...p2.state, ic});
+      const cardsAt=ic=>pools.reduce((t,p2)=>{ const r=solvePool(poolSolveState(p2, hw, {ic}));
         return t + (r&&r.ok? (r.cards||r.physGpus||0) : 0); },0);
       const now=cardsAt(hw.ic), at=cardsAt(def);
       const crossing=pools.filter(p2=>p2.state.tp>hw.perW).length;
@@ -2603,6 +2677,10 @@ function xlsInputRows(s){
     ['policy','KV policy (1=all,0=running)', s.policy==='all'?1:0, 'Residency policy'],
     ['movh','Per-extra-GPU overhead (GB)', s.multiGb!=null? s.multiGb : 15, 'NCCL buffers etc; 1.4 for MIG slices (per-instance)'],
     ['workers','GPU workers N', s.workers, 'Load-bearing nodes'],
+    // Auto-size allocates CARDS and packs them onto nodes, so a pool can own
+    // fewer GPUs than workers x perW. Carry that number or the workbook
+    // contradicts the fleet the tool just reported.
+    ['cards','Serving GPUs this pool owns (0 = whole nodes)', (s.gpus===s.workers*s.perW? 0 : s.gpus), 'Auto-size allocates cards; nodes are packed from them'],
     ['perW','GPUs per worker', s.perW, '8 = HGX/DGX · 72 = NVL72-class rack'],
     ['tp','Tensor parallel size', s.tp, 'GPUs per replica: drives TTFT'],
     ['vram','GPU VRAM (GB)', s.gpuVram, s.gpu.name],
@@ -2629,7 +2707,7 @@ function buildXls(){
   const rRow=k=>3+RES.findIndex(x=>x[0]===k);
   const R=k=>`R${rRow(k)}C2`;
   function res(key,label,unit,f,str){ RES.push([key,label,unit,f,str]); }
-  res('gpusTotal','Total GPUs','', ()=>`${I('workers')}*${I('perW')}`);
+  res('gpusTotal','Total GPUs','', ()=>`IF(${I('cards')}>0,${I('cards')},${I('workers')}*${I('perW')})`);
   res('weights','Weights','GB', ()=>`${I('params')}*${I('bytesW')}`);
   res('kvTok','KV per token','GB', ()=>`(${I('kvgE')}+${I('kvlE')}*MIN(1,${I('kvWin')}/MAX(1,${R('effSeq')})))*${I('bytesK')}/1000000000`);
   res('effSeq','Effective sequence','tok', ()=>`${I('seq')}+IF(${I('ext')}=1,${I('reason')},0)`);
@@ -2790,7 +2868,7 @@ async function buildXlsxBytes(){
   const RES=[]; const rIdx={};
   const R=k=>`B${rIdx[k]+3}`;
   function res(key,label,unit,f,v,str){ rIdx[key]=RES.length; RES.push([key,label,unit,f,v,!!str]); }
-  res('gpusTotal','Total serving-fleet GPUs','', ()=>`${I('workers')}*${I('perW')}`, s.gpus);
+  res('gpusTotal','Total serving-fleet GPUs','', ()=>`IF(${I('cards')}>0,${I('cards')},${I('workers')}*${I('perW')})`, s.gpus);
   res('weights','Weights per replica','GB', ()=>`${I('params')}*${I('bytesW')}`, d.weights);
   res('kvTok','KV per token','GB', ()=>`(${I('kvgE')}+${I('kvlE')}*MIN(1,${I('kvWin')}/MAX(1,${R('effSeq')})))*${I('bytesK')}/1000000000`, d.kvTok);
   res('effSeq','Effective sequence','tok', ()=>`${I('seq')}+IF(${I('ext')}=1,${I('reason')},0)`, d.effSeq);
@@ -2941,7 +3019,7 @@ async function buildXlsxBytes(){
     wrap:xf(0,0,0,'left',true), wrapMut:xf(2,0,0,'left',true), sec:xf(11,0,0),
     note:xf(12,0,0,'left',true), grid:xf(0,0,1), spare:xf(10,0,2,'center'),
     legend:xf(10,0,0)};
-  const poolCell=pi=>xf(0,fillFor(P_HEX[PCr[pi]]),1);
+  const poolCell=pi=>xf(0,fillFor(P_HEX[PCr[pi]]||P_HEX[0]),1);
   const poolSoft=pi=>xf(4,fillFor(P_SOFT[PCr[pi]]),0,'left');
   const supCell=k=>xf(0,fillFor(SUPC[k]||'5F6B7A','lightUp'),1);
   // ---- Data sheet (chart sources) ----
@@ -3078,9 +3156,17 @@ async function buildXlsxBytes(){
         group.forEach((n2,gi)=>{ const cc0=gi*5;
           n2.gpus.forEach((g2,k)=>{ const rq=rowIds[Math.floor(k/4)], cq=cc0+(k%4);
             let stl=ST.grid;
-            if(g2.type==='pool') stl=poolCell(n2.pool);
-            else if(g2.type==='sup') stl=supCell(g2.bin&&g2.bin.slices[0]? g2.bin.slices[0].kind:'guard');
+            // colour by what the CARD holds, not by the node: a mixed node has no
+            // single pool, and poolCell(null) emitted rgb="FFundefined", which is
+            // not a valid OOXML colour. Shared and co-resident cards are their own
+            // thing too, and used to be painted as spare.
+            if(g2.type==='pool') stl=poolCell(g2.pool!=null? g2.pool : n2.pool);
+            else if(g2.type==='sup'||g2.type==='shared'){
+              const sl=(g2.bin&&g2.bin.slices&&g2.bin.slices[0])||{};
+              stl = sl.kind==='pool'? poolCell(sl.pool) : supCell(sl.sub||sl.kind||'guard');
+            }
             else stl=ST.spare;
+            if(stl==null) stl=ST.grid;
             repRows[rq-1][cq]=cell(colLetter(cq)+rq, stl, ''); }); });
       }
       gap(5);
@@ -3235,7 +3321,7 @@ function solvePool(s){
     const eva=(reps,batch)=>compute({...s, tp, ic, workers:Math.ceil(reps*tp/s.perW),
       gpus:reps*tp, batch});
     let reps, batch, d;
-    let converged=false, sloStuck=null, grewForSlo=0;
+    let converged=false, sloStuck=null, grewForSlo=0, scaleStuck=false, aloneStuck=false;
     const can={};
     if(interactive){
       // fewest replicas that admit the peak concurrency, then grow until it fits
@@ -3262,11 +3348,14 @@ function solvePool(s){
         members.forEach(m=>{ const c=can[m.name||'_'], tag=m.name?` (${m.name})`:'';
           if(!c.tps) stuckList.push('per-user speed'+tag);
           if(!c.p95) stuckList.push('P95'+tag); });
-        const missOf=dd=>{ let t=false,p=false;
-          members.forEach(m=>{ const c=can[m.name||'_'];
-            if(c.tps && m.sloTps>0 && dd.tps < m.sloTps) t=true;
-            if(c.p95 && m.sloP95>0 && memberP95(m, dd.tps, tp) > m.sloP95) p=true; });
-          return {t,p}; };
+        // WHICH targets are missed, not just which kinds: a pool mixing a
+        // reachable target with an unreachable one of the same kind used to have
+        // the hardware that met the reachable one handed straight back
+        const missOf=dd=>{ let t=false,p=false; const who=[];
+          members.forEach(m=>{ const c=can[m.name||'_'], id=m.name||'_';
+            if(c.tps && m.sloTps>0 && dd.tps < m.sloTps){ t=true; who.push(id+'|tps'); }
+            if(c.p95 && m.sloP95>0 && memberP95(m, dd.tps, tp) > m.sloP95){ p=true; who.push(id+'|p95'); } });
+          return {t, p, set:who.sort().join(',')}; };
         const r0=reps, b0=batch;
         // How many replicas does the binding target actually need? Decode is
         // bwEff / (activeParams x bytesW + batchPerRep x effSeq x kvTok) and
@@ -3302,12 +3391,14 @@ function solvePool(s){
           }
           const miss=missOf(d);
           if(miss.t||miss.p){
-            if(miss.t) stuckList.push('per-user speed');
-            if(miss.p) stuckList.push('P95');
+            // stuck at SCALE, not alone at batch 1: name it that way downstream
+            if(miss.t) stuckList.push('per-user speed'), scaleStuck=true;
+            if(miss.p) stuckList.push('P95'), scaleStuck=true;
             // replicas that fixed nothing are pure waste: give them back. The old
             // one-at-a-time loop ran into its 400-iteration guard, kept all 400 and
-            // reported no problem at all.
-            if(miss.t===miss0.t && miss.p===miss0.p){ reps=r0; batch=b0; d=eva(reps,batch); }
+            // reported no problem at all. The comparison must be the SET of missed
+            // targets: growth that met one of them has earned its hardware.
+            if(miss.set===miss0.set){ reps=r0; batch=b0; d=eva(reps,batch); }
           }
         }
         // Give back what the targets do not need. Worker granularity can hand a
@@ -3324,6 +3415,10 @@ function solvePool(s){
           reps=r2; batch=b2; d=d2;
         }
         sloStuck = stuckList.length? [...new Set(stuckList)].join(' and ') : null;
+        // a target that fails alone at batch 1 can never be met; one that only
+        // fails at this concurrency needs more replicas than the fleet allows.
+        // Saying "fails even alone at batch 1" about the second is simply false.
+        aloneStuck = members.some(m=>{ const c=can[m.name||'_']; return !c.tps || !c.p95; });
         grewForSlo=Math.max(0, reps-r0);
       }
     } else {
@@ -3338,7 +3433,7 @@ function solvePool(s){
         reps++;
       }
     }
-    return {tp, crossed, ic, batch, d, converged, sloStuck, grewForSlo, can,
+    return {tp, crossed, ic, batch, d, converged, sloStuck, grewForSlo, can, scaleStuck, aloneStuck,
       replicas:reps, cards:reps*tp,
       workers:Math.max(1,Math.ceil(reps*tp/s.perW)),
       physGpus: reps*tp};
@@ -3468,12 +3563,26 @@ function autoNoteHtml(){
       e.subs&&e.subs.length? `<ul>${e.subs.map(s2=>`<li>${esc(s2)}</li>`).join('')}</ul>`:''}</li>`).join('')}${
     (an.tail||[]).map(t=>`<li class="tail">${esc(t)}</li>`).join('')}</ul>`;
 }
+/* Why a target is out of reach, in the two shapes that actually occur: it fails
+   even alone at batch 1 (no fleet can meet it), or it only fails at this
+   concurrency, where meeting it would need more replicas than the fleet allows. */
+function stuckWhy(r){
+  if(!r||!r.sloStuck) return '';
+  return r.aloneStuck && !r.scaleStuck
+      ? `the ${r.sloStuck} target is not achievable on any fleet size (it fails even alone at batch 1): no hardware was added for it`
+    : !r.aloneStuck && r.scaleStuck
+      ? `the ${r.sloStuck} target needs more replicas than this hardware allows at ${r.d&&r.d.active? r.d.active : 'peak'} concurrent calls: no hardware was added for it`
+      : `the ${r.sloStuck} target is out of reach here: part of it fails even alone at batch 1, the rest would need more replicas than this hardware allows`;
+}
 function autoSizeProject(quiet){
   captureUc();
   const prj=computeProject();
   const entries=[]; let allOk=true;
   prj.pools.forEach(p=>{
-    const r=solvePool(p.state);
+    // a pool that is CURRENTLY sliced carries the slice as its hardware, so hand
+    // the solver a real card back or it plans a slice onto a slice and the pool
+    // never gets out of the geometry a previous run put it in
+    const r=solvePool(poolSolveState(p, prj.hw));
     if(!r.ok){ allOk=false; entries.push({title:`${p.state.model.name} ${p.state.wq.name}`, facts:'does not fit', subs:[r.reason], bad:true}); return; }
     p.members.forEach(mi=>{ const f=UC[mi].f; f.inTp=r.tp; f.inWorkers=r.workers; f.inBatch=r.batch;
       UC[mi].cards = r.mode==='sliced'? 0 : (r.cards||0);
@@ -3483,7 +3592,7 @@ function autoSizeProject(quiet){
     const subs=[];
     if(r.mode==='sliced'){
       subs.push(r.physGpus>0? `adds ${+r.physGpus.toFixed(1)} shared GPU${r.physGpus>1?'s':''} beyond the support GPUs` : 'fits into spare slice capacity on the shared GPUs');
-      if(r.sloStuck) subs.push(`the ${r.sloStuck} target is not achievable on any fleet size: trim output/reasoning tokens or relax it`);
+      if(r.sloStuck) subs.push(stuckWhy(r)+'; trim output or reasoning tokens, or relax it');
       entries.push({title:`${p.state.model.name} ${p.state.wq.name}`, who:names,
         facts:`${r.workers} replica${r.workers>1?'s':''} on ${sliceName(r.prof,r.workers>1)} (${fmt(r.prof.gb)} GB) · batch ${r.batch} · ${p.state.concurrent} calls · shared GPUs`, subs});
     } else {
@@ -3493,7 +3602,7 @@ function autoSizeProject(quiet){
         subs.push(`TP${r.tp} shards can never share a GPU or sit on MIG slices: tensor parallel needs NCCL peer-to-peer over NVLink, and MIG partitions have no peer-to-peer between them, so each copy owns ${r.tp} whole GPUs however empty they look`);
       if(r.sliceWhy) subs.push(`dedicated, not sliced: ${r.sliceWhy}`);
       if(r.crossed) subs.push('one copy spans workers (interconnect penalty)');
-      if(r.sloStuck) subs.push(`the ${r.sloStuck} target is not achievable on any fleet size (fails even alone at batch 1): no hardware was added for it`);
+      if(r.sloStuck) subs.push(stuckWhy(r));
       entries.push({title:`${p.state.model.name} ${p.state.wq.name}`, who:names,
         facts:`TP${r.tp} × ${Math.max(1,Math.round((r.cards||r.physGpus)/Math.max(1,r.tp)))} replica${(r.cards||r.physGpus)/Math.max(1,r.tp)>1?'s':''} = ${r.cards||r.physGpus} GPUs · batch ${r.batch} · ${p.state.concurrent} calls`, subs});
     }
@@ -3539,7 +3648,7 @@ function autoSize(quiet){
     ? `one copy spans ${Math.ceil(tp/s.perW)} workers: interconnect penalty (0.7)${qAlt?`; ${qAlt.name} weights (${fmt(s.params*qAlt.bytes)} GB) would fit one worker`:''}`
     : `one copy stays inside a single worker's NVLink island: no network penalty`);
   if(r.grewForSlo) subs.push(`${r.grewForSlo} extra replica${r.grewForSlo>1?'s':''} added purely for the speed / P95 targets`);
-  if(r.sloStuck) subs.push(`the ${r.sloStuck} target is not achievable on any fleet size: no hardware was added for it`);
+  if(r.sloStuck) subs.push(stuckWhy(r));
   if(df.fits) subs.push(`memory at ${(df.total/df.avail*100).toFixed(0)}% vs the ${packPct}% target: whole-GPU and power-of-two rounding below it, growth margin above it`);
   subs.push(df.fits? (df.sloAll? 'fits, every SLO target passes' : 'memory fits, but an SLO target still fails: see Recommendations') : 'still exceeds VRAM: see Recommendations');
   const entries=[{title:`${s.model.name} ${s.wq.name}`,

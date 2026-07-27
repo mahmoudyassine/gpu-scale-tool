@@ -76,7 +76,7 @@ flowchart LR
         W[Workload<br>context · concurrency · SLOs]
         H[Hardware<br>workers × GPUs · TP · resilience]
     end
-    E{{Engine v23<br>pure closed-form math}}
+    E{{Engine v25<br>pure closed-form math}}
     subgraph Outputs
         F[Memory fit verdict]
         K[TTFT · tok/s · latency]
@@ -95,7 +95,7 @@ flowchart LR
     E --> X
 ```
 
-The engine is ~40 lines of pure math in `assets/app.js` (between
+The engine is ~50 lines of pure math in `assets/app.js` (between
 `/*ENGINE-START*/` and `/*ENGINE-END*/`), mirrored cell-for-cell by the Excel
 export. Core relations:
 
@@ -133,6 +133,7 @@ assets/    styles.css          all styling (light + dark via CSS variables)
            app.js              engine, charts, topology, exports
 data/      models.js gpus.js   the libraries: one entry per line,
            quants.js usecases.js   edit these to maintain the tool
+           support.js
 tools/     build_single_file.py    rebuilds the portable one-file version
 dist/      gpuscale_standalone.html  the portable build (generated)
 docs/      DATA.md             schemas + effective-KV convention
@@ -166,10 +167,14 @@ Enforce HTTPS.
 
 ## 🤖 Claude Code skill
 
-The `skill/` directory packages this engine as a [Claude Code](https://claude.com/claude-code)
+The `skill/` directory packages the engine as a [Claude Code](https://claude.com/claude-code)
 skill: copy it to `~/.claude/skills/gpu-sizing/` and Claude answers GPU sizing
-questions by running the real engine CLI (same math, same libraries) instead
-of estimating. `node skill/sizing.mjs --help` works standalone too.
+questions by running a CLI instead of estimating. `node skill/sizing.mjs --help`
+works standalone too. **It is behind the studio** (engine v23, library v25, 94
+models): it predates the v25 sliding-window KV form, so it over-states KV for
+hybrid-attention models, and it knows nothing of pools, supporting models,
+GPU sharing or card-based sizing. For current numbers use the studio itself or
+`gpuscale-link.skill`, which is rebuilt on every release.
 
 ## 🤝 Contributing
 

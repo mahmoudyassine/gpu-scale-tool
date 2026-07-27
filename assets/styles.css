@@ -182,8 +182,12 @@ html[data-theme="dark"]{--pool0:#82AAFF;--pool1:#C4A5FF;--pool2:#FF8FC1;--pool3:
 .fm-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px}
 .fm-title{font-size:12px;font-weight:600;color:var(--text)}
 .fm-totals{font-size:10.5px;color:var(--faint)}
-.fm-legend{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:12px;padding-top:10px;border-top:1px solid var(--line-soft)}
-.fm-legend .lg-li{display:inline-flex;align-items:center;gap:6px;font-size:10.5px;color:var(--muted)}
+/* two aligned columns, filled top to bottom: eighteen entries wrapping raggedly
+   across five rows were a wall of text nobody could scan */
+.fm-legend{display:grid;grid-auto-flow:column;grid-template-rows:repeat(var(--lg-rows,7),auto);
+  grid-auto-columns:minmax(0,1fr);gap:5px 26px;margin-top:12px;padding-top:10px;border-top:1px solid var(--line-soft)}
+.fm-legend .lg-li{display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--muted);min-width:0}
+.fm-legend .lg-li.note{padding-left:16px}   /* no swatch: line up with the labels */
 .fm-legend .sw{width:10px;height:10px;border-radius:3px;flex:none}
 .fm-legend .sw.dashed{background:transparent;border:1.5px dashed var(--faint)}
 .fleet-map{display:flex;flex-direction:column;gap:0;margin-bottom:12px}
@@ -284,6 +288,8 @@ ul.sum li.bad .ri{color:var(--red)}
   .readout > .col-cap:first-child{display:block !important;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px 12px;text-align:center;margin-bottom:4px}
   .rail > .col-cap{display:block;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px 12px;text-align:center}
   header.top{align-items:stretch}
+  /* one legend column once the panel is too narrow to keep two readable */
+  .fm-legend{grid-auto-flow:row;grid-template-rows:none;grid-template-columns:minmax(0,1fr)}
   .top-right{width:100%;align-items:flex-start}}
 .rail{display:flex;flex-direction:column;gap:14px;counter-reset:station;background:var(--rail-bg);border:1px solid var(--line-soft);border-radius:8px;padding:12px}
 .col-cap{font-family:var(--disp);font-size:10.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);padding:0 2px}
