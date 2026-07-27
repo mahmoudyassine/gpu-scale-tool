@@ -1,5 +1,25 @@
 # Changelog
 
+## Studio 5.21.3 (2026-07-27)
+
+Solver fixes from the second and third audit lenses. One was serious.
+
+- **The shrink loop could under-provision.** Giving replicas back was gated on
+  memory and the speed targets, but turning calls away IMPROVES both, so a pool
+  sized for 10,000 concurrent calls could be shrunk to a handful of GPUs that
+  admitted a fraction of them and still looked healthy. Shrinking now stops the
+  moment a single call would queue. Under-provisioning is worse than
+  over-provisioning and this shipped in 5.21; anyone who auto-sized a
+  high-concurrency project on 5.21.0 to 5.21.2 should re-run Auto-size.
+- The demand cap re-checked only the speed target when trimming replicas, so it
+  could still break a use case's P95 or push calls into the queue. It now checks
+  both, per member.
+- The MIG-sliced check passed a slice's TFLOPS where the tensor-parallel width
+  belongs, wrecking the prefill term and letting sliced plans through that miss
+  their P95.
+- The stale-allocation stamp now covers every member of a pool and the SLO
+  targets and memory-target slider, not just the first member's demand fields.
+
 ## Studio 5.21.2 (2026-07-27)
 
 From an adversarial audit of the 5.21 co-residency and map work.

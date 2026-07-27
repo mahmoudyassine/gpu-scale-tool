@@ -7,7 +7,7 @@ if(!MODELS.length || !GPUS.length || !QUANTS.length || !CASES.length){
   document.body.innerHTML = '<div style="font-family:system-ui,sans-serif;max-width:560px;margin:80px auto;padding:0 20px;line-height:1.65;color:#1A2536"><h2 style="margin-bottom:10px">Data files not loaded</h2><p>GPUscale.net could not find its library. Keep <code>index.html</code> together with the <code>data/</code> and <code>assets/</code> folders: the four files <code>data/models.js</code>, <code>data/gpus.js</code>, <code>data/quants.js</code> and <code>data/usecases.js</code> must sit next to this page.</p><p>If you need one portable file instead, use <code>dist/gpuscale_standalone.html</code> or rebuild it with <code>python3 tools/build_single_file.py</code>.</p></div>';
   throw new Error('GPUscale.net data missing');
 }
-const STUDIO_VERSION = '5.21.2', ENGINE_VERSION = 25;
+const STUDIO_VERSION = '5.21.3', ENGINE_VERSION = 25;
 function newProjId(){ const L='abcdefghjkmnpqrstuvwxyz', D='0123456789';
   const pick=s=>s[Math.floor(Math.random()*s.length)];
   return 'Project_'+pick(L)+pick(L)+pick(D)+pick(D)+pick(D); }
@@ -1011,7 +1011,8 @@ function cardsKey(u, hw){ const f=u.f||{};
   return [f.chkCustom? 'C'+[f.cusParams,f.cusActive,f.cusHidden,f.cusLayers,f.cusKvh,f.cusHdim,f.cusCtx].join('.') : 'M'+f.selModel,
     f.selWQuant, f.selKQuant, hw.g.name, hw.perW, f.inTp, f.selPolicy, f.chkExtend?1:0,
     Math.round(uv(f,'inConc')), Math.round(uv(f,'inSeq')), Math.round(uv(f,'inOut')),
-    Math.round(uv(f,'inReasonTok'))].join('|'); }
+    Math.round(uv(f,'inReasonTok')), f.sloTtft, f.sloTps, f.sloP95,
+    (($('autoUtil')&&$('autoUtil').value)||80)].join('|'); }
 function ucState(u, hw){
   hw=hw||readHw(); const f=u.f;
   const m=f.chkCustom? {name:'Custom', params:+f.cusParams||0.1, active:+f.cusActive||0.1,
@@ -1101,7 +1102,13 @@ function computeProject(){
     const needReps=Math.max(1, Math.ceil(p.state.concurrent/Math.max(1,p.state.batch)));
     if(UC.length>1 && p.d.replicas>needReps){
       const trial=compute(Object.assign({}, p.state, {gpus:needReps*p.state.tp}));
-      const keepsSlo=p.state.sloTps>0? trial.tps>=p.state.sloTps : true;
+      const ms=p.state.members||[];
+      const keepsSlo=(p.state.sloTps>0? trial.tps>=p.state.sloTps : true)
+        && trial.queued<=p.d.queued
+        && ms.every(m=>{ if(!(+m.sloP95>0)) return true;
+            const gen=(m.reasonTok||0)+(m.visibleOut||0);
+            const ttft=2*m.resident*p.state.active/(p.state.gpuTflops*Math.max(1,p.state.tp)*p.state.mfu);
+            return 1.3*((ttft+p.state.ovh)/1000 + gen/Math.max(1e-6,trial.tps)) <= m.sloP95; });
       if(keepsSlo){ p.capped=p.d.replicas; p.d=trial; }
     }
     p.perUc=p.members.map(i=>{
@@ -2954,6 +2961,7 @@ function solvePool(s){
           const b2=Math.min(BATCH_MAX,Math.max(1,Math.ceil(s.concurrent/r2)));
           const d2=eva(r2,b2);
           if(d2.total>pack*d2.avail) break;
+          if(d2.queued>0) break;                    // must still admit the peak
           const m2=missOf(d2); if(m2.t||m2.p) break;
           reps=r2; batch=b2; d=d2;
         }
@@ -3053,7 +3061,7 @@ function solvePool(s){
       const missSlice=dd=>{ let t=false,p=false;
         members.forEach(m=>{
           if(m.tpsCan!==false && m.sloTps>0 && dd.tps < m.sloTps) t=true;
-          if(m.p95Can!==false && m.sloP95>0 && memberP95(m, dd.tps, prof.tflops) > m.sloP95) p=true; });
+          if(m.p95Can!==false && m.sloP95>0 && memberP95(m, dd.tps, 1, prof.tflops) > m.sloP95) p=true; });
         return {t,p}; };
       for(let guard=0; guard<200; guard++){
         const miss=missSlice(sd);
