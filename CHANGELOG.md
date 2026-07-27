@@ -1,5 +1,59 @@
 # Changelog
 
+## Studio 5.19 (2026-07-27) · engine v25 · library v32
+
+Fleet sizing correctness: the same project now sizes to 56 GPUs instead of 448.
+
+A reported 11-use-case project procured 56 nodes / 448 GPUs whose cards sat at
+12-37% memory with no model sharing a card. Five separate defects compounded
+into that number; each was reproduced on the reported project and fixed.
+
+- **The interconnect penalty was a global side effect.** Auto-size wrote 0.7
+  into the shared interconnect-efficiency input whenever ANY pool's tensor
+  parallel crossed a node boundary, so one wide model permanently taxed every
+  other model's decode speed, and every later auto-size re-solved a harsher
+  machine than the one it had just sized. The penalty now belongs to the pool
+  whose copy actually spans workers. This alone took the project from 448 to
+  144 GPUs and made auto-size idempotent: import, re-run and re-run again now
+  agree, where before they gave three different fleets.
+- **Pooled use cases were sized against a blended request.** A pool averaged
+  all its use cases into one envelope, so a translation workload's 500 ms
+  first-token target was priced against a contract-review workload's 131K
+  prefill, and P95 growth paid for another member's thinking tokens. Each use
+  case now keeps its own prefill, its own token budget and its own targets;
+  only memory and the shared decode step are blended.
+- **Tensor parallel could only widen for first-token latency.** Decode is
+  memory-bandwidth bound and bandwidth scales with TP, but a pool missing a
+  speed or P95 target could only add replicas, which asymptotes. The solver
+  now plans at several TP widths and buys the cheapest that meets every
+  target: the voice pool in the reported project went from 40 GPUs at TP1 to
+  16 at TP4, same targets met.
+- **The demand cap could break the target it had just been grown for.**
+  Trimming replicas beyond peak demand raises batch per replica, which slows
+  every user; the trim is now refused when it would cost the speed target.
+- **Sliding-window attention was not modeled at all (engine v25).** Model
+  entries carried raw head geometry, so Gemma 4 31B claimed 0.98 MB of KV per
+  token, the largest in the library, despite being a shared-KV design whose
+  global layers store no separate values. 26 entries corrected against real
+  configs and checkpoint tensor shapes: Gemma 4 by up to 14.8x, Gemma 3 by
+  5.3x, all eight Qwen3.5 hybrids by exactly 4x, gpt-oss by 2x, Llama 4 by
+  2.3x, Command A by 2.9x, plus Fanar-2-27B and SILMA-9B which inherit Gemma
+  attention. The engine now takes `kvGlobal` and `kvWin` and computes the
+  window share per context, so one number no longer has to serve both a 4K
+  voice call and a 128K contract. Models without those fields are bit-for-bit
+  unchanged (verified over 48,000 comparisons).
+- **Models can now share whole GPUs.** Where memory and bandwidth both allow,
+  several models co-tenant one card, the way vLLM memory fractions and Triton
+  multi-model serving do in practice. A card is shared only while each
+  tenant's speed target still fits in its own bandwidth share.
+- Excel exports carry the new KV terms, so the live formulas still reproduce
+  the engine exactly.
+
+Worth stating plainly, because it is physics and not a bug: a card can show
+30% memory and still be full. Decode speed is bound by memory bandwidth, so a
+fleet sized for per-user speed will often look empty in VRAM. The node count
+was 8x too high; the low memory percentage is real.
+
 ## Studio 5.18 (2026-07-23) · library v31
 
 Arabic across the whole stack: LLMs, VLMs and supporting models.

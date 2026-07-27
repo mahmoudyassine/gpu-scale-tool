@@ -56,9 +56,11 @@
    "ctx": 10485760,
    "experts": 16,
    "activeExperts": 1,
-   "arch": "MoE (16E/1A)",
+   "arch": "MoE (16E/1A; iRoPE: 36 chunked local 8192 + 12 NoPE global)",
    "dev": "Meta",
-   "url": "https://ai.meta.com/blog/llama-4-multimodal-intelligence/"
+   "url": "https://ai.meta.com/blog/llama-4-multimodal-intelligence/",
+   "kvGlobal": 12,
+   "kvWin": 8192
   },
   {
    "name": "Llama 4 Maverick 400B (MoE)",
@@ -71,9 +73,11 @@
    "ctx": 1048576,
    "experts": 128,
    "activeExperts": 2,
-   "arch": "MoE (128E/2A)",
+   "arch": "MoE (128E/2A; iRoPE: 36 chunked local 8192 + 12 NoPE global)",
    "dev": "Meta",
-   "url": "https://ai.meta.com/blog/llama-4-multimodal-intelligence/"
+   "url": "https://ai.meta.com/blog/llama-4-multimodal-intelligence/",
+   "kvGlobal": 12,
+   "kvWin": 8192
   },
   {
    "name": "Qwen3 0.6B",
@@ -202,11 +206,11 @@
    "hidden": 1024,
    "layers": 24,
    "kvHeads": 2,
-   "headDim": 256,
+   "headDim": 64,
    "ctx": 262144,
    "experts": null,
    "activeExperts": null,
-   "arch": "Dense (Hybrid attn approx)",
+   "arch": "Dense (hybrid: only full-attn layers cache)",
    "dev": "Alibaba Cloud",
    "url": "https://github.com/QwenLM/Qwen3.5"
   },
@@ -217,11 +221,11 @@
    "hidden": 2048,
    "layers": 24,
    "kvHeads": 2,
-   "headDim": 256,
+   "headDim": 64,
    "ctx": 262144,
    "experts": null,
    "activeExperts": null,
-   "arch": "Dense (Hybrid attn approx)",
+   "arch": "Dense (hybrid: only full-attn layers cache)",
    "dev": "Alibaba Cloud",
    "url": "https://github.com/QwenLM/Qwen3.5"
   },
@@ -232,11 +236,11 @@
    "hidden": 2560,
    "layers": 32,
    "kvHeads": 4,
-   "headDim": 256,
+   "headDim": 64,
    "ctx": 262144,
    "experts": null,
    "activeExperts": null,
-   "arch": "Dense (Hybrid attn approx)",
+   "arch": "Dense (hybrid: only full-attn layers cache)",
    "dev": "Alibaba Cloud",
    "url": "https://github.com/QwenLM/Qwen3.5"
   },
@@ -247,11 +251,11 @@
    "hidden": 4096,
    "layers": 32,
    "kvHeads": 4,
-   "headDim": 256,
+   "headDim": 64,
    "ctx": 262144,
    "experts": null,
    "activeExperts": null,
-   "arch": "Dense (Hybrid attn approx)",
+   "arch": "Dense (hybrid: only full-attn layers cache)",
    "dev": "Alibaba Cloud",
    "url": "https://github.com/QwenLM/Qwen3.5"
   },
@@ -262,11 +266,11 @@
    "hidden": 5120,
    "layers": 64,
    "kvHeads": 4,
-   "headDim": 256,
+   "headDim": 64,
    "ctx": 262144,
    "experts": null,
    "activeExperts": null,
-   "arch": "Dense (Hybrid attn approx)",
+   "arch": "Dense (hybrid: only full-attn layers cache)",
    "dev": "Alibaba Cloud",
    "url": "https://github.com/QwenLM/Qwen3.5"
   },
@@ -277,11 +281,11 @@
    "hidden": 2048,
    "layers": 40,
    "kvHeads": 2,
-   "headDim": 256,
+   "headDim": 64,
    "ctx": 262144,
    "experts": 256,
    "activeExperts": 8,
-   "arch": "MoE (256E/8A, hybrid approx)",
+   "arch": "MoE (256E/8A, hybrid: only full-attn layers cache)",
    "dev": "Alibaba Cloud",
    "url": "https://github.com/QwenLM/Qwen3.5"
   },
@@ -292,11 +296,11 @@
    "hidden": 3072,
    "layers": 48,
    "kvHeads": 2,
-   "headDim": 256,
+   "headDim": 64,
    "ctx": 262144,
    "experts": 256,
    "activeExperts": 8,
-   "arch": "MoE (256E/8A, hybrid approx)",
+   "arch": "MoE (256E/8A, hybrid: only full-attn layers cache)",
    "dev": "Alibaba Cloud",
    "url": "https://github.com/QwenLM/Qwen3.5"
   },
@@ -307,11 +311,11 @@
    "hidden": 4096,
    "layers": 60,
    "kvHeads": 2,
-   "headDim": 256,
+   "headDim": 64,
    "ctx": 262144,
    "experts": 512,
    "activeExperts": 10,
-   "arch": "MoE (512E/10A, hybrid approx)",
+   "arch": "MoE (512E/10A, hybrid: only full-attn layers cache)",
    "dev": "Alibaba Cloud",
    "url": "https://github.com/QwenLM/Qwen3.5"
   },
@@ -386,7 +390,7 @@
    "ctx": 32768,
    "experts": null,
    "activeExperts": null,
-   "arch": "Dense (GQA+SWA)",
+   "arch": "Dense (GQA)",
    "dev": "Mistral AI",
    "url": "https://huggingface.co/mistralai/Mistral-7B-v0.3"
   },
@@ -476,9 +480,11 @@
    "ctx": 8192,
    "experts": null,
    "activeExperts": null,
-   "arch": "Dense (GQA+SWA)",
+   "arch": "Dense (GQA + SWA 1:1, win 4096)",
    "dev": "Google",
-   "url": "https://ai.google.dev/gemma/docs/core/model_card_2"
+   "url": "https://ai.google.dev/gemma/docs/core/model_card_2",
+   "kvGlobal": 13,
+   "kvWin": 4096
   },
   {
    "name": "Gemma 2 9B",
@@ -491,9 +497,11 @@
    "ctx": 8192,
    "experts": null,
    "activeExperts": null,
-   "arch": "Dense (GQA+SWA)",
+   "arch": "Dense (GQA + SWA 1:1, win 4096)",
    "dev": "Google",
-   "url": "https://ai.google.dev/gemma/docs/core/model_card_2"
+   "url": "https://ai.google.dev/gemma/docs/core/model_card_2",
+   "kvGlobal": 21,
+   "kvWin": 4096
   },
   {
    "name": "Gemma 2 27B",
@@ -506,9 +514,11 @@
    "ctx": 8192,
    "experts": null,
    "activeExperts": null,
-   "arch": "Dense (GQA+SWA)",
+   "arch": "Dense (GQA + SWA 1:1, win 4096)",
    "dev": "Google",
-   "url": "https://ai.google.dev/gemma/docs/core/model_card_2"
+   "url": "https://ai.google.dev/gemma/docs/core/model_card_2",
+   "kvGlobal": 23,
+   "kvWin": 4096
   },
   {
    "name": "Gemma 3 1B",
@@ -521,9 +531,11 @@
    "ctx": 32768,
    "experts": null,
    "activeExperts": null,
-   "arch": "Dense (GQA+SWA 5:1)",
+   "arch": "Dense (GQA + SWA 5:1, win 512)",
    "dev": "Google",
-   "url": "https://ai.google.dev/gemma/docs/core/model_card_3"
+   "url": "https://ai.google.dev/gemma/docs/core/model_card_3",
+   "kvGlobal": 4,
+   "kvWin": 512
   },
   {
    "name": "Gemma 3 4B",
@@ -536,9 +548,11 @@
    "ctx": 131072,
    "experts": null,
    "activeExperts": null,
-   "arch": "Dense (GQA+SWA 5:1)",
+   "arch": "Dense (GQA + SWA 5:1, win 1024)",
    "dev": "Google",
-   "url": "https://ai.google.dev/gemma/docs/core/model_card_3"
+   "url": "https://ai.google.dev/gemma/docs/core/model_card_3",
+   "kvGlobal": 5,
+   "kvWin": 1024
   },
   {
    "name": "Gemma 3 12B",
@@ -551,9 +565,11 @@
    "ctx": 131072,
    "experts": null,
    "activeExperts": null,
-   "arch": "Dense (GQA+SWA 5:1)",
+   "arch": "Dense (GQA + SWA 5:1, win 1024)",
    "dev": "Google",
-   "url": "https://ai.google.dev/gemma/docs/core/model_card_3"
+   "url": "https://ai.google.dev/gemma/docs/core/model_card_3",
+   "kvGlobal": 8,
+   "kvWin": 1024
   },
   {
    "name": "Gemma 3 27B",
@@ -566,9 +582,11 @@
    "ctx": 131072,
    "experts": null,
    "activeExperts": null,
-   "arch": "Dense (GQA+SWA 5:1)",
+   "arch": "Dense (GQA + SWA 5:1, win 1024)",
    "dev": "Google",
-   "url": "https://ai.google.dev/gemma/docs/core/model_card_3"
+   "url": "https://ai.google.dev/gemma/docs/core/model_card_3",
+   "kvGlobal": 10,
+   "kvWin": 1024
   },
   {
    "name": "Gemma 4 E2B",
@@ -581,9 +599,14 @@
    "ctx": 131072,
    "experts": null,
    "activeExperts": null,
-   "arch": "Dense (shared KV approx)",
+   "arch": "Dense (SWA 4:1 win 512; KV shared over last 20 of 35)",
    "dev": "Google",
-   "url": "https://ai.google.dev/gemma/docs/core/model_card_4"
+   "url": "https://ai.google.dev/gemma/docs/core/model_card_4",
+   "kvGlobal": 3,
+   "kvWin": 512,
+   "kvgHeads": 1,
+   "kvgDim": 512,
+   "kvLayers": 15
   },
   {
    "name": "Gemma 4 E4B",
@@ -596,9 +619,14 @@
    "ctx": 131072,
    "experts": null,
    "activeExperts": null,
-   "arch": "Dense (shared KV approx)",
+   "arch": "Dense (SWA 5:1 win 512; KV shared over last 18 of 42)",
    "dev": "Google",
-   "url": "https://ai.google.dev/gemma/docs/core/model_card_4"
+   "url": "https://ai.google.dev/gemma/docs/core/model_card_4",
+   "kvGlobal": 4,
+   "kvWin": 512,
+   "kvgHeads": 2,
+   "kvgDim": 512,
+   "kvLayers": 24
   },
   {
    "name": "Gemma 4 26B-A4B (MoE)",
@@ -611,9 +639,14 @@
    "ctx": 262144,
    "experts": 129,
    "activeExperts": 9,
-   "arch": "MoE (129E/9A; shared KV approx)",
+   "arch": "MoE (128E/8A; SWA 5:1 win 1024; global v=k, 2 kv x 512)",
    "dev": "Google",
-   "url": "https://ai.google.dev/gemma/docs/core/model_card_4"
+   "url": "https://ai.google.dev/gemma/docs/core/model_card_4",
+   "kvGlobal": 5,
+   "kvWin": 1024,
+   "kvgHeads": 2,
+   "kvgDim": 512,
+   "kvgKeyOnly": true
   },
   {
    "name": "Gemma 4 31B",
@@ -626,9 +659,14 @@
    "ctx": 262144,
    "experts": null,
    "activeExperts": null,
-   "arch": "Dense (shared KV approx)",
+   "arch": "Dense (SWA 5:1 win 1024; global v=k, 4 kv x 512)",
    "dev": "Google",
-   "url": "https://ai.google.dev/gemma/docs/core/model_card_4"
+   "url": "https://ai.google.dev/gemma/docs/core/model_card_4",
+   "kvGlobal": 10,
+   "kvWin": 1024,
+   "kvgHeads": 4,
+   "kvgDim": 512,
+   "kvgKeyOnly": true
   },
   {
    "name": "Phi-4-mini 3.8B",
@@ -671,9 +709,11 @@
    "ctx": 131072,
    "experts": 32,
    "activeExperts": 4,
-   "arch": "MoE (32E/4A, GQA)",
+   "arch": "MoE (32E/4A; GQA, banded SWA 1:1 win 128)",
    "dev": "OpenAI",
-   "url": "https://openai.com/index/gpt-oss-model-card/"
+   "url": "https://openai.com/index/gpt-oss-model-card/",
+   "kvGlobal": 12,
+   "kvWin": 128
   },
   {
    "name": "GPT-OSS 120B",
@@ -686,9 +726,11 @@
    "ctx": 131072,
    "experts": 128,
    "activeExperts": 4,
-   "arch": "MoE (128E/4A, GQA)",
+   "arch": "MoE (128E/4A; GQA, banded SWA 1:1 win 128)",
    "dev": "OpenAI",
-   "url": "https://openai.com/index/gpt-oss-model-card/"
+   "url": "https://openai.com/index/gpt-oss-model-card/",
+   "kvGlobal": 18,
+   "kvWin": 128
   },
   {
    "name": "Qwen3-Next 80B-A3B (MoE, hybrid)",
@@ -836,9 +878,11 @@
    "ctx": 262144,
    "experts": null,
    "activeExperts": null,
-   "arch": "Dense (hybrid SWA, est. cfg)",
+   "arch": "Dense (GQA + SWA 3:1, win 4096)",
    "dev": "Cohere",
-   "url": "https://huggingface.co/CohereLabs/c4ai-command-a-03-2025"
+   "url": "https://huggingface.co/CohereLabs/c4ai-command-a-03-2025",
+   "kvGlobal": 16,
+   "kvWin": 4096
   },
   {
    "name": "Ministral 3 14B",
@@ -1151,9 +1195,11 @@
    "ctx": 131072,
    "experts": null,
    "activeExperts": null,
-   "arch": "Dense (GQA) · Gemma-3-27B continual pretrain",
+   "arch": "Dense (GQA + SWA 5:1, win 1024) · Gemma-3-27B continual pretrain",
    "dev": "QCRI (Qatar)",
-   "url": "https://huggingface.co/QCRI/Fanar-2-27B-Instruct"
+   "url": "https://huggingface.co/QCRI/Fanar-2-27B-Instruct",
+   "kvGlobal": 10,
+   "kvWin": 1024
   },
   {
    "name": "ALLaM-34B (Arabic)",
@@ -1211,9 +1257,11 @@
    "ctx": 8192,
    "experts": null,
    "activeExperts": null,
-   "arch": "Dense (GQA+SWA) · Gemma-2-9B base",
+   "arch": "Dense (GQA + SWA 1:1, win 4096) · Gemma-2-9B base",
    "dev": "SILMA AI (KSA)",
-   "url": "https://huggingface.co/silma-ai/SILMA-9B-Instruct-v1.0"
+   "url": "https://huggingface.co/silma-ai/SILMA-9B-Instruct-v1.0",
+   "kvGlobal": 21,
+   "kvWin": 4096
   },
   {
    "name": "Cohere Command A+ 218B-A25B (MoE)",
@@ -3216,8 +3264,8 @@
   ]
  },
  "meta": {
-  "library": "v31",
-  "engine": 24,
+  "library": "v32",
+  "engine": 25,
   "updated": "2026-07-23"
  },
  "kv_quants": [
@@ -3386,8 +3434,8 @@
  },
  "versions": {
   "schema": "gpuscale.net/5",
-  "engine": 24,
-  "studio": "5.18.0"
+  "engine": 25,
+  "studio": "5.19.0"
  },
  "kv_policies": [
   "running",

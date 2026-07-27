@@ -7,7 +7,7 @@ if(!MODELS.length || !GPUS.length || !QUANTS.length || !CASES.length){
   document.body.innerHTML = '<div style="font-family:system-ui,sans-serif;max-width:560px;margin:80px auto;padding:0 20px;line-height:1.65;color:#1A2536"><h2 style="margin-bottom:10px">Data files not loaded</h2><p>GPUscale.net could not find its library. Keep <code>index.html</code> together with the <code>data/</code> and <code>assets/</code> folders: the four files <code>data/models.js</code>, <code>data/gpus.js</code>, <code>data/quants.js</code> and <code>data/usecases.js</code> must sit next to this page.</p><p>If you need one portable file instead, use <code>dist/gpuscale_standalone.html</code> or rebuild it with <code>python3 tools/build_single_file.py</code>.</p></div>';
   throw new Error('GPUscale.net data missing');
 }
-const STUDIO_VERSION = '5.18.0', ENGINE_VERSION = 24;
+const STUDIO_VERSION = '5.19.0', ENGINE_VERSION = 25;
 function newProjId(){ const L='abcdefghjkmnpqrstuvwxyz', D='0123456789';
   const pick=s=>s[Math.floor(Math.random()*s.length)];
   return 'Project_'+pick(L)+pick(L)+pick(D)+pick(D)+pick(D); }
@@ -52,8 +52,19 @@ Object.values(RESIL).forEach(r=>{ r.extraW = n => r.mult(n)+r.add; });
 function compute(s){
   const bw = s.bytesW, bk = s.bytesK;
   const weights = s.params * bw;
-  const kvTok  = 2 * s.layers * s.kvHeads * s.headDim * bk / 1e9;
   const effSeq = s.resident + (s.extend ? s.reasonTok : 0);
+  // KV per token. Models that mix full-attention layers with sliding-window
+  // layers cost far less per token than their raw head geometry suggests: the
+  // window layers only ever hold `kvWin` tokens, so their share shrinks as the
+  // sequence grows. kvGlobal/kvWin absent = the classic uniform-attention form.
+  const kvL = Math.max(1, s.kvLayers || s.layers);
+  const kvGlobal = Math.min(kvL, Math.max(0, s.kvGlobal||0));
+  const kvWin = Math.max(0, s.kvWin||0);
+  const kvTok = (kvGlobal>0 && kvWin>0)
+    ? ( kvGlobal * (s.kvgKeyOnly?1:2) * (s.kvgHeads||s.kvHeads) * (s.kvgDim||s.headDim)
+        + (kvL-kvGlobal) * 2 * s.kvHeads * s.headDim * Math.min(1, kvWin/Math.max(1,effSeq))
+      ) * bk / 1e9
+    : 2 * kvL * s.kvHeads * s.headDim * bk / 1e9;
   const replicas = Math.max(1, Math.floor(s.gpus / Math.max(s.tp,1)));
   const active = s.policy === 'all' ? s.concurrent
                : Math.min(s.concurrent, s.batch * replicas);
@@ -89,6 +100,12 @@ function compute(s){
           allActiveVram,queued,fits,slo,sloAll,headroom:avail-total};
 }
 /*ENGINE-END*/
+/* the two KV terms the engine sums, exposed so the Excel export can mirror it */
+function kvgElem(s){ const L=Math.max(1,s.kvLayers||s.layers), g=Math.min(L,Math.max(0,s.kvGlobal||0));
+  return (g>0&&(s.kvWin||0)>0)? g*(s.kvgKeyOnly?1:2)*(s.kvgHeads||s.kvHeads)*(s.kvgDim||s.headDim)
+    : 2*L*s.kvHeads*s.headDim; }
+function kvlElem(s){ const L=Math.max(1,s.kvLayers||s.layers), g=Math.min(L,Math.max(0,s.kvGlobal||0));
+  return (g>0&&(s.kvWin||0)>0)? (L-g)*2*s.kvHeads*s.headDim : 0; }
 
 /* ================= HELPERS ================= */
 const $ = id => document.getElementById(id);
@@ -284,6 +301,7 @@ function readState(){
     model:m, gpu:g, wq, kq,
     params:m.params, active:m.active, hidden:m.hidden, layers:m.layers,
     kvHeads:m.kvHeads, headDim:m.headDim, ctx:m.ctx,
+    kvGlobal:m.kvGlobal, kvWin:m.kvWin, kvgHeads:m.kvgHeads, kvgDim:m.kvgDim, kvgKeyOnly:m.kvgKeyOnly, kvLayers:m.kvLayers,
     bytesW:wq.bytes, bytesK:kq.bytes,
     resident:Math.round(fv('inSeq')),
     visibleOut:Math.round(fv('inOut')),
@@ -295,7 +313,7 @@ function readState(){
     policy:$('selPolicy').value,
     workers, perW, gpus, tp, resil:$('selResil').value,
     gpuVram:g.vram, gpuBw:g.bw, gpuTflops:g.tflops,
-    mfu:fv('inMfu'), mbu:fv('inMbu'), ic:fv('inIc'),
+    mfu:fv('inMfu'), mbu:fv('inMbu'), ic:(tp>perW? Math.min(fv('inIc'),0.7) : fv('inIc')),
     ovh:fv('inOvh'),
     sloTtft:+$('sloTtft').value||0, sloTps:+$('sloTps').value||0, sloP95:+$('sloP95').value||0,
   };
@@ -966,6 +984,7 @@ function ucState(u, hw){
   return {model:m, gpu:hw.g, wq, kq,
     params:m.params, active:m.active, hidden:m.hidden, layers:m.layers,
     kvHeads:m.kvHeads, headDim:m.headDim, ctx:m.ctx,
+    kvGlobal:m.kvGlobal, kvWin:m.kvWin, kvgHeads:m.kvgHeads, kvgDim:m.kvgDim, kvgKeyOnly:m.kvgKeyOnly, kvLayers:m.kvLayers,
     bytesW:wq.bytes, bytesK:kq.bytes,
     resident:Math.round(uv(f,'inSeq')), visibleOut:Math.round(uv(f,'inOut')),
     reasonMode:f.selReason||'None', reasonTok:Math.round(uv(f,'inReasonTok')),
@@ -974,7 +993,10 @@ function ucState(u, hw){
     policy:f.selPolicy||'run',
     workers, perW:hw.perW, gpus, tp, resil:hw.resil,
     gpuVram:hw.g.vram, gpuBw:hw.g.bw, gpuTflops:hw.g.tflops,
-    mfu:hw.mfu, mbu:hw.mbu, ic:hw.ic, ovh:hw.ovh,
+    // the cross-node penalty belongs to the pool whose copy actually spans
+    // workers, not to the whole project: one wide model must not tax every
+    // other model's decode speed
+    mfu:hw.mfu, mbu:hw.mbu, ic:(tp>hw.perW? Math.min(hw.ic,0.7) : hw.ic), ovh:hw.ovh,
     sloTtft:+f.sloTtft||0, sloTps:+f.sloTps||0, sloP95:+f.sloP95||0};
 }
 function poolState(pool, hw){
@@ -992,6 +1014,14 @@ function poolState(pool, hw){
     sloTtft:0,
     sloTps:Math.max.apply(null, states.map(s=>s.sloTps).concat([0])),
     sloP95:0,
+    // per-member request shapes: the solver checks each use case's OWN prefill and
+    // output against its OWN targets; the blended fields above stay for memory
+    // and mix decode-step math only. Without this, one member's strict target
+    // gets priced against another member's long context or thinking budget.
+    members: pool.members.map((idx,k)=>{ const s2=states[k];
+      return {name:ucName(UC[idx]), conc:s2.concurrent, resident:s2.resident,
+        visibleOut:s2.visibleOut, reasonTok:s2.reasonTok, extend:s2.extend,
+        sloTtft:+s2.sloTtft||0, sloTps:+s2.sloTps||0, sloP95:+s2.sloP95||0}; }),
   });
 }
 function computeProject(){
@@ -1019,10 +1049,15 @@ function computeProject(){
     // demand cap: keep only the replicas the peak load needs; trimmed replicas
     // are simply not procured (the packed fleet buys serving GPUs, not copies
     // nobody asked for).
+    // Trim replicas nobody's demand needs, but never below what the speed and
+    // P95 targets already required: dropping replicas raises batch-per-replica,
+    // which slows every user. The cap used to hand back a fleet that missed the
+    // very targets it had just been grown to meet.
     const needReps=Math.max(1, Math.ceil(p.state.concurrent/Math.max(1,p.state.batch)));
     if(UC.length>1 && p.d.replicas>needReps){
-      p.capped=p.d.replicas;
-      p.d=compute(Object.assign({}, p.state, {gpus:needReps*p.state.tp}));
+      const trial=compute(Object.assign({}, p.state, {gpus:needReps*p.state.tp}));
+      const keepsSlo=p.state.sloTps>0? trial.tps>=p.state.sloTps : true;
+      if(keepsSlo){ p.capped=p.d.replicas; p.d=trial; }
     }
     p.perUc=p.members.map(i=>{
       const s=ucState(UC[i], hw);
@@ -1034,8 +1069,58 @@ function computeProject(){
     });
   });
   const shared=allocShared(pools, hw);
-  const fleet=fleetTotals(pools, shared, hw);
-  return {pools, sup:shared.sup, shared, fleet, hw};
+  const co=coPack(pools, hw);
+  const fleet=fleetTotals(pools, shared, hw, co);
+  return {pools, sup:shared.sup, shared, co, fleet, hw};
+}
+/* Whole-GPU co-residency: in practice several models share the same physical
+   GPUs (vLLM memory fractions, Triton multi-model, MPS), which is why real
+   clusters are not one-model-per-card. Two limits decide whether a card can
+   hold another tenant:
+     memory   Σ per-GPU footprints <= the auto-size memory target
+     bandwidth decode is memory-bandwidth bound, so a pool that reaches `tps`
+              alone but only owes `sloTps` consumes sloTps/tps of the card;
+              tenants may share only while those fractions sum under 1.
+   A pool with no speed target is throughput-hungry (it will use whatever it
+   gets), so it never shares. TP replicas take an aligned block of tp GPUs:
+   the shards stay peers on one NVLink island, they just co-tenant the cards
+   with another model instead of owning them. */
+function coDuty(p){
+  const t=+p.state.sloTps||0, tps=p.d.tps||0;
+  if(!(t>0) || !(tps>0)) return 1;            // no target: assume it wants it all
+  return Math.min(1, t/tps);
+}
+function coPack(pools, hw){
+  const packPct=Math.min(95,Math.max(50,+($('autoUtil')&&$('autoUtil').value)||80))/100;
+  const cap=packPct*hw.g.vram, DUTY_CAP=0.8;   // 20% bandwidth margin for prefill bursts
+  const items=[];
+  pools.forEach((p,pi)=>{ if(p.sliced) return;
+    const tp=Math.max(1,p.state.tp), gpus=Math.max(1,p.d.replicas*tp);
+    const mem=p.d.total/gpus, duty=coDuty(p);
+    for(let r=0;r<p.d.replicas;r++) items.push({pool:pi, rep:r, tp, mem, duty});
+  });
+  // widest TP first so aligned blocks nest, then heaviest cards first
+  items.sort((a,b)=> b.tp-a.tp || b.mem-a.mem);
+  const gpus=[];
+  const grow=n=>{ while(gpus.length<n) gpus.push({mem:0, duty:0, slots:[]}); };
+  items.forEach(it=>{
+    let placed=false;
+    for(let b=0; b<gpus.length; b+=it.tp){
+      grow(b+it.tp);
+      const block=gpus.slice(b, b+it.tp);
+      const roomy=block.every(g=>g.mem+it.mem<=cap+1e-9 && g.duty+it.duty<=DUTY_CAP+1e-9);
+      // never put two shards of one replica on the same card
+      const clash=block.some(g=>g.slots.some(s=>s.pool===it.pool&&s.rep===it.rep));
+      if(roomy&&!clash){ block.forEach((g,k)=>{ g.mem+=it.mem; g.duty+=it.duty;
+        g.slots.push({pool:it.pool, rep:it.rep, shard:k, mem:it.mem, duty:it.duty}); }); placed=true; break; }
+    }
+    if(!placed){ const b=Math.ceil(gpus.length/it.tp)*it.tp; grow(b+it.tp);
+      gpus.slice(b, b+it.tp).forEach((g,k)=>{ g.mem+=it.mem; g.duty+=it.duty;
+        g.slots.push({pool:it.pool, rep:it.rep, shard:k, mem:it.mem, duty:it.duty}); }); }
+  });
+  const dedicatedG=pools.reduce((t,p)=>t+(p.sliced?0:p.d.replicas*Math.max(1,p.state.tp)),0);
+  return {gpus, count:gpus.length, dedicatedG, saved:Math.max(0,dedicatedG-gpus.length),
+    shares:gpus.filter(g=>new Set(g.slots.map(s=>s.pool)).size>1).length};
 }
 function allocShared(pools, hw){
   const g=hw.g, part=g.part||{kind:'frac'};
@@ -1121,12 +1206,13 @@ function allocSupports(hw){
   }
   return {items, gpus:layout.length, mode:part.kind, layout, totalVram, note};
 }
-function fleetTotals(pools, shared, hw){
+function fleetTotals(pools, shared, hw, co){
   const info=RESIL[hw.resil]||RESIL.n;
   const sup=shared.sup;
-  // dedicated pools own whole GPUs; sliced pools and supports share GPUs;
-  // ALL pools then pack together onto nodes (no per-pool whole-node waste)
-  const dedicatedG=pools.reduce((t,p)=>t+(p.sliced?0:p.d.replicas*p.state.tp),0);
+  // pools co-tenant whole GPUs where memory and bandwidth allow, MIG-sliced
+  // pools and supports share partitioned GPUs; ALL of it then packs onto nodes
+  const dedicatedG=co? co.count
+    : pools.reduce((t,p)=>t+(p.sliced?0:p.d.replicas*p.state.tp),0);
   const sharedG=shared.gpus||0;
   const activeG=dedicatedG+sharedG;
   const servW=Math.max(1, Math.ceil(activeG/hw.perW));
@@ -1218,12 +1304,20 @@ function buildFleetSites(prj){
   // one flat GPU list: dedicated pool replicas, then shared (sliced+support) GPUs
   function gpuList(){
     const list=[];
-    pools.forEach((p,pi)=>{ if(p.sliced) return;
-      const st=p.state, util=Math.min(1,p.d.total/p.d.avail);
-      for(let gi=0; gi<p.d.replicas*st.tp; gi++){
-        const rep=Math.floor(gi/st.tp);
-        list.push({type:'pool', pool:pi, rep, util,
-          tip:`${st.model.name} · replica ${rep+1} of ${p.d.replicas} (TP${st.tp} shard) · ${(util*100).toFixed(0)}% memory${st.tp>1?` · a TP${st.tp} copy owns ${st.tp} whole GPUs: tensor parallel needs NCCL peer-to-peer, which MIG slices and shared GPUs do not offer`:''}`}); } });
+    // co-tenanted physical GPUs: one entry per card, one band per model on it
+    ((prj.co&&prj.co.gpus)||[]).forEach(g=>{
+      const tenants=[...new Set(g.slots.map(s=>s.pool))];
+      const util=Math.min(1, g.mem/Math.max(1,hw.g.vram));
+      if(tenants.length<=1){ const s0=g.slots[0]; if(!s0) return; const st=pools[s0.pool].state;
+        list.push({type:'pool', pool:s0.pool, rep:s0.rep, util,
+          tip:`${st.model.name} · replica ${s0.rep+1} of ${pools[s0.pool].d.replicas} (TP${st.tp} shard) · ${fmt(g.mem)} GB of ${fmt(hw.g.vram)} GB used (${(util*100).toFixed(0)}%)${st.tp>1?` · a TP${st.tp} copy spans ${st.tp} cards over NVLink`:''}`});
+        return; }
+      const slices=tenants.map(pi=>{ const st=pools[pi].state;
+        const mem=g.slots.filter(s=>s.pool===pi).reduce((t,s)=>t+s.mem,0);
+        return {kind:'pool', pool:pi, gb:mem, fill:1, mu:mem,
+          tip:`${st.model.name} (TP${st.tp}) · ${fmt(mem)} GB`}; });
+      list.push({type:'shared', bin:{co:true, used:g.mem, slices},
+        tip:`co-resident models on one GPU: ${slices.map(s=>s.tip).join(' · ')} · ${fmt(g.mem)} GB of ${fmt(hw.g.vram)} GB used (${(util*100).toFixed(0)}%)`}); });
     (shared.bins||[]).forEach(bin=>list.push({type:'shared', bin,
       tip:'shared GPU: '+bin.slices.map(sl=>sl.tip||`${KIND_LABEL[sl.kind]||sl.kind}${sl.model?' '+sl.model:''}${sl.inst>1?' ×'+sl.inst:''} (${fmt(sl.gb)} GB)`).join(' · ')}));
     return list;
@@ -1236,7 +1330,7 @@ function buildFleetSites(prj){
       const chunk=list.slice(base, base+hw.perW);
       const poolsIn=new Set(chunk.filter(g2=>g2.type==='pool').map(g2=>g2.pool));
       const part=hw.g.part||{max:1};
-      node.util=chunk.length? chunk.reduce((x,g2)=>x+(g2.type==='pool'? g2.util : g2.type==='shared'? Math.min(1,(part.max>1? g2.bin.used/binCap(part) : g2.bin.used/Math.max(1,hw.g.vram))) : 0),0)/hw.perW : 0;
+      node.util=chunk.length? chunk.reduce((x,g2)=>x+(g2.type==='pool'? g2.util : g2.type==='shared'? Math.min(1,((part.max>1&&!g2.bin.co)? g2.bin.used/binCap(part) : g2.bin.used/Math.max(1,hw.g.vram))) : 0),0)/hw.perW : 0;
       chunk.forEach((g2,k)=>{ node.gpus.push({...g2, tip:`${node.label} · GPU ${k+1} · ${g2.tip}`}); });
       while(node.gpus.length<hw.perW) node.gpus.push({type:'spare', tip:`${node.label} · unassigned headroom`});
       if(poolsIn.size===1){ node.pool=[...poolsIn][0]; node.poolName=pools[node.pool].state.model.name; }
@@ -1366,7 +1460,8 @@ function renderFleet(prj){
       return `<div class="fm-gpu spare" title="${esc(g2.tip)}" style="border-color:${col}"></div>`; }
     if(g2.type==='sup'||g2.type==='shared'){ let y=0, memUsed=0, anyLab=false;
       const cellPx=dense?26:34;
-      const bands=g2.bin.slices.map(sl=>{ const h=Math.max(10, partMax>1? (sl.mu||sl.units||sl.n||1)/binCap(hw.g.part)*100 : Math.min(100,(sl.gb||1)/Math.max(1,hw.g.vram)*100));
+      const coBin=!!g2.bin.co;
+      const bands=g2.bin.slices.map(sl=>{ const h=Math.max(10, (partMax>1&&!coBin)? (sl.mu||sl.units||sl.n||1)/binCap(hw.g.part)*100 : Math.min(100,(sl.gb||1)/Math.max(1,hw.g.vram)*100));
         const col = sl.kind==='pool'? `var(--pool${PC[sl.pool]})` : `var(--sup${sl.sub||sl.kind})`;
         const fl = sl.fill!=null? Math.max(.08,Math.min(1,sl.fill)) : 1;
         memUsed += sl.fill!=null? sl.fill*(sl.gb||0) : (sl.use!=null? sl.use : (sl.gb||0));
@@ -1375,7 +1470,7 @@ function renderFleet(prj){
         anyLab=anyLab||!!lab;
         const b=`<div class="band" style="bottom:${y}%;height:${h}%;background-color:color-mix(in srgb,${col} 24%,transparent)"><div class="bfill${sl.kind==='pool'?' solid':''}" style="height:${Math.round(fl*100)}%;background-color:${col}"></div>${lab}</div>`;
         y+=h; return b; }).join('');
-      const used=partMax>1? memUsed/Math.max(1,hw.g.vram) : g2.bin.used/Math.max(1,hw.g.vram);
+      const used=(partMax>1&&!coBin)? memUsed/Math.max(1,hw.g.vram) : g2.bin.used/Math.max(1,hw.g.vram);
       return `<div class="fm-gpu assigned" title="${esc(g2.tip)}">${bands}${anyLab?'':gp(Math.min(1,used))}</div>`; }
     return `<div class="fm-gpu spare" title="${esc(g2.tip)}"></div>`;
   };
@@ -1960,6 +2055,9 @@ function xlsInputRows(s){
     ['layers','Layers', s.layers, 'KV cache scales linearly with layers'],
     ['kvh','KV heads (effective)', s.kvHeads, '1 for MLA-style compressed caches'],
     ['hdim','Head dim (effective)', s.headDim, 'Compressed-latent equivalent for MLA'],
+    ['kvgE','KV elements/token, global layers', kvgElem(s), 'Full-attention layers: hold the whole sequence'],
+    ['kvlE','KV elements/token, window layers', kvlElem(s), 'Sliding-window layers at full residency'],
+    ['kvWin','Attention window (tok)', +s.kvWin||0, '0 = uniform full attention'],
     ['bytesW','Bytes / weight', s.bytesW, 'From weight quantization ('+s.wq.name+')'],
     ['bytesK','Bytes / KV element', s.bytesK, 'From KV quantization ('+s.kq.name+')'],
     ['seq','Resident sequence (tok)', s.resident, 'Prompt + history + tools + expected output'],
@@ -1999,7 +2097,7 @@ function buildXls(){
   function res(key,label,unit,f,str){ RES.push([key,label,unit,f,str]); }
   res('gpusTotal','Total GPUs','', ()=>`${I('workers')}*${I('perW')}`);
   res('weights','Weights','GB', ()=>`${I('params')}*${I('bytesW')}`);
-  res('kvTok','KV per token','GB', ()=>`2*${I('layers')}*${I('kvh')}*${I('hdim')}*${I('bytesK')}/1000000000`);
+  res('kvTok','KV per token','GB', ()=>`(${I('kvgE')}+${I('kvlE')}*MIN(1,${I('kvWin')}/MAX(1,${R('effSeq')})))*${I('bytesK')}/1000000000`);
   res('effSeq','Effective sequence','tok', ()=>`${I('seq')}+IF(${I('ext')}=1,${I('reason')},0)`);
   res('replicas','Replicas','', ()=>`MAX(1,INT(${R('gpusTotal')}/MAX(${I('tp')},1)))`);
   res('active','Active sequences','', ()=>`IF(${I('policy')}=1,${I('conc')},MIN(${I('conc')},${I('batch')}*${R('replicas')}))`);
@@ -2160,7 +2258,7 @@ async function buildXlsxBytes(){
   function res(key,label,unit,f,v,str){ rIdx[key]=RES.length; RES.push([key,label,unit,f,v,!!str]); }
   res('gpusTotal','Total serving-fleet GPUs','', ()=>`${I('workers')}*${I('perW')}`, s.gpus);
   res('weights','Weights per replica','GB', ()=>`${I('params')}*${I('bytesW')}`, d.weights);
-  res('kvTok','KV per token','GB', ()=>`2*${I('layers')}*${I('kvh')}*${I('hdim')}*${I('bytesK')}/1000000000`, d.kvTok);
+  res('kvTok','KV per token','GB', ()=>`(${I('kvgE')}+${I('kvlE')}*MIN(1,${I('kvWin')}/MAX(1,${R('effSeq')})))*${I('bytesK')}/1000000000`, d.kvTok);
   res('effSeq','Effective sequence','tok', ()=>`${I('seq')}+IF(${I('ext')}=1,${I('reason')},0)`, d.effSeq);
   res('replicas','Replicas (model copies)','', ()=> multi? `MIN(MAX(1,INT(${R('gpusTotal')}/MAX(${I('tp')},1))),MAX(1,CEILING(${I('conc')}/MAX(${I('batch')},1),1)))` : `MAX(1,INT(${R('gpusTotal')}/MAX(${I('tp')},1)))`, d.replicas);
   res('active','Admitted sequences','', ()=>`IF(${I('policy')}=1,${I('conc')},MIN(${I('conc')},${I('batch')}*${R('replicas')}))`, d.active);
@@ -2563,73 +2661,123 @@ function solvePool(s){
   if(!tp) return {ok:false, packPct,
     reason:`No TP up to 64 fits one copy of ${s.model.name} on ${s.gpu.name}: quantize the weights or pick a higher-VRAM GPU`};
   const tpFit=tp;
-  // widen TP while a TTFT target is missed (prefill scales with TP)
-  if(s.sloTtft>0){ let t=tp; while(t<64 && 2*s.resident*s.active/(s.gpuTflops*t*s.mfu)>s.sloTtft) t*=2; tp=Math.min(72,t); }
+  // each member is one request class: its OWN prefill length, its OWN hidden +
+  // visible tokens, its OWN targets. A pooled state only blends these for
+  // memory and mix decode-step math; constraints must never cross members
+  // (a chatbot's P95 must not pay for a reasoning agent's thinking tokens,
+  // a translation TTFT must not pay for a legal doc's 131K prefill).
+  const members = (s.members&&s.members.length? s.members
+    : [{name:null, conc:s.concurrent, resident:s.resident, visibleOut:s.visibleOut,
+        reasonTok:s.reasonTok, extend:s.extend, sloTtft:s.sloTtft, sloTps:s.sloTps, sloP95:s.sloP95}])
+    .map(m=>({...m, gen:(m.reasonTok||0)+(m.visibleOut||0)}));
+  const ttftOf=(m,t,tflops)=>2*m.resident*s.active/((tflops||s.gpuTflops)*t*s.mfu);
+  // widen TP while any member's OWN TTFT target is missed at its OWN prefill
+  { let t=tp; while(t<64 && members.some(m=>m.sloTtft>0 && ttftOf(m,t)>m.sloTtft)) t*=2; tp=Math.min(72,t); }
   const widened=tp>tpFit;
-  const crossed=tp>s.perW;
-  const ic=crossed? Math.min(s.ic,0.7) : s.ic;
-  const interactive=(s.sloTtft>0||s.sloTps>0||s.sloP95>0);
-  const eva=(workers,batch)=>compute({...s, tp, ic, workers, gpus:workers*s.perW, batch});
-  let workers, batch, d;
-  let converged=false, sloStuck=null, grewForSlo=0;
-  let tpsCan=true, p95Can=true;
-  if(interactive){
-    // fewest workers that admit the peak concurrency at a batch of at most 64, then grow until it fits
-    workers=Math.min(64,Math.max(1,Math.ceil(Math.max(1,Math.ceil(s.concurrent/64))*tp/s.perW)));
-    for(;;){
-      const replicas=Math.max(1,Math.floor(workers*s.perW/tp));
-      batch=Math.min(64,Math.max(1,Math.ceil(s.concurrent/replicas)));
-      d=eva(workers,batch);
-      if(d.total<=pack*d.avail){ converged=true; break; }
-      if(workers>=64) break;
-      workers++;
-    }
-    // SLA growth: per-user speed and P95 both improve as batch-per-replica falls,
-    // so add nodes until the targets pass. FIRST check what a call gets alone on
-    // this hardware at batch 1 (the physical best case): a target that fails even
-    // there can never be met by more hardware (the output length itself is the
-    // floor), so we never buy nodes for it; we report it and keep the fleet at
-    // the size the ACHIEVABLE targets and the demand actually need.
-    if(converged){
-      const alone=compute({...s, tp, ic, workers:Math.max(1,Math.ceil(tp/s.perW)), gpus:tp, batch:1, concurrent:1});
-      tpsCan = !(s.sloTps>0) || alone.slo.tps.pass;
-      p95Can = !(s.sloP95>0) || alone.slo.p95.pass;
-      const stuckList=[];
-      if(!tpsCan) stuckList.push('per-user speed');
-      if(!p95Can) stuckList.push('P95');
-      const w0=workers;
-      for(let guard=0; guard<80; guard++){
+  const ttftBinder=widened? (members.filter(m=>m.sloTtft>0).sort((a,b)=>ttftOf(b,1)/b.sloTtft-ttftOf(a,1)/a.sloTtft)[0]||{}).name : null;
+  const interactive=members.some(m=>m.sloTtft>0||m.sloTps>0||m.sloP95>0);
+  // member latency at the pool's mix decode speed: same step rate for every
+  // co-batched request, but each member only decodes its own gen tokens
+  const memberP95=(m,mixTps,tpAt,tflops)=>1.3*((ttftOf(m,tpAt,tflops)+s.ovh)/1000 + m.gen/Math.max(1e-6,mixTps));
+  /* Plan the pool at one tensor-parallel width. Decode is memory-bandwidth
+     bound and bandwidth scales with TP, so for a pool that misses a speed or
+     P95 target TP is often far cheaper than replicas: adding replicas only
+     pushes batch-per-replica toward 1, which asymptotes, while a wider TP
+     raises the ceiling itself. We plan at several widths and buy the cheapest
+     one that meets every member's targets. */
+  function planAt(tp){
+    const crossed=tp>s.perW;
+    const ic=crossed? Math.min(s.ic,0.7) : s.ic;
+    const eva=(workers,batch)=>compute({...s, tp, ic, workers, gpus:workers*s.perW, batch});
+    let workers, batch, d;
+    let converged=false, sloStuck=null, grewForSlo=0;
+    const can={};
+    if(interactive){
+      // fewest workers that admit the peak concurrency at a batch of at most 64, then grow until it fits
+      workers=Math.min(64,Math.max(1,Math.ceil(Math.max(1,Math.ceil(s.concurrent/64))*tp/s.perW)));
+      for(;;){
+        const replicas=Math.max(1,Math.floor(workers*s.perW/tp));
+        batch=Math.min(64,Math.max(1,Math.ceil(s.concurrent/replicas)));
         d=eva(workers,batch);
-        const missTps = tpsCan && s.sloTps>0 && !d.slo.tps.pass;
-        const missP95 = p95Can && s.sloP95>0 && !d.slo.p95.pass;
-        if(!(missTps||missP95)) break;
-        if(batch<=1 || workers>=64){
-          if(missTps) stuckList.push('per-user speed');
-          if(missP95) stuckList.push('P95');
-          break;
-        }
+        if(d.total<=pack*d.avail){ converged=true; break; }
+        if(workers>=64) break;
         workers++;
-        const reps2=Math.max(1,Math.floor(workers*s.perW/tp));
-        batch=Math.min(64,Math.max(1,Math.ceil(s.concurrent/reps2)));
       }
-      sloStuck = stuckList.length? stuckList.join(' and ') : null;
-      grewForSlo=workers-w0;
-    }
-  } else {
-    // offline: queueing is fine, so keep hardware minimal and pick the largest batch that fits
-    workers=Math.max(1,Math.ceil(tp/s.perW));
-    outer: for(;;){
-      for(const b of [256,128,64,32,16,8,4,2,1]){
-        batch=b; d=eva(workers,b);
-        if(d.total<=pack*d.avail){ converged=true; break outer; }
+      if(converged){
+        // what a call gets alone at batch 1 on THIS width (the physical best
+        // case here): a target that fails even there cannot be met by more
+        // replicas, so we never buy nodes for it at this width
+        members.forEach(m=>{
+          const alone=compute({...s, resident:m.resident, visibleOut:m.visibleOut,
+            reasonTok:m.reasonTok, extend:m.extend, sloTtft:m.sloTtft, sloTps:m.sloTps, sloP95:m.sloP95,
+            tp, ic, workers:Math.max(1,Math.ceil(tp/s.perW)), gpus:tp, batch:1, concurrent:1});
+          can[m.name||'_'] = {tps: !(m.sloTps>0) || alone.slo.tps.pass,
+                              p95: !(m.sloP95>0) || alone.slo.p95.pass};
+        });
+        const stuckList=[];
+        members.forEach(m=>{ const c=can[m.name||'_'], tag=m.name?` (${m.name})`:'';
+          if(!c.tps) stuckList.push('per-user speed'+tag);
+          if(!c.p95) stuckList.push('P95'+tag); });
+        const missOf=dd=>{ let t=false,p=false;
+          members.forEach(m=>{ const c=can[m.name||'_'];
+            if(c.tps && m.sloTps>0 && dd.tps < m.sloTps) t=true;
+            if(c.p95 && m.sloP95>0 && memberP95(m, dd.tps, tp) > m.sloP95) p=true; });
+          return {t,p}; };
+        const w0=workers;
+        for(let guard=0; guard<80; guard++){
+          d=eva(workers,batch);
+          const miss=missOf(d);
+          if(!(miss.t||miss.p)) break;
+          if(batch<=1 || workers>=64){
+            if(miss.t) stuckList.push('per-user speed');
+            if(miss.p) stuckList.push('P95');
+            break;
+          }
+          workers++;
+          const reps2=Math.max(1,Math.floor(workers*s.perW/tp));
+          batch=Math.min(64,Math.max(1,Math.ceil(s.concurrent/reps2)));
+        }
+        sloStuck = stuckList.length? [...new Set(stuckList)].join(' and ') : null;
+        grewForSlo=workers-w0;
       }
-      if(workers>=64) break;
-      workers++;
+    } else {
+      // offline: queueing is fine, so keep hardware minimal and pick the largest batch that fits
+      workers=Math.max(1,Math.ceil(tp/s.perW));
+      outer: for(;;){
+        for(const b of [256,128,64,32,16,8,4,2,1]){
+          batch=b; d=eva(workers,b);
+          if(d.total<=pack*d.avail){ converged=true; break outer; }
+        }
+        if(workers>=64) break;
+        workers++;
+      }
     }
+    return {tp, crossed, ic, workers, batch, d, converged, sloStuck, grewForSlo, can,
+      physGpus: Math.max(1,Math.floor(workers*s.perW/tp))*tp};
   }
+  // TP candidates: the TTFT-driven width, plus wider ones up to one node's
+  // NVLink island (crossing nodes costs interconnect efficiency, so we never
+  // widen past perW purely for speed).
+  const speedTargets=members.some(m=>m.sloTps>0||m.sloP95>0);
+  const cands=[tp];
+  if(interactive&&speedTargets) [1,2,4,8,16,32,64,72].forEach(t=>{ if(t>tp&&t<=s.perW) cands.push(t); });
+  let plan=null;
+  cands.forEach(t=>{ const pl=planAt(t); if(!pl.converged) return;
+    const better = !plan
+      || (!pl.sloStuck && plan.sloStuck)
+      || (!!pl.sloStuck===!!plan.sloStuck && pl.physGpus < plan.physGpus - 1e-9);
+    if(better) plan=pl; });
+  if(!plan) plan=planAt(tp);
+  const tpWide=plan.tp>tp;
+  tp=plan.tp;
+  const crossed=plan.crossed, ic=plan.ic;
+  let workers=plan.workers, batch=plan.batch, d=plan.d;
+  const converged=plan.converged, sloStuck=plan.sloStuck, grewForSlo=plan.grewForSlo;
+  members.forEach(m=>{ const c=plan.can[m.name||'_']||{}; m.tpsCan=c.tps!==false; m.p95Can=c.p95!==false; });
+  const tpsCan=members.every(m=>m.tpsCan), p95Can=members.every(m=>m.p95Can);
   if(!converged) return {ok:false, packPct,
     reason:`Could not fit ${s.model.name} at TP${tp} within the ${packPct}% memory target even at 64 workers: quantize the weights, raise the target, or pick a higher-VRAM GPU`};
-  const dedicated={ok:true, mode:'dedicated', tp, tpFit, widened, crossed, workers, batch, packPct, weights, actGB, sloStuck, grewForSlo,
+  const dedicated={ok:true, mode:'dedicated', tp, tpFit, widened, ttftBinder, crossed, workers, batch, packPct, weights, actGB, sloStuck, grewForSlo,
     physGpus: Math.max(1,Math.floor(workers*s.perW/tp))*tp};
   // MIG-sliced alternative: TP1 pools whose copy fits a hardware slice can run
   // one replica per slice, sharing physical GPUs with other models/supports
@@ -2654,13 +2802,21 @@ function solvePool(s){
       const syn={...s, gpuVram:prof.gb, gpuBw:prof.bw, gpuTflops:prof.tflops, tp:1, perW:1, ic:1, multiGb:1.4};
       // a slice that cannot meet a target the dedicated plan CAN meet is out;
       // targets unachievable on any hardware are ignored here too (parity with
-      // the dedicated path: we never buy or reject hardware for them)
-      const aloneP=compute({...syn, gpus:1, workers:1, batch:1, concurrent:1});
-      if((s.sloTps>0 && tpsCan && !aloneP.slo.tps.pass) ||
-         (s.sloP95>0 && p95Can && !aloneP.slo.p95.pass)){
-        why=!aloneP.slo.tps.pass? {t:'slo', m:'per-user speed', have:fmt(aloneP.tps)+' tok/s', want:fmt(s.sloTps)+' tok/s'}
-                                : {t:'slo', m:'P95 latency', have:fmt(aloneP.p95)+' s', want:fmt(s.sloP95)+' s'};
-        continue; }
+      // the dedicated path). All checks are PER MEMBER with that member's own
+      // request shape, never the blended pool shape.
+      let rejected=null;
+      for(const m of members){
+        if(m.sloTtft>0 && ttftOf(m,1,prof.tflops) > m.sloTtft && !(ttftOf(m,tp) > m.sloTtft)){
+          rejected={t:'ttft', ms:ttftOf(m,1,prof.tflops), who:m.name}; break; }
+        const aloneM=compute({...syn, resident:m.resident, visibleOut:m.visibleOut,
+          reasonTok:m.reasonTok, extend:m.extend, sloTtft:m.sloTtft, sloTps:m.sloTps, sloP95:m.sloP95,
+          gpus:1, workers:1, batch:1, concurrent:1});
+        if(m.sloTps>0 && m.tpsCan!==false && !aloneM.slo.tps.pass){
+          rejected={t:'slo', m:'per-user speed'+(m.name?` (${m.name})`:''), have:fmt(aloneM.tps)+' tok/s', want:fmt(m.sloTps)+' tok/s'}; break; }
+        if(m.sloP95>0 && m.p95Can!==false && !aloneM.slo.p95.pass){
+          rejected={t:'slo', m:'P95 latency'+(m.name?` (${m.name})`:''), have:fmt(aloneM.p95)+' s', want:fmt(m.sloP95)+' s'}; break; }
+      }
+      if(rejected){ why=rejected; continue; }
       const SLICE_CAP=64;
       let slices=Math.max(1,Math.ceil(s.concurrent/SLICE_CAP)), sb=0, sd=null, okFit=false, stuck=null;
       for(let guard=0; guard<200; guard++){
@@ -2671,16 +2827,20 @@ function solvePool(s){
         slices++;
       }
       if(!okFit){ why={t:'kv'}; continue; }
+      const missSlice=dd=>{ let t=false,p=false;
+        members.forEach(m=>{
+          if(m.tpsCan!==false && m.sloTps>0 && dd.tps < m.sloTps) t=true;
+          if(m.p95Can!==false && m.sloP95>0 && memberP95(m, dd.tps, prof.tflops) > m.sloP95) p=true; });
+        return {t,p}; };
       for(let guard=0; guard<200; guard++){
-        const missT2=s.sloTps>0&&tpsCan&&!sd.slo.tps.pass, missP2=s.sloP95>0&&p95Can&&!sd.slo.p95.pass, missF2=s.sloTtft>0&&!sd.slo.ttft.pass;
-        if(!(missT2||missP2||missF2)) break;
-        if(missF2 && sb<=1){ stuck='TTFT'; break; }   // slice compute is capped: TTFT may be unreachable
-        if(sb<=1 || slices>=SLICE_CAP){ if(missT2||missP2) stuck=(missT2?'per-user speed':'')+(missT2&&(missP2)?' and ':'')+(missP2?'P95':''); break; }
+        const miss=missSlice(sd);
+        if(!(miss.t||miss.p)) break;
+        if(sb<=1 || slices>=SLICE_CAP){ stuck=(miss.t?'per-user speed':'')+(miss.t&&miss.p?' and ':'')+(miss.p?'P95':''); break; }
         slices++;
         sb=Math.min(64,Math.max(1,Math.ceil(s.concurrent/slices)));
         sd=compute({...syn, gpus:slices, workers:slices, batch:sb});
       }
-      if(stuck){ why= stuck==='TTFT'? {t:'ttft', ms:aloneP.ttft} : {t:'stuck', stuck}; continue; }
+      if(stuck){ why={t:'stuck', stuck}; continue; }
       const packed=binCount([...Array(slices).fill(sliceCost(partS, prof.units)), ...supU], binCap(partS));
       const phys=Math.max(0, packed-supAlone);
       if(!best || phys<best.physGpus) best={ok:true, mode:'sliced', tp:1, sliceU:prof.units, prof,
@@ -2689,7 +2849,8 @@ function solvePool(s){
     // pick sliced only when it genuinely saves hardware; targets no hardware can
     // meet are missed identically on both paths and carry over to the report
     if(best){
-      best.sloStuck=[!tpsCan?'per-user speed':null, !p95Can?'P95':null].filter(Boolean).join(' and ')||null;
+      best.sloStuck=[...new Set(members.flatMap(m=>[m.tpsCan===false?'per-user speed'+(m.name?` (${m.name})`:''):null,
+        m.p95Can===false?'P95'+(m.name?` (${m.name})`:''):null]).filter(Boolean))].join(' and ')||null;
       if(best.physGpus < dedicated.physGpus - 0.01) return best;
       why={t:'nosave', phys:best.physGpus, ded:dedicated.physGpus};
     }
@@ -2717,11 +2878,10 @@ function autoNoteHtml(){
 function autoSizeProject(quiet){
   captureUc();
   const prj=computeProject();
-  const entries=[]; let anyCrossed=false, allOk=true;
+  const entries=[]; let allOk=true;
   prj.pools.forEach(p=>{
     const r=solvePool(p.state);
     if(!r.ok){ allOk=false; entries.push({title:`${p.state.model.name} ${p.state.wq.name}`, facts:'does not fit', subs:[r.reason], bad:true}); return; }
-    anyCrossed=anyCrossed||r.crossed;
     p.members.forEach(mi=>{ const f=UC[mi].f; f.inTp=r.tp; f.inWorkers=r.workers; f.inBatch=r.batch;
       UC[mi].sliceU = r.mode==='sliced'? r.sliceU : 0; });
     const names=p.members.map(mi=>ucName(UC[mi])).join(' + ');
@@ -2732,7 +2892,7 @@ function autoSizeProject(quiet){
       entries.push({title:`${p.state.model.name} ${p.state.wq.name}`, who:names,
         facts:`${r.workers} replica${r.workers>1?'s':''} on ${sliceName(r.prof,r.workers>1)} (${fmt(r.prof.gb)} GB) · batch ${r.batch} · ${p.state.concurrent} calls · shared GPUs`, subs});
     } else {
-      if(r.widened) subs.push('TP widened to meet the TTFT target');
+      if(r.widened) subs.push(`TP widened to TP${r.tp} from TP${r.tpFit} for the TTFT target${r.ttftBinder?` of ${r.ttftBinder}`:''} (its prefill sets the floor for the whole pool)`);
       if(r.grewForSlo) subs.push(`${r.grewForSlo} node${r.grewForSlo>1?'s':''} added to meet the speed / P95 targets`);
       if(r.tp>1 && sliceProfiles(p.state.gpu).length && (r.weights+r.actGB)/r.tp <= 0.5*p.state.gpuVram)
         subs.push(`TP${r.tp} shards can never share a GPU or sit on MIG slices: tensor parallel needs NCCL peer-to-peer over NVLink, and MIG partitions have no peer-to-peer between them, so each copy owns ${r.tp} whole GPUs however empty they look`);
@@ -2743,7 +2903,6 @@ function autoSizeProject(quiet){
         facts:`TP${r.tp} × ${r.workers} worker${r.workers>1?'s':''} · batch ${r.batch} · ${p.state.concurrent} calls · dedicated GPUs`, subs});
     }
   });
-  if(anyCrossed&&+$('inIc').value>0.7){ $('inIc').value=0.7; refreshCtl('inIc'); }
   loadUc(activeUc); renderUcCards();
   const done=computeProject();
   const tail=[];
@@ -2769,7 +2928,6 @@ function autoSize(quiet){
   $('inTp').value=tp; refreshCtl('inTp');
   $('inWorkers').value=workers; refreshCtl('inWorkers');
   $('inBatch').value=batch; refreshCtl('inBatch');
-  if(crossed&&+$('inIc').value>0.7){ $('inIc').value=0.7; refreshCtl('inIc'); }
   render();
   const df=compute(readState());
   const qAlt=QUANTS.filter(q=>q.bytes<s.bytesW && (s.params*q.bytes+actGB)<=0.8*s.perW*s.gpuVram).sort((a,b)=>b.bytes-a.bytes)[0];

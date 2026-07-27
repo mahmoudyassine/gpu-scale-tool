@@ -39,8 +39,18 @@ For plain GQA models, use the real config values. For everything else, encode an
   keep per-token KV): scale `headDim` by the full-attention layer fraction.
   Example: 48 layers with 12 full-attention layers of `kvHeads 2, headDim 256`
   becomes `kvHeads: 2, headDim: 64` (256 x 12/48).
-- **Sliding-window mixes**: encode the long-context per-token cost (the
-  global-layer share) and note the pattern in `arch`.
+- **Sliding-window mixes** (engine v25): do NOT flatten these into one
+  scalar. Give the entry `kvGlobal` (how many layers use full attention) and
+  `kvWin` (the window in tokens); the engine then computes the per-token cost
+  as `kvGlobal_layers + window_layers x min(1, kvWin/sequence)`, which is
+  exact at every context instead of only at the one it was calibrated for.
+  Optional companions: `kvgHeads` / `kvgDim` when the global layers have their
+  own geometry, `kvgKeyOnly:true` when values are the keys (Gemma 4 global
+  layers ship no `v_proj`), and `kvLayers` when later layers reuse an earlier
+  layer's cache (Gemma 4 E-models share KV across their tail).
+  A single scalar was the old convention and it was wrong in both directions:
+  calibrated long it understated 4K voice traffic, calibrated short it
+  overstated 128K documents.
 
 ### Estimated configs
 

@@ -1,12 +1,12 @@
-# GPUscale libraries (generated · library v31 · engine v24 · studio 5.18.0)
+# GPUscale libraries (generated · library v32 · engine v25 · studio 5.19.0)
 
 ## Models (101)
 
 - Llama 3.1 8B · 8B total / 8B active · ctx 131072 · Dense (GQA) · Meta
 - Llama 3.1 70B · 70B total / 70B active · ctx 131072 · Dense (GQA) · Meta
 - Llama 3.1 405B · 405B total / 405B active · ctx 131072 · Dense (GQA) · Meta
-- Llama 4 Scout 109B (MoE) · 109B total / 17B active · ctx 10485760 · MoE (16E/1A) · Meta
-- Llama 4 Maverick 400B (MoE) · 400B total / 17B active · ctx 1048576 · MoE (128E/2A) · Meta
+- Llama 4 Scout 109B (MoE) · 109B total / 17B active · ctx 10485760 · MoE (16E/1A; iRoPE: 36 chunked local 8192 + 12 NoPE global) · Meta
+- Llama 4 Maverick 400B (MoE) · 400B total / 17B active · ctx 1048576 · MoE (128E/2A; iRoPE: 36 chunked local 8192 + 12 NoPE global) · Meta
 - Qwen3 0.6B · 0.6B total / 0.6B active · ctx 32768 · Dense (GQA) · Alibaba Cloud
 - Qwen3 1.7B · 1.7B total / 1.7B active · ctx 32768 · Dense (GQA) · Alibaba Cloud
 - Qwen3 4B · 4B total / 4B active · ctx 32768 · Dense (GQA) · Alibaba Cloud
@@ -15,39 +15,39 @@
 - Qwen3 32B · 32B total / 32B active · ctx 131072 · Dense (GQA) · Alibaba Cloud
 - Qwen3 30B-A3B (MoE) · 30B total / 3B active · ctx 131072 · MoE (128E/8A) · Alibaba Cloud
 - Qwen3 235B-A22B (MoE) · 235B total / 22B active · ctx 262144 · MoE (128E/8A) · Alibaba Cloud
-- Qwen3.5 0.8B · 0.8B total / 0.8B active · ctx 262144 · Dense (Hybrid attn approx) · Alibaba Cloud
-- Qwen3.5 2B · 2B total / 2B active · ctx 262144 · Dense (Hybrid attn approx) · Alibaba Cloud
-- Qwen3.5 4B · 4B total / 4B active · ctx 262144 · Dense (Hybrid attn approx) · Alibaba Cloud
-- Qwen3.5 9B · 9B total / 9B active · ctx 262144 · Dense (Hybrid attn approx) · Alibaba Cloud
-- Qwen3.5 27B · 27B total / 27B active · ctx 262144 · Dense (Hybrid attn approx) · Alibaba Cloud
-- Qwen3.5 35B-A3B (MoE) · 35B total / 3B active · ctx 262144 · MoE (256E/8A, hybrid approx) · Alibaba Cloud
-- Qwen3.5 122B-A10B (MoE) · 122B total / 10B active · ctx 262144 · MoE (256E/8A, hybrid approx) · Alibaba Cloud
-- Qwen3.5 397B-A17B (MoE) · 397B total / 17B active · ctx 262144 · MoE (512E/10A, hybrid approx) · Alibaba Cloud
+- Qwen3.5 0.8B · 0.8B total / 0.8B active · ctx 262144 · Dense (hybrid: only full-attn layers cache) · Alibaba Cloud
+- Qwen3.5 2B · 2B total / 2B active · ctx 262144 · Dense (hybrid: only full-attn layers cache) · Alibaba Cloud
+- Qwen3.5 4B · 4B total / 4B active · ctx 262144 · Dense (hybrid: only full-attn layers cache) · Alibaba Cloud
+- Qwen3.5 9B · 9B total / 9B active · ctx 262144 · Dense (hybrid: only full-attn layers cache) · Alibaba Cloud
+- Qwen3.5 27B · 27B total / 27B active · ctx 262144 · Dense (hybrid: only full-attn layers cache) · Alibaba Cloud
+- Qwen3.5 35B-A3B (MoE) · 35B total / 3B active · ctx 262144 · MoE (256E/8A, hybrid: only full-attn layers cache) · Alibaba Cloud
+- Qwen3.5 122B-A10B (MoE) · 122B total / 10B active · ctx 262144 · MoE (256E/8A, hybrid: only full-attn layers cache) · Alibaba Cloud
+- Qwen3.5 397B-A17B (MoE) · 397B total / 17B active · ctx 262144 · MoE (512E/10A, hybrid: only full-attn layers cache) · Alibaba Cloud
 - DeepSeek-V3 671B (MoE) · 671B total / 37B active · ctx 131072 · MoE (257E/9A, MLA eff.) · DeepSeek
 - DeepSeek-R1 671B (MoE) · 671B total / 37B active · ctx 131072 · MoE (257E/9A, MLA eff.) · DeepSeek
 - Kimi K2 1T-A32B (MoE) · 1000B total / 32B active · ctx 131072 · MoE (385E/9A, MLA eff.) · Moonshot AI
 - Kimi K2.5 1T-A32B (MoE) · 1000B total / 32B active · ctx 262144 · MoE (385E/9A, MLA eff.) · Moonshot AI
-- Mistral 7B v0.3 · 7.3B total / 7.3B active · ctx 32768 · Dense (GQA+SWA) · Mistral AI
+- Mistral 7B v0.3 · 7.3B total / 7.3B active · ctx 32768 · Dense (GQA) · Mistral AI
 - Mixtral 8x7B (MoE) · 46.7B total / 12.9B active · ctx 32768 · MoE (8E/2A) · Mistral AI
 - Mistral Small 3 24B · 24B total / 24B active · ctx 32768 · Dense (GQA) · Mistral AI
 - Mistral Small 3.1 24B · 24B total / 24B active · ctx 131072 · Dense (GQA) · Mistral AI
 - Mistral Large 3 675B (MoE) · 675B total / 41B active · ctx 262144 · MoE (granular; cfg approx) · Mistral AI
 - Mixtral 8x22B (MoE) · 141B total / 39B active · ctx 65536 · MoE (8E/2A) · Mistral AI
-- Gemma 2 2B · 2B total / 2B active · ctx 8192 · Dense (GQA+SWA) · Google
-- Gemma 2 9B · 9B total / 9B active · ctx 8192 · Dense (GQA+SWA) · Google
-- Gemma 2 27B · 27B total / 27B active · ctx 8192 · Dense (GQA+SWA) · Google
-- Gemma 3 1B · 1B total / 1B active · ctx 32768 · Dense (GQA+SWA 5:1) · Google
-- Gemma 3 4B · 4.3B total / 4.3B active · ctx 131072 · Dense (GQA+SWA 5:1) · Google
-- Gemma 3 12B · 12.2B total / 12.2B active · ctx 131072 · Dense (GQA+SWA 5:1) · Google
-- Gemma 3 27B · 27.4B total / 27.4B active · ctx 131072 · Dense (GQA+SWA 5:1) · Google
-- Gemma 4 E2B · 5.1B total / 2.3B active · ctx 131072 · Dense (shared KV approx) · Google
-- Gemma 4 E4B · 8B total / 4.5B active · ctx 131072 · Dense (shared KV approx) · Google
-- Gemma 4 26B-A4B (MoE) · 25.2B total / 3.8B active · ctx 262144 · MoE (129E/9A; shared KV approx) · Google
-- Gemma 4 31B · 30.7B total / 30.7B active · ctx 262144 · Dense (shared KV approx) · Google
+- Gemma 2 2B · 2B total / 2B active · ctx 8192 · Dense (GQA + SWA 1:1, win 4096) · Google
+- Gemma 2 9B · 9B total / 9B active · ctx 8192 · Dense (GQA + SWA 1:1, win 4096) · Google
+- Gemma 2 27B · 27B total / 27B active · ctx 8192 · Dense (GQA + SWA 1:1, win 4096) · Google
+- Gemma 3 1B · 1B total / 1B active · ctx 32768 · Dense (GQA + SWA 5:1, win 512) · Google
+- Gemma 3 4B · 4.3B total / 4.3B active · ctx 131072 · Dense (GQA + SWA 5:1, win 1024) · Google
+- Gemma 3 12B · 12.2B total / 12.2B active · ctx 131072 · Dense (GQA + SWA 5:1, win 1024) · Google
+- Gemma 3 27B · 27.4B total / 27.4B active · ctx 131072 · Dense (GQA + SWA 5:1, win 1024) · Google
+- Gemma 4 E2B · 5.1B total / 2.3B active · ctx 131072 · Dense (SWA 4:1 win 512; KV shared over last 20 of 35) · Google
+- Gemma 4 E4B · 8B total / 4.5B active · ctx 131072 · Dense (SWA 5:1 win 512; KV shared over last 18 of 42) · Google
+- Gemma 4 26B-A4B (MoE) · 25.2B total / 3.8B active · ctx 262144 · MoE (128E/8A; SWA 5:1 win 1024; global v=k, 2 kv x 512) · Google
+- Gemma 4 31B · 30.7B total / 30.7B active · ctx 262144 · Dense (SWA 5:1 win 1024; global v=k, 4 kv x 512) · Google
 - Phi-4-mini 3.8B · 3.8B total / 3.8B active · ctx 131072 · Dense (GQA) · Microsoft
 - Phi-4 14B · 14B total / 14B active · ctx 16384 · Dense (GQA) · Microsoft
-- GPT-OSS 20B · 21B total / 3.6B active · ctx 131072 · MoE (32E/4A, GQA) · OpenAI
-- GPT-OSS 120B · 117B total / 5.1B active · ctx 131072 · MoE (128E/4A, GQA) · OpenAI
+- GPT-OSS 20B · 21B total / 3.6B active · ctx 131072 · MoE (32E/4A; GQA, banded SWA 1:1 win 128) · OpenAI
+- GPT-OSS 120B · 117B total / 5.1B active · ctx 131072 · MoE (128E/4A; GQA, banded SWA 1:1 win 128) · OpenAI
 - Qwen3-Next 80B-A3B (MoE, hybrid) · 80B total / 3.9B active · ctx 262144 · MoE (512E/10A, hybrid attn) · Alibaba
 - Qwen3-Coder 480B-A35B (MoE) · 480B total / 35B active · ctx 262144 · MoE (160E/8A, GQA) · Alibaba
 - DeepSeek-V3.1 671B (MoE) · 671B total / 37B active · ctx 131072 · MoE (257E/9A, MLA eff.) · DeepSeek
@@ -57,7 +57,7 @@
 - MiniMax-M2 230B-A10B (MoE) · 230B total / 10B active · ctx 200000 · MoE (256E/8A, GQA) · MiniMax
 - Llama 3.3 70B Instruct · 70B total / 70B active · ctx 131072 · Dense (GQA) · Meta
 - Mistral Medium 3.5 128B · 128B total / 128B active · ctx 262144 · Dense (GQA, est. cfg) · Mistral AI
-- Cohere Command A 111B · 111B total / 111B active · ctx 262144 · Dense (hybrid SWA, est. cfg) · Cohere
+- Cohere Command A 111B · 111B total / 111B active · ctx 262144 · Dense (GQA + SWA 3:1, win 4096) · Cohere
 - Ministral 3 14B · 14B total / 14B active · ctx 32768 · Dense (GQA) · Mistral AI
 - DeepSeek-V4-Pro 1.6T-A49B (MoE) · 1600B total / 49B active · ctx 1048576 · MoE (385E/7A, hybrid CSA/HCA eff.) · DeepSeek
 - DeepSeek-V4-Flash 284B-A13B (MoE) · 284B total / 13B active · ctx 1048576 · MoE (257E/7A, hybrid CSA/HCA eff.) · DeepSeek
@@ -78,11 +78,11 @@
 - Jais-2-70B (Arabic) · 70B total / 70B active · ctx 32768 · Dense (GQA, est. cfg) · from scratch, Cerebras-trained · Inception / G42 (UAE)
 - Jais-2-8B (Arabic) · 8B total / 8B active · ctx 32768 · Dense (GQA, est. cfg) · from scratch, Cerebras-trained · Inception / G42 (UAE)
 - Jais-adapted-70B (Arabic) · 70B total / 70B active · ctx 4096 · Dense (GQA, Llama-2 adapted) · Inception / G42 (UAE)
-- Fanar-2-27B (Arabic, Qatar) · 27.4B total / 27.4B active · ctx 131072 · Dense (GQA) · Gemma-3-27B continual pretrain · QCRI (Qatar)
+- Fanar-2-27B (Arabic, Qatar) · 27.4B total / 27.4B active · ctx 131072 · Dense (GQA + SWA 5:1, win 1024) · Gemma-3-27B continual pretrain · QCRI (Qatar)
 - ALLaM-34B (Arabic) · 34B total / 34B active · ctx 32768 · Dense (GQA, est. cfg) · from scratch · HUMAIN (KSA)
 - Falcon-H1-Arabic-34B · 34B total / 34B active · ctx 262144 · Dense hybrid Attn+SSM (GQA-4) · OALL #1 · TII (UAE)
 - Falcon-Arabic-7B · 7B total / 7B active · ctx 32768 · Dense (GQA) · Falcon3-7B base · TII (UAE)
-- SILMA-9B (Arabic) · 9B total / 9B active · ctx 8192 · Dense (GQA+SWA) · Gemma-2-9B base · SILMA AI (KSA)
+- SILMA-9B (Arabic) · 9B total / 9B active · ctx 8192 · Dense (GQA + SWA 1:1, win 4096) · Gemma-2-9B base · SILMA AI (KSA)
 - Cohere Command A+ 218B-A25B (MoE) · 218B total / 25B active · ctx 131072 · MoE (25B active, est. cfg) · Apache 2.0, vision-in · Cohere
 - Cohere Command A Reasoning 111B · 111B total / 111B active · ctx 262144 · Dense (hybrid SWA, est. cfg) · reasoning · Cohere
 - Cohere Command R+ 104B · 104B total / 104B active · ctx 131072 · Dense (GQA) · Cohere
