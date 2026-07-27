@@ -1,5 +1,18 @@
 # Changelog
 
+## Studio 5.21.2 (2026-07-27)
+
+From an adversarial audit of the 5.21 co-residency and map work.
+
+- **P95 is now judged at the speed and prefill a shared card actually gives.**
+  The merge test inflated first-token time for a neighbour but still checked
+  P95 against the SOLO prefill, so a card could be merged whose tenant then
+  missed its P95 while the fleet reported all-clear. Both terms now use the
+  same inflation.
+- The band-label size test still held the pre-5.21 cell dimensions, so labels
+  were hidden on cells that had room for them.
+- "1 card carry more than one model" now agrees with itself.
+
 ## Studio 5.21.1 (2026-07-27)
 
 Follow-ups from auditing 5.21 against a real project.
