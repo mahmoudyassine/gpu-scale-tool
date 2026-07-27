@@ -1,5 +1,18 @@
 # Changelog
 
+## Studio 5.19.2 (2026-07-27)
+
+- Shared GPUs no longer read "100%". A co-resident card was labelling each
+  model band with the share of its own slice that the model uses, which is
+  always 100% by definition, and that meaningless label then suppressed the
+  card's real figure: cards sitting at 59% of VRAM displayed 100% while their
+  own node header said 59%. Shared cards now show the same memory percentage
+  as every other card, and the band heights show how the card is divided.
+- The fleet map now says what is actually limiting the fleet: how many cards
+  carry more than one model, that a card can look empty in memory and still be
+  full because decode is bound by memory bandwidth, and that dashed cells are
+  unused slots on the last node because nodes are bought whole.
+
 ## Studio 5.19.1 (2026-07-27)
 
 Co-residency hardening, found by an adversarial audit of 5.19.0.
