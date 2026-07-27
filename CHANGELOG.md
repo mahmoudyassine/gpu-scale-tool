@@ -1,5 +1,21 @@
 # Changelog
 
+## Studio 5.19.1 (2026-07-27)
+
+Co-residency hardening, found by an adversarial audit of 5.19.0.
+
+- A card is now only shared when every tenant still meets its P95 at the speed
+  it is GUARANTEED under sharing (its own target), not the higher speed it
+  happens to get with the card to itself. A pool could previously pass P95
+  comfortably alone and miss it once a neighbour moved in, while the fleet
+  still reported all-clear.
+- Pools with no per-user speed target never share: without a target there is
+  no guaranteed bandwidth share to reason about.
+- Two replicas of the same pool no longer stack on one card; real serving
+  stacks raise the batch instead of running a second copy of the same weights.
+- Fresh cards are appended as whole aligned blocks, so a tensor-parallel
+  replica can no longer strand half-empty cards that were still being counted.
+
 ## Studio 5.19 (2026-07-27) · engine v25 · library v32
 
 Fleet sizing correctness: the same project now sizes to 56 GPUs instead of 448.
