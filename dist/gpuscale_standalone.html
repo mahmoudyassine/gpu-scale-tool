@@ -215,15 +215,22 @@ html[data-theme="dark"]{--pool0:#82AAFF;--pool1:#C4A5FF;--pool2:#FF8FC1;--pool3:
 .fm-nlab .sp{flex:1}
 .fm-gpu .fill{position:absolute;left:1px;right:1px;bottom:1px;border-radius:3px}
 .fm-gpu .gp{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:9.5px;font-weight:600;color:var(--text);text-shadow:0 0 3px var(--panel),0 0 3px var(--panel),0 1px 2px var(--panel);pointer-events:none}
-.fm-node{border:1px solid var(--line);border-radius:6px;background:var(--panel);padding:7px 8px 8px;width:170px;flex:none}
+.fm-node{border:1px solid var(--line);border-radius:6px;background:var(--panel);padding:7px 8px 8px;width:214px;flex:none}
 .fm-node.standby,.fm-node.mirror,.fm-node.drs{border-style:dashed;opacity:.75}
 .fm-node.support .fm-nlab .role{color:var(--amber)}
 .fm-node.fm-active{border-color:var(--acol,var(--teal-strong));box-shadow:0 0 0 1px var(--acol,var(--teal-strong))}
 .fm-nlab{display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:9.5px;color:var(--faint);margin-bottom:6px;white-space:nowrap;overflow:hidden}
 .fm-nlab .role{overflow:hidden;text-overflow:ellipsis;min-width:0;flex:0 1 auto}
 .fm-nlab .role{font-size:8.5px;letter-spacing:.04em;text-transform:uppercase}
-.fm-gpus{display:grid;grid-template-columns:repeat(4,34px);gap:4px;justify-content:center}
-.fm-gpu{width:34px;height:34px;border-radius:6px;border:1px solid var(--line);background:var(--inset);position:relative;overflow:hidden}
+.fm-gpus{display:grid;grid-template-columns:repeat(4,46px);gap:4px;justify-content:center}
+.fm-gpu{width:46px;height:46px;border-radius:7px;border:1px solid var(--line);background:var(--inset);position:relative;overflow:hidden}
+/* one card's memory, stacked from the bottom the way the ledger reads it:
+   weights (solid) · KV cache (tinted, the part that grows with traffic) ·
+   working set (neutral). The gap above is memory the speed target cannot use. */
+.fm-stack{position:absolute;inset:0;display:flex;flex-direction:column-reverse}
+.fm-stack .ms{width:100%;flex:none}
+.fm-stack .ms.kv{opacity:.42}
+.fm-stack .ms.o{background:var(--seg-ovh);opacity:.75}
 .fm-gpu.assigned{border-color:transparent}
 .fm-gpu.spare{border-style:dashed}
 .fm-gpu .band{position:absolute;left:0;right:0;overflow:hidden}
@@ -239,9 +246,9 @@ html[data-theme="dark"] .fm-gpu .bfill{background-image:repeating-linear-gradien
 .fs-it .sw{width:9px;height:9px;border-radius:2px;flex:none}
 .fm-legend .sw.hatch{background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.4) 0 2px,transparent 2px 4px)}
 html[data-theme="dark"] .fm-legend .sw.hatch{background-image:repeating-linear-gradient(135deg,rgba(0,0,0,.35) 0 2px,transparent 2px 4px)}
-.fleet-map.dense .fm-gpus{grid-template-columns:repeat(4,26px)}
-.fleet-map.dense .fm-node{width:140px}
-.fleet-map.dense .fm-gpu{width:26px;height:26px;border-radius:5px}
+.fleet-map.dense .fm-gpus{grid-template-columns:repeat(4,34px)}
+.fleet-map.dense .fm-node{width:170px}
+.fleet-map.dense .fm-gpu{width:34px;height:34px;border-radius:6px}
 .fleet-map.dense .fm-gpu .gp{font-size:8px}
 .fm-note{font-size:11px;color:var(--faint);line-height:1.5;margin-top:10px}
 .ri{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex:none;vertical-align:-2px}
@@ -620,6 +627,11 @@ ul.sum li:has(.as-list){flex-wrap:wrap}
 .as-list .who{color:var(--muted);font-weight:400}
 .as-list ul{margin:3px 0 0;padding-left:15px;display:flex;flex-direction:column;gap:2px}
 .as-list ul li{font-size:11.5px;color:var(--muted);list-style:circle}
+
+/* fleet-map memory legend swatches */
+.fm-legend .lg-sw.mem-w{background:var(--muted)}
+.fm-legend .lg-sw.mem-kv{background:var(--muted);opacity:.42}
+.fm-legend .lg-sw.mem-o{background:var(--seg-ovh);opacity:.75}
 </style>
 <script>/* follow the OS scheme before first paint; the toggle still overrides */
 (function(){try{var t=localStorage.getItem('gpuscale-theme');if(t==='dark'||t==='light'){document.documentElement.dataset.theme=t;window.__themeLocked=true;}else if(matchMedia('(prefers-color-scheme: dark)').matches)document.documentElement.dataset.theme='dark';}catch(e){}})();</script>
@@ -1274,7 +1286,7 @@ if(!MODELS.length || !GPUS.length || !QUANTS.length || !CASES.length){
   document.body.innerHTML = '<div style="font-family:system-ui,sans-serif;max-width:560px;margin:80px auto;padding:0 20px;line-height:1.65;color:#1A2536"><h2 style="margin-bottom:10px">Data files not loaded</h2><p>GPUscale.net could not find its library. Keep <code>index.html</code> together with the <code>data/</code> and <code>assets/</code> folders: the four files <code>data/models.js</code>, <code>data/gpus.js</code>, <code>data/quants.js</code> and <code>data/usecases.js</code> must sit next to this page.</p><p>If you need one portable file instead, use <code>dist/gpuscale_standalone.html</code> or rebuild it with <code>python3 tools/build_single_file.py</code>.</p></div>';
   throw new Error('GPUscale.net data missing');
 }
-const STUDIO_VERSION = '5.20.0', ENGINE_VERSION = 25;
+const STUDIO_VERSION = '5.21.0', ENGINE_VERSION = 25;
 function newProjId(){ const L='abcdefghjkmnpqrstuvwxyz', D='0123456789';
   const pick=s=>s[Math.floor(Math.random()*s.length)];
   return 'Project_'+pick(L)+pick(L)+pick(D)+pick(D)+pick(D); }
@@ -1719,6 +1731,38 @@ function buildStory(s,d,m,g){
 }
 
 /* ================= RECOMMENDATIONS ================= */
+/* Is this card the right shape for the job? Decode is bandwidth bound, so a
+   card can only ever hold (bandwidth x ic x mbu) / target tok/s of memory at
+   the operating point. When that ceiling sits far under the card's VRAM you
+   are buying HBM the speed targets forbid you from filling, and a different
+   part serves the same load on fewer cards or less power. We answer it by
+   re-solving the whole project on each candidate rather than by rule of thumb. */
+let __fitMemo={key:'',rows:null};
+function gpuFitScan(prj){
+  if(!prj||!prj.pools||!prj.pools.length) return null;
+  const key=prj.pools.map(p=>[p.state.model.name,p.state.wq.name,Math.round(p.state.concurrent),
+    Math.round(p.state.resident),p.state.sloTps,p.state.sloP95,p.state.sloTtft].join('/')).join('|')
+    +'#'+prj.hw.perW+'#'+(($('autoUtil')&&$('autoUtil').value)||80);
+  if(__fitMemo.key===key) return __fitMemo.rows;
+  const rows=[];
+  GPUS.forEach(g=>{
+    if(!/Data Center/.test(g.cls||'')) return;
+    let cards=0, ok=true, stuck=false;
+    for(const p of prj.pools){
+      let r;
+      try{ r=solvePool({...p.state, gpu:g, gpuVram:g.vram, gpuBw:g.bw, gpuTflops:g.tflops}); }
+      catch(e){ ok=false; break; }
+      if(!r||!r.ok){ ok=false; break; }
+      if(r.sloStuck) stuck=true;
+      cards += (r.cards||r.physGpus||0);
+    }
+    if(!ok||!cards) return;
+    rows.push({g, cards, kW:+(cards*g.watts/1000).toFixed(1), stuck});
+  });
+  rows.sort((a,b)=>a.cards-b.cards || a.kW-b.kW);
+  __fitMemo={key, rows};
+  return rows;
+}
 function buildRecs(s,d,m,g,prelaunch){
   const recs=[]; const util=d.avail>0? d.total/d.avail : 1;
   const push=(lv,t,b)=>recs.push({lv,t,b});
@@ -2246,7 +2290,10 @@ function ucState(u, hw){
       headDim:+f.cusHdim||8, ctx:+f.cusCtx||1024, arch:'Custom', dev:'—', url:''}
     : (MODELS[+f.selModel||0]||MODELS[0]);
   const wq=QUANTS[+f.selWQuant||0]||QUANTS[0], kq=KV_QUANTS[+f.selKQuant||0]||KV_QUANTS[0];
-  const workers=Math.round(uv(f,'inWorkers')), gpus=workers*hw.perW;
+  const workers=Math.round(uv(f,'inWorkers'));
+  // auto-size allocates cards, not nodes: pools pack onto shared nodes, so a
+  // pool may own any number of GPUs. A hand-edited worker count clears this.
+  const gpus=Math.max(1, +u.cards>0? +u.cards : workers*hw.perW);
   const tp=Math.min(Math.round(uv(f,'inTp')), gpus);
   return {model:m, gpu:hw.g, wq, kq,
     params:m.params, active:m.active, hidden:m.hidden, layers:m.layers,
@@ -2624,19 +2671,26 @@ function buildFleetSites(prj){
   function gpuList(){
     const list=[];
     // co-tenanted physical GPUs: one entry per card, one band per model on it
+    // what each card actually holds, split the way the ledger splits it
+    const mixOf=slots=>{ const m={w:0,kv:0,o:0};
+      slots.forEach(s=>{ const p2=pools[s.pool], n=Math.max(1,p2.d.replicas*Math.max(1,p2.state.tp));
+        m.w += p2.d.weightsAll/n; m.kv += p2.d.kvTotal/n;
+        m.o += (p2.d.actAll+p2.d.fixed+p2.d.multi)/n; });
+      return m; };
     ((prj.co&&prj.co.gpus)||[]).forEach(g=>{
       const tenants=[...new Set(g.slots.map(s=>s.pool))];
       const util=Math.min(1, g.mem/Math.max(1,hw.g.vram));
+      const mix=mixOf(g.slots);
       if(tenants.length<=1){ const s0=g.slots[0]; if(!s0) return; const st=pools[s0.pool].state;
-        list.push({type:'pool', pool:s0.pool, rep:s0.rep, util,
-          tip:`${st.model.name} · replica ${s0.rep+1} of ${pools[s0.pool].d.replicas} (TP${st.tp} shard) · ${fmt(g.mem)} GB of ${fmt(hw.g.vram)} GB used (${(util*100).toFixed(0)}%)${st.tp>1?` · a TP${st.tp} copy spans ${st.tp} cards over NVLink`:''}`});
+        list.push({type:'pool', pool:s0.pool, rep:s0.rep, util, mix,
+          tip:`${st.model.name} · replica ${s0.rep+1} of ${pools[s0.pool].d.replicas} (TP${st.tp} shard)\n${fmt(mix.w)} GB weights + ${fmt(mix.kv)} GB KV cache + ${fmt(mix.o)} GB working set = ${fmt(g.mem)} GB of ${fmt(hw.g.vram)} GB (${(util*100).toFixed(0)}%)${st.tp>1?`\na TP${st.tp} copy spans ${st.tp} cards over NVLink`:''}`});
         return; }
       const slices=tenants.map(pi=>{ const st=pools[pi].state;
         const mem=g.slots.filter(s=>s.pool===pi).reduce((t,s)=>t+s.mem,0);
         return {kind:'pool', pool:pi, gb:mem, mu:mem,
           tip:`${st.model.name} (TP${st.tp}) · ${fmt(mem)} GB`}; });
-      list.push({type:'shared', bin:{co:true, used:g.mem, slices},
-        tip:`co-resident models on one GPU: ${slices.map(s=>s.tip).join(' · ')} · ${fmt(g.mem)} GB of ${fmt(hw.g.vram)} GB used (${(util*100).toFixed(0)}%)`}); });
+      list.push({type:'shared', mix, bin:{co:true, used:g.mem, slices},
+        tip:`co-resident models on one GPU: ${slices.map(s=>s.tip).join(' · ')}\n${fmt(mix.w)} GB weights + ${fmt(mix.kv)} GB KV cache + ${fmt(mix.o)} GB working set = ${fmt(g.mem)} GB of ${fmt(hw.g.vram)} GB (${(util*100).toFixed(0)}%)`}); });
     (shared.bins||[]).forEach(bin=>list.push({type:'shared', bin,
       tip:'shared GPU: '+bin.slices.map(sl=>sl.tip||`${KIND_LABEL[sl.kind]||sl.kind}${sl.model?' '+sl.model:''}${sl.inst>1?' ×'+sl.inst:''} (${fmt(sl.gb)} GB)`).join(' · ')}));
     return list;
@@ -2772,9 +2826,21 @@ function renderFleet(prj){
   const partMax=(hw.g.part&&hw.g.part.max)||1;
   const short=n=>n.length>26? n.slice(0,24)+'…':n;
   const gp=p2=>`<span class="gp">${Math.round(p2*100)}%</span>`;
+  /* One card, drawn the way the memory ledger reads it: weights are the fixed
+     cost of holding the model, KV is what the conversations occupy, and the
+     working set is activations plus runtime overhead. The gap above is memory
+     the speed target will not let you spend. */
+  const memStack=(mix, col, op)=>{
+    if(!mix) return '';
+    const V=Math.max(1,hw.g.vram), pc=x=>Math.max(0,Math.min(100, x/V*100));
+    return `<div class="fm-stack" style="opacity:${op==null?1:op}">`
+      + `<div class="ms w" style="height:${pc(mix.w)}%;background:${col}"></div>`
+      + `<div class="ms kv" style="height:${pc(mix.kv)}%;background:${col}"></div>`
+      + `<div class="ms o" style="height:${pc(mix.o)}%"></div></div>`;
+  };
   const gpuHtml=g2=>{
-    if(g2.type==='pool'){ const h=Math.max(6, Math.round(g2.util*100));
-      return `<div class="fm-gpu assigned" title="${esc(g2.tip)}"><div class="fill" style="height:${h}%;background:var(--pool${PC[g2.pool]});opacity:${g2.rep%2?0.72:1}"></div>${gp(g2.util)}</div>`; }
+    if(g2.type==='pool'){ const col=`var(--pool${PC[g2.pool]})`;
+      return `<div class="fm-gpu assigned" title="${esc(g2.tip)}">${memStack(g2.mix, col, g2.rep%2?0.78:1)}${gp(g2.util)}</div>`; }
     if(g2.type==='idle'){ const col=g2.pool==null? 'var(--amber-border)' : (g2.mode==='drs'? 'var(--violet)' : `var(--pool${PC[g2.pool]})`);
       return `<div class="fm-gpu spare" title="${esc(g2.tip)}" style="border-color:${col}"></div>`; }
     if(g2.type==='sup'||g2.type==='shared'){ let y=0, memUsed=0, anyLab=false;
@@ -2790,6 +2856,8 @@ function renderFleet(prj){
         const b=`<div class="band" style="bottom:${y}%;height:${h}%;background-color:color-mix(in srgb,${col} 24%,transparent)"><div class="bfill${sl.kind==='pool'?' solid':''}" style="height:${Math.round(fl*100)}%;background-color:${col}"></div>${lab}</div>`;
         y+=h; return b; }).join('');
       const used=(partMax>1&&!coBin)? memUsed/Math.max(1,hw.g.vram) : g2.bin.used/Math.max(1,hw.g.vram);
+      // a co-resident card is several models' memory, so show the same split
+      if(coBin&&g2.mix) return `<div class="fm-gpu assigned" title="${esc(g2.tip)}">${memStack(g2.mix,'var(--seg-kv)')}${gp(Math.min(1,used))}</div>`;
       return `<div class="fm-gpu assigned" title="${esc(g2.tip)}">${bands}${anyLab?'':gp(Math.min(1,used))}</div>`; }
     return `<div class="fm-gpu spare" title="${esc(g2.tip)}"></div>`;
   };
@@ -2821,7 +2889,10 @@ function renderFleet(prj){
     `<span class="lg-li"><span class="sw dashed"></span>unassigned headroom</span>`+
     (UC.length>1?`<span class="lg-li no-print"><span class="sw" style="background:transparent;border:2px solid var(--text)"></span>outlined nodes = pool of the selected use case (screen only)</span>`:'')+
     `<span class="lg-li"><span class="sw duo"></span>same pool, adjacent replicas alternate shade</span>`+
-    `<span class="lg-li">fill height = share of GPU memory used</span>`;
+    `<span class="lg-li"><span class="lg-sw mem-w"></span><span class="k">model weights</span></span>`+
+    `<span class="lg-li"><span class="lg-sw mem-kv"></span><span class="k">KV cache (grows with traffic)</span></span>`+
+    `<span class="lg-li"><span class="lg-sw mem-o"></span><span class="k">working set</span></span>`+
+    `<span class="lg-li">empty space above = memory the speed target cannot spend</span>`;
   $('fmTotals').textContent=`${fleet.procW} nodes · ${fleet.procG} GPUs · ≈${fmt(fleet.kW)} kW TDP`;
   // semantic text form
   $('fleetList').innerHTML='<h3>Deployment, text form</h3>'+sites.map(s2=>`<h4>${esc(s2.title)}</h4><ul>`+s2.nodes.map(n2=>{
@@ -2844,7 +2915,7 @@ function renderFleet(prj){
     else if((co.blockers||[]).length) lim.push(`no card carries two models: ${co.blockers[0]}`);
     const bwBound=pools.filter(p=>p.state.sloTps>0 && p.d.tps>0 && p.d.total/p.d.avail < 0.6).length;
     $('fmNote').innerHTML=notes.map(esc).join(' ')+
-      ` GPU fill height is memory used; on a shared GPU each band is one model.`+
+      ` Each card is stacked bottom-up: model weights, then KV cache, then working set.`+
       (lim.length? ` ${esc(lim.join(', '))}.`:'')+
       (bwBound? ` A card can look empty in memory and still be full: decode speed is bound by memory bandwidth, so pools sized to hit a per-user speed target leave VRAM unused by design (${bwBound} pool${bwBound>1?'s':''} here).`:'')+
       ` Dashed cells are unused slots on the last node, since nodes are bought whole.`+
@@ -3036,6 +3107,37 @@ function renderProjectReport(prj){
     if(rb.bottleneck!=='none') bns.push(shortPoolTag(pools,pi)+': '+rb.bottleneck);
     rb.recs.forEach(r=>recs.push(`<div class="rec ${r.lv}"><div class="r-t">${esc(shortPoolTag(pools,pi))} · ${r.t}</div><div class="r-b">${r.b}</div></div>`)); });
   $('recBottleneck').textContent=bns.length? bns.join(' · ') : 'no active bottleneck';
+  // Is the card itself the wrong shape for this workload? Put it first: it is
+  // the most expensive decision on the page and the easiest one to get wrong.
+  try{
+    const rows=gpuFitScan(prj), cur=hw.g;
+    if(rows&&rows.length){
+      const mine=rows.find(r=>r.g.name===cur.name);
+      const best=rows.filter(r=>!r.stuck);
+      const alt=best.filter(r=>r.g.name!==cur.name
+        && (!mine || r.cards<mine.cards-0.01 || (r.cards<=mine.cards && r.kW<mine.kW-0.05))).slice(0,3);
+      const avgUtil=pools.reduce((t,p2)=>t+(p2.d.avail>0? p2.d.total/p2.d.avail:0),0)/Math.max(1,pools.length);
+      const bwCeil=cur.bw*1000*hw.ic*hw.mbu;
+      const tgt=Math.max(...pools.map(p2=>+p2.state.sloTps||0));
+      const ceilPct=tgt>0? Math.min(100, bwCeil/tgt/cur.vram*100) : 100;
+      if(alt.length){
+        const lv=(mine && alt[0].cards<=mine.cards*0.7)? 'warn':'ok';
+        recs.unshift(`<div class="rec ${lv}"><div class="r-t">Hardware fit: ${esc(cur.name)} is `
+          +`${ceilPct<55?'more memory than these speed targets can use':'not the cheapest fit'} for this project</div>`
+          +`<div class="r-b">At a ${fmt(tgt)} tok/s target a ${esc(cur.name)} can only hold `
+          +`<b>${fmt(bwCeil/Math.max(1,tgt))} GB</b> of the ${fmt(cur.vram)} GB it ships (${ceilPct.toFixed(0)}%), because decode is bound by memory bandwidth, not capacity`
+          +`${mine?`. This project needs <b>${mine.cards} ${esc(cur.name)}</b> (≈${fmt(mine.kW)} kW)`:''}. `
+          +`Same workload, same targets: `
+          + alt.map(r=>`<b>${r.cards}× ${esc(r.g.name)}</b> (≈${fmt(r.kW)} kW${/2026/.test(r.g.cls||'')?', pre-launch estimate':''})`).join(', ')
+          +`. Re-run Auto-size after switching.</div></div>`);
+      } else if(mine && rows[0] && rows[0].g.name===cur.name){
+        recs.unshift(`<div class="rec ok"><div class="r-t">Hardware fit: ${esc(cur.name)} is the best fit in the library for this project</div>`
+          +`<div class="r-b">No data-center part serves these use cases on fewer cards. `
+          +`Memory sits at ${(avgUtil*100).toFixed(0)}% because the ${fmt(tgt)} tok/s target caps what a card can hold at `
+          +`<b>${fmt(bwCeil/Math.max(1,tgt))} GB</b>; the spare VRAM is headroom for longer context or more users, not waste.</div></div>`);
+      }
+    }
+  }catch(e){}
   $('recs').innerHTML=recs.join('');
   // --- print inputs: every use case, side by side ---
   const cols=[];
@@ -3238,7 +3340,7 @@ function serialize(){
     // v5: the full use-case list. config/snapshot above stay v4-shaped (the active
     // card) so older importers still read this file as a single-scenario config.
     project:{active:activeUc, usecases:UC.map(u=>({id:u.id, name:u.name||null,
-      isolate:!!u.isolate, supports:u.supports||[], concManual:!!u.concManual, sliceU:+u.sliceU||0,
+      isolate:!!u.isolate, supports:u.supports||[], concManual:!!u.concManual, sliceU:+u.sliceU||0, cards:+u.cards||0,
       activeUsers:+u.f.nrmUsers||null,
       config:ucToConfig(u), snapshot:ucSnapshot(u)})),
       results:(()=>{ const prj=computeProject(); const F=prj.fleet;
@@ -3340,7 +3442,7 @@ function applyConfig(raw){
   if(proj && Array.isArray(proj.usecases) && proj.usecases.length){
     UC.length=0;
     proj.usecases.forEach(pu=>UC.push({id:'uc'+(++ucSeq), name:pu.name||'',
-      supports:Array.isArray(pu.supports)?pu.supports:[], isolate:!!pu.isolate, concManual:!!pu.concManual, sliceU:+pu.sliceU||0, f:{}}));
+      supports:Array.isArray(pu.supports)?pu.supports:[], isolate:!!pu.isolate, concManual:!!pu.concManual, sliceU:+pu.sliceU||0, cards:+pu.cards||0, f:{}}));
     UC.forEach((u,idx)=>{ activeUc=idx; const pu=proj.usecases[idx];
       applyUcDom(pu.config||{}, pu.snapshot||{}, notes); captureUc();
       UC[idx].f.nrmUsers = pu.activeUsers || +((pu.config||{}).estimator||{}).sessions || UC[idx].f.nrmUsers;
@@ -3968,6 +4070,7 @@ document.querySelectorAll('input,select').forEach(el=>{
     if(el.id==='chkCustom'){ $('customBox').style.display=el.checked?'block':'none'; $('selModel').disabled=el.checked; }
     if(el.id==='nrmUsers'||el.id==='ccTurns'||el.id==='ccShare'||el.id==='ccCalls'||el.id==='ccBurst'||el.id==='ccDur') applyNrmUsers();
     if((el.id==='inConc'||el.id==='inConc_r')&&UC[activeUc]) UC[activeUc].concManual=true;
+    if(/^(inWorkers|inTp|inPerW)(_r)?$/.test(el.id)&&UC[activeUc]) UC[activeUc].cards=0;
     if(el.id==='selResilSimple') $('selResil').value=el.value;
     if(el.id==='selResil'){ const v=el.value, sim=$('selResilSimple');
       if(sim) sim.value = v==='n'? 'n' : (v==='n1'||v==='n2')? 'n1' : 'dr'; }
@@ -4021,20 +4124,24 @@ function solvePool(s){
   function planAt(tp){
     const crossed=tp>s.perW;
     const ic=crossed? Math.min(s.ic,0.7) : s.ic;
-    const eva=(workers,batch)=>compute({...s, tp, ic, workers, gpus:workers*s.perW, batch});
-    let workers, batch, d;
+    // A pool owns CARDS, not whole nodes. Pools pack onto shared nodes further
+    // down, so rounding each pool up to a full node bought GPUs nobody asked
+    // for: a pool needing two cards was handed eight.
+    const REP_CAP=Math.max(1, Math.floor(64*s.perW/tp));
+    const eva=(reps,batch)=>compute({...s, tp, ic, workers:Math.ceil(reps*tp/s.perW),
+      gpus:reps*tp, batch});
+    let reps, batch, d;
     let converged=false, sloStuck=null, grewForSlo=0;
     const can={};
     if(interactive){
-      // fewest workers that admit the peak concurrency at a batch of at most 64, then grow until it fits
-      workers=Math.min(64,Math.max(1,Math.ceil(Math.max(1,Math.ceil(s.concurrent/BATCH_MAX))*tp/s.perW)));
+      // fewest replicas that admit the peak concurrency, then grow until it fits
+      reps=Math.max(1, Math.ceil(s.concurrent/BATCH_MAX));
       for(;;){
-        const replicas=Math.max(1,Math.floor(workers*s.perW/tp));
-        batch=Math.min(BATCH_MAX,Math.max(1,Math.ceil(s.concurrent/replicas)));
-        d=eva(workers,batch);
+        batch=Math.min(BATCH_MAX,Math.max(1,Math.ceil(s.concurrent/reps)));
+        d=eva(reps,batch);
         if(d.total<=pack*d.avail){ converged=true; break; }
-        if(workers>=64) break;
-        workers++;
+        if(reps>=REP_CAP) break;
+        reps++;
       }
       if(converged){
         // what a call gets alone at batch 1 on THIS width (the physical best
@@ -4056,51 +4163,50 @@ function solvePool(s){
             if(c.tps && m.sloTps>0 && dd.tps < m.sloTps) t=true;
             if(c.p95 && m.sloP95>0 && memberP95(m, dd.tps, tp) > m.sloP95) p=true; });
           return {t,p}; };
-        const w0=workers;
-        for(let guard=0; guard<80; guard++){
-          d=eva(workers,batch);
+        const r0=reps;
+        for(let guard=0; guard<400; guard++){
+          d=eva(reps,batch);
           const miss=missOf(d);
           if(!(miss.t||miss.p)) break;
-          if(batch<=1 || workers>=64){
+          if(batch<=1 || reps>=REP_CAP){
             if(miss.t) stuckList.push('per-user speed');
             if(miss.p) stuckList.push('P95');
             break;
           }
-          workers++;
-          const reps2=Math.max(1,Math.floor(workers*s.perW/tp));
-          batch=Math.min(BATCH_MAX,Math.max(1,Math.ceil(s.concurrent/reps2)));
+          reps++;
+          batch=Math.min(BATCH_MAX,Math.max(1,Math.ceil(s.concurrent/reps)));
         }
         // Give back what the targets do not need. Worker granularity can hand a
         // small pool a whole node, and every surplus replica re-reads the full
         // weights each decode step, so shrinking raises utilization AND speed
         // per card. Stop the moment memory or any member's target says no.
-        const wFloor=Math.max(1,Math.ceil(tp/s.perW));
-        for(let guard=0; guard<80 && workers>wFloor; guard++){
-          const w2=workers-1;
-          const reps2=Math.max(1,Math.floor(w2*s.perW/tp));
-          const b2=Math.min(BATCH_MAX,Math.max(1,Math.ceil(s.concurrent/reps2)));
-          const d2=eva(w2,b2);
+        for(let guard=0; guard<400 && reps>1; guard++){
+          const r2=reps-1;
+          const b2=Math.min(BATCH_MAX,Math.max(1,Math.ceil(s.concurrent/r2)));
+          const d2=eva(r2,b2);
           if(d2.total>pack*d2.avail) break;
           const m2=missOf(d2); if(m2.t||m2.p) break;
-          workers=w2; batch=b2; d=d2;
+          reps=r2; batch=b2; d=d2;
         }
         sloStuck = stuckList.length? [...new Set(stuckList)].join(' and ') : null;
-        grewForSlo=Math.max(0, workers-w0);
+        grewForSlo=Math.max(0, reps-r0);
       }
     } else {
       // offline: queueing is fine, so keep hardware minimal and pick the largest batch that fits
-      workers=Math.max(1,Math.ceil(tp/s.perW));
+      reps=1;
       outer: for(;;){
-        for(const b of [256,128,64,32,16,8,4,2,1]){
-          batch=b; d=eva(workers,b);
+        for(const b of [512,256,128,64,32,16,8,4,2,1]){
+          batch=b; d=eva(reps,b);
           if(d.total<=pack*d.avail){ converged=true; break outer; }
         }
-        if(workers>=64) break;
-        workers++;
+        if(reps>=REP_CAP) break;
+        reps++;
       }
     }
-    return {tp, crossed, ic, workers, batch, d, converged, sloStuck, grewForSlo, can,
-      physGpus: Math.max(1,Math.floor(workers*s.perW/tp))*tp};
+    return {tp, crossed, ic, batch, d, converged, sloStuck, grewForSlo, can,
+      replicas:reps, cards:reps*tp,
+      workers:Math.max(1,Math.ceil(reps*tp/s.perW)),
+      physGpus: reps*tp};
   }
   // TP candidates: the TTFT-driven width, plus wider ones up to one node's
   // NVLink island (crossing nodes costs interconnect efficiency, so we never
@@ -4119,12 +4225,13 @@ function solvePool(s){
   tp=plan.tp;
   const crossed=plan.crossed, ic=plan.ic;
   let workers=plan.workers, batch=plan.batch, d=plan.d;
+  const cards=plan.cards;
   const converged=plan.converged, sloStuck=plan.sloStuck, grewForSlo=plan.grewForSlo;
   members.forEach(m=>{ const c=plan.can[m.name||'_']||{}; m.tpsCan=c.tps!==false; m.p95Can=c.p95!==false; });
   const tpsCan=members.every(m=>m.tpsCan), p95Can=members.every(m=>m.p95Can);
   if(!converged) return {ok:false, packPct,
     reason:`Could not fit ${s.model.name} at TP${tp} within the ${packPct}% memory target even at 64 workers: quantize the weights, raise the target, or pick a higher-VRAM GPU`};
-  const dedicated={ok:true, mode:'dedicated', tp, tpFit, widened, ttftBinder, crossed, workers, batch, packPct, weights, actGB, sloStuck, grewForSlo,
+  const dedicated={ok:true, mode:'dedicated', tp, tpFit, widened, ttftBinder, crossed, workers, cards, batch, packPct, weights, actGB, sloStuck, grewForSlo,
     physGpus: Math.max(1,Math.floor(workers*s.perW/tp))*tp};
   // MIG-sliced alternative: TP1 pools whose copy fits a hardware slice can run
   // one replica per slice, sharing physical GPUs with other models/supports
@@ -4230,6 +4337,7 @@ function autoSizeProject(quiet){
     const r=solvePool(p.state);
     if(!r.ok){ allOk=false; entries.push({title:`${p.state.model.name} ${p.state.wq.name}`, facts:'does not fit', subs:[r.reason], bad:true}); return; }
     p.members.forEach(mi=>{ const f=UC[mi].f; f.inTp=r.tp; f.inWorkers=r.workers; f.inBatch=r.batch;
+      UC[mi].cards = r.mode==='sliced'? 0 : (r.cards||0);
       UC[mi].sliceU = r.mode==='sliced'? r.sliceU : 0; });
     const names=p.members.map(mi=>ucName(UC[mi])).join(' + ');
     const subs=[];
@@ -4366,7 +4474,7 @@ $('fileImport').addEventListener('change',e=>{
 });
 
 /* ================= PUBLIC API & BOOT ================= */
-window.GPUscale = {compute, readState, serialize, applyConfig, buildXls, buildXlsxBytes, render, autoSize, computeProject, solvePool, sliceProfiles, MODELS, GPUS, QUANTS, CASES,
+window.GPUscale = {compute, gpuFitScan, readState, serialize, applyConfig, buildXls, buildXlsxBytes, render, autoSize, computeProject, solvePool, sliceProfiles, MODELS, GPUS, QUANTS, CASES,
   usecases:{list:()=>UC, active:()=>activeUc, add:addUc, select:selectUc, remove:removeUc},
   projects:{list:lsIndex, load:loadProject, del:deleteProject, share:shareLink, id:()=>PROJ_ID}};
 window.SizingConsole = window.GPUscale;

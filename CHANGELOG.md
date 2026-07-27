@@ -1,5 +1,32 @@
 # Changelog
 
+## Studio 5.21 (2026-07-27)
+
+Pools own cards, the map shows what fills them, and the tool now tells you when
+the GPU is the wrong shape for the job.
+
+- **A pool owns GPUs, not whole nodes.** Pools pack onto shared nodes anyway,
+  so rounding each pool up to a full node bought cards nobody asked for: a pool
+  needing two was handed eight. Auto-size now allocates an exact card count.
+  On a 13-use-case project this is 11 nodes to 8, with utilization up across
+  every pool (one went from 8 cards at 48% to 2 cards at 63%, same target met).
+  A hand-edited worker or TP count returns that pool to whole-node sizing.
+- **The fleet map shows what is actually in the memory.** Each card is stacked
+  the way the ledger reads it: model weights, then KV cache, then working set,
+  with the gap above left as what the speed target will not let you spend. KV
+  is the part that grows with traffic and it was invisible before. Cards and
+  node tiles are larger so the split is readable, and the tooltip gives the
+  exact GB of each part.
+- **Hardware fit is now a recommendation.** Decode is bandwidth bound, so a card
+  can only hold (bandwidth x interconnect x MBU) / target tok/s of memory at the
+  operating point. When that ceiling sits far below the card's VRAM you are
+  buying HBM the targets forbid you from filling. The tool re-solves the whole
+  project on every data-center part in the library and names the alternatives
+  that serve the same load on fewer cards or less power, with pre-launch
+  estimates labelled as such.
+
+Engine parity re-verified over 44,000 comparisons.
+
 ## Studio 5.20 (2026-07-27)
 
 Auto-size no longer capped the batch at 64 behind your back.

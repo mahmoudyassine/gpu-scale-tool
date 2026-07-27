@@ -133,6 +133,13 @@ first-fit bins, never fractional GPUs. Support instances land on the
 smallest real profile whose memory holds them; smaller models co-host
 `floor(profileGB/vram)` instances per slice.
 
+## Pools own cards, not nodes (5.21)
+
+Auto-size allocates an exact GPU count per pool and stores it as `cards` on the
+use case; pools then pack onto shared nodes. Rounding each pool up to a whole
+node used to buy GPUs nobody asked for. Editing workers, TP or GPUs-per-worker
+by hand clears `cards` and returns that pool to whole-node sizing.
+
 ## JSON schema gpuscale.net/5
 
 A v5 file is a v4 file plus a `project` block: `{active, usecases:[{id, name,
