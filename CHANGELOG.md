@@ -1,5 +1,12 @@
 # Changelog
 
+## Studio 5.22.2 (2026-07-27)
+
+- A recommendation could offer "→ 56 GPUs" and "→ 56 cards" side by side: the
+  same number for two different quantities. A suggestion that does not change the
+  order now says "56 cards, same order" instead of quoting a bare card count.
+- The figures in a per-pool recommendation are project totals, and now say so.
+
 ## Studio 5.22.1 (2026-07-27)
 
 An independent 14-agent adversarial audit re-checked 5.22.0. It confirmed the ten
