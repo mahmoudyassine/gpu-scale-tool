@@ -42,6 +42,7 @@ static: no backend, no build step, nothing uploaded.
 - 📚 **Library**: 101 models (GQA, MoE, MLA, SSM hybrids, a deep Arabic/GCC sovereign set incl. VLMs and dialect models), 37 GPUs with partitioning profiles, and 54 supporting models (with Arabic-specialized ASR, TTS, OCR, embeddings, rerankers and guards) (embeddings, rerankers, ASR, TTS, OCR, guards from tiny CPU-viable to flagship tiers), one line each
 - 📤 **Exports**: JSON configs, an Excel template with live formulas, and a print-ready PDF report
 - 🪄 **Auto-size**: one click picks the TP that fits one copy of the model and the workers that admit your peak load
+- 🎯 **SLO optimiser**: a card can only hold `bandwidth × interconnect × MBU / target tok/s` GB at the operating point, so an ambitious speed target buys bandwidth you cannot fill. Recommendations suggest the targets that fill the GPU you already chose, keep each use case's P95 promise (and its workload class: a live voice path is never asked to read at 19 tok/s), re-solve the whole project to quote the real card delta, and apply across use cases in one click with a single Undo
 - 🌓 **Polished**: light and dark themes, mobile friendly, installable, keyboard accessible
 - 🤖 **Claude skill**: download `gpuscale-link.skill` from the footer, hand it to Claude, and it turns plain-language requirements into a ready, verified share link (gpuscale.net + mirror)
 

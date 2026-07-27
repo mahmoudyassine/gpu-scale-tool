@@ -1,5 +1,74 @@
 # Changelog
 
+## Studio 5.22.0 (2026-07-27)
+
+The SLO targets are now a sizing lever you can act on, and the last of the audit
+findings are closed. Engine v25 and library v32 are untouched.
+
+### The speed target is a sizing decision
+
+Decode reads the weights and the live cache once per token, so at the operating
+point a card can only ever hold `bandwidth x interconnect x MBU / target tok/s`
+GB, whatever the model and whatever the tensor-parallel width. A B300 asked for
+60 tok/s per user can therefore fill 61 of its 288 GB, and the fleet grows to
+buy bandwidth it cannot fill with memory. Recommendations now say so and offer
+the target that would fill the card:
+
+- Per pool, the target that fills the auto-size memory target is computed, then
+  capped twice: by the use case's own workload class (a live voice path is never
+  asked to read at 19 tok/s) and by its own P95 promise, which the first
+  suggestion keeps exactly.
+- A second suggestion relaxes P95 by at most half again where that is what pins
+  the speed target, with the new promise spelled out in seconds.
+- A first-token target that widened the TP group gets its own suggestion: the
+  width the model actually needs, and what the first token costs there.
+- Nothing is a rule of thumb. Every suggestion re-solves the whole project with
+  `solvePool` and quotes the real card delta, exactly as the hardware-fit
+  recommendation does. On the 13-use-case reference project: 60 cards to 48.
+- Each one carries an **Apply** button that writes the targets across the use
+  cases in scope (this pool, or all of them) in one click, re-runs Auto-size and
+  offers the whole change back as a single Undo. Buttons never print.
+
+### Audit findings closed
+
+- **Sliced-versus-dedicated was priced in whole nodes.** Since 5.21 a pool owns
+  cards, but the MIG comparison still rounded the dedicated plan up to a node, so
+  three slices could "save" hardware against a single card. It cost real GPUs:
+  every sampled sliced win was more expensive than the plan it beat.
+- **The SLA growth loop could buy 400 replicas and report success.** Its
+  iteration guard was the binding exit on wide nodes, and leaving through it
+  recorded nothing, so a plan that still missed its target claimed to meet it.
+  The replica count the target needs is now solved in closed form, one
+  unreachable target no longer suppresses growth for a reachable one, and growth
+  that fixes nothing is given back. Verified over 1,293 randomised plans: no plan
+  misses a target it claims to meet, and none gives up on a target that is
+  reachable within the replica cap.
+- **Single-use-case mode threw the card plan away** and applied whole nodes, so
+  5.21 card sizing was inert in the default mode: a plan verified at 4 cards was
+  reported at 16 replicas and 42% memory against a 80% target. It now keeps the
+  plan, and the report matches what was solved.
+- **The pool card stamp only protected the first member.** 5.21.3 claimed this
+  was fixed; only the key fields were. Editing any other member of a pool reused
+  the stale card count, so the same edit gave two different fleets depending on
+  which row you typed in.
+- Co-resident cards drew one flat teal band, dropping the pool colours the
+  legend is built on. Each tenant now draws its own weights / KV / working-set
+  bands in its own colour.
+- A node of merged serving cards was labelled "shared / supporting" like a node
+  of embedding slices, called its tenants "replica slice" in the text form, and
+  emitted `var(--poolundefined)` for the selected-pool outline.
+- Node headers averaged MIG slice occupancy while the cards underneath showed
+  memory, printed as two bare percentages up to 24 points apart. Every cell and
+  header now reports memory.
+- The co-residency note could not name the two limits that actually reject a
+  merge. On the reference project it blamed first-token headroom when every pair
+  was over the decode-bandwidth ceiling; the binding reason is now recorded where
+  the rejection happens and named with its numbers.
+- The fleet-map label test still held the pre-5.21 cell sizes, so bands lost
+  their percentage labels early.
+- `gpuFitScan` re-solved sliced pools against the slice instead of the card, and
+  its memo ignored the GPU and the tuning inputs.
+
 ## Studio 5.21.3 (2026-07-27)
 
 Solver fixes from the second and third audit lenses. One was serious.

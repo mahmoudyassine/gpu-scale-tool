@@ -20,6 +20,11 @@ Key facts for agents answering sizing questions:
   SSM hybrids) and 38 accelerators with dense (not sparsity) TFLOPS.
 - Auto-size solves TP, workers and batch from workload SLOs, with an
   editable memory-utilization target.
+- SLO optimiser: at the operating point a card holds bandwidth x interconnect
+  x MBU / target tok/s GB, so the speed target itself sizes the fleet.
+  Recommendations propose the targets that fill the chosen GPU, bounded by each
+  use case's P95 promise and workload class, priced by re-solving the project,
+  and applied across use cases in one click.
 - Resilience patterns modeled: N, N+1, N+2, N+N, DR (full and half-size),
   Active/Active (2N and split-N variants), N+N+DR, with guaranteed versus
   normal-day capacity economics.

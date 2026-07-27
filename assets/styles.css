@@ -476,6 +476,14 @@ details.drawer .drawer-body{margin-top:10px}
 .rec.warn .r-t{color:var(--amber)}
 .rec.crit .r-t{color:var(--red)}
 .rec .r-b{font-size:12px;color:var(--muted);line-height:1.6}
+.rec .r-act{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+.btn-rec{font-family:var(--body);font-size:11.5px;font-weight:500;color:var(--text);background:var(--panel);
+  border:1px solid var(--line);border-radius:6px;padding:5px 10px;cursor:pointer;
+  transition:border-color .15s,background .15s,transform .05s}
+.btn-rec:hover{border-color:var(--teal)}
+.btn-rec:active{transform:translateY(1px)}
+.btn-rec:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+.btn-rec.pri{background:var(--teal-soft);border-color:var(--teal);color:var(--teal-strong);font-weight:600}
 
 .story{font-size:12.5px;color:var(--muted);line-height:1.7}
 .story p{margin-bottom:8px}

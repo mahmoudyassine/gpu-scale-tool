@@ -492,6 +492,14 @@ details.drawer .drawer-body{margin-top:10px}
 .rec.warn .r-t{color:var(--amber)}
 .rec.crit .r-t{color:var(--red)}
 .rec .r-b{font-size:12px;color:var(--muted);line-height:1.6}
+.rec .r-act{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+.btn-rec{font-family:var(--body);font-size:11.5px;font-weight:500;color:var(--text);background:var(--panel);
+  border:1px solid var(--line);border-radius:6px;padding:5px 10px;cursor:pointer;
+  transition:border-color .15s,background .15s,transform .05s}
+.btn-rec:hover{border-color:var(--teal)}
+.btn-rec:active{transform:translateY(1px)}
+.btn-rec:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+.btn-rec.pri{background:var(--teal-soft);border-color:var(--teal);color:var(--teal-strong);font-weight:600}
 
 .story{font-size:12.5px;color:var(--muted);line-height:1.7}
 .story p{margin-bottom:8px}
@@ -1286,7 +1294,7 @@ if(!MODELS.length || !GPUS.length || !QUANTS.length || !CASES.length){
   document.body.innerHTML = '<div style="font-family:system-ui,sans-serif;max-width:560px;margin:80px auto;padding:0 20px;line-height:1.65;color:#1A2536"><h2 style="margin-bottom:10px">Data files not loaded</h2><p>GPUscale.net could not find its library. Keep <code>index.html</code> together with the <code>data/</code> and <code>assets/</code> folders: the four files <code>data/models.js</code>, <code>data/gpus.js</code>, <code>data/quants.js</code> and <code>data/usecases.js</code> must sit next to this page.</p><p>If you need one portable file instead, use <code>dist/gpuscale_standalone.html</code> or rebuild it with <code>python3 tools/build_single_file.py</code>.</p></div>';
   throw new Error('GPUscale.net data missing');
 }
-const STUDIO_VERSION = '5.21.3', ENGINE_VERSION = 25;
+const STUDIO_VERSION = '5.22.0', ENGINE_VERSION = 25;
 function newProjId(){ const L='abcdefghjkmnpqrstuvwxyz', D='0123456789';
   const pick=s=>s[Math.floor(Math.random()*s.length)];
   return 'Project_'+pick(L)+pick(L)+pick(D)+pick(D)+pick(D); }
@@ -1573,7 +1581,11 @@ function readState(){
     const v = isFinite(raw)? raw : c.val; return Math.min(c.max, Math.max(c.min, v)); };
   const workers = Math.round(fv('inWorkers'));
   const perW = Math.round(fv('inPerW'));
-  const gpus = workers*perW;
+  // A fresh auto-size plan owns exactly the CARDS it was solved for; the fleet
+  // packs them onto whole nodes further down. Same rule as ucState, so the
+  // single-use-case report describes the plan the solver actually verified.
+  const u0 = UC[activeUc];
+  const gpus = Math.max(1, (u0 && +u0.cards>0 && u0.cardsKey===cardsKey(u0,readHw()))? +u0.cards : workers*perW);
   let tp = Math.round(fv('inTp'));
   if(tp>gpus){ tp=gpus; $('inTp').value=tp; refreshCtl('inTp'); }
   return {
@@ -1737,12 +1749,29 @@ function buildStory(s,d,m,g){
    are buying HBM the speed targets forbid you from filling, and a different
    part serves the same load on fewer cards or less power. We answer it by
    re-solving the whole project on each candidate rather than by rule of thumb. */
+/* A sliced pool carries the SLICE as its hardware in p.state, because that is
+   what the engine needs to describe it. Any re-solve has to hand the solver a
+   real card back, or it plans a slice onto a slice. */
+function poolSolveState(p, hw, extra){
+  const s=Object.assign({}, p.state);
+  if(p.sliced) Object.assign(s, {gpuVram:hw.g.vram, gpuBw:hw.g.bw, gpuTflops:hw.g.tflops,
+    perW:hw.perW, multiGb:15, ic:hw.ic, tp:1});
+  return Object.assign(s, extra||{});
+}
+/* signature for anything that re-solves the whole project: every input the
+   solver reads, so a memoised scan can never outlive the fleet it describes */
+function prjSolveSig(prj){
+  return prj.pools.map(p=>[p.state.model.name,p.state.wq.name,p.state.kq.name,
+      Math.round(p.state.concurrent),Math.round(p.state.resident),Math.round(p.state.visibleOut),
+      Math.round(p.state.reasonTok),p.state.policy,
+      p.members.map(i=>[UC[i].f.sloTtft,UC[i].f.sloTps,UC[i].f.sloP95].join(',')).join(';')].join('/')).join('|')
+    +'#'+[prj.hw.perW,prj.hw.g.name,prj.hw.ic,prj.hw.mbu,prj.hw.mfu,prj.hw.ovh,
+      (($('autoUtil')&&$('autoUtil').value)||80)].join('/');
+}
 let __fitMemo={key:'',rows:null};
 function gpuFitScan(prj){
   if(!prj||!prj.pools||!prj.pools.length) return null;
-  const key=prj.pools.map(p=>[p.state.model.name,p.state.wq.name,Math.round(p.state.concurrent),
-    Math.round(p.state.resident),p.state.sloTps,p.state.sloP95,p.state.sloTtft].join('/')).join('|')
-    +'#'+prj.hw.perW+'#'+(($('autoUtil')&&$('autoUtil').value)||80);
+  const key=prjSolveSig(prj);
   if(__fitMemo.key===key) return __fitMemo.rows;
   const rows=[];
   GPUS.forEach(g=>{
@@ -1750,7 +1779,7 @@ function gpuFitScan(prj){
     let cards=0, ok=true, stuck=false;
     for(const p of prj.pools){
       let r;
-      try{ r=solvePool({...p.state, gpu:g, gpuVram:g.vram, gpuBw:g.bw, gpuTflops:g.tflops}); }
+      try{ r=solvePool(poolSolveState(p, prj.hw, {gpu:g, gpuVram:g.vram, gpuBw:g.bw, gpuTflops:g.tflops})); }
       catch(e){ ok=false; break; }
       if(!r||!r.ok){ ok=false; break; }
       if(r.sloStuck) stuck=true;
@@ -1763,6 +1792,224 @@ function gpuFitScan(prj){
   __fitMemo={key, rows};
   return rows;
 }
+
+/* ================= SLO OPTIMISER ================= */
+/* The speed target is a sizing lever, not just a promise. At the bandwidth
+   limited operating point a card can only hold
+       memory per card = gpuBw x ic x mbu / target tok/s
+   GB, whatever the model and whatever the TP width. Invert it and the target
+   that fills a fraction U of the card's VRAM is
+       target tok/s = gpuBw x ic x mbu / (U x vram)
+   which on a 288 GB / 8 TB/s part at U=0.8 is about 19 tok/s. A project asking
+   for 60 therefore buys three times the cards to leave two thirds of every card
+   empty. We suggest the target, never impose it: each use case is measured
+   against its own workload class (live speech cannot read at 19 tok/s) and its
+   own P95 promise is kept intact, then the whole project is re-solved so the
+   saving quoted is the real one. */
+function sloTpsFloor(uc){
+  const ci=+((uc.f||{}).selCase);
+  const c=(ci>=0&&CASES[ci])? CASES[ci] : null;
+  const tr=(c&&c.traffic)||{};
+  if(c && (c.policy==='all' || (tr.direct && c.p95Target>0 && c.p95Target<=6)))
+    return {tps:30, why:'a live speech path: the token stream has to stay ahead of the audio'};
+  if(c && (c.reasonTok||0)>0 && c.p95Target>=55)
+    return {tps:10, why:'most of its tokens are hidden thinking, so total time matters more than stream speed'};
+  return {tps:15, why:'a person reads at roughly 15 tok/s'};
+}
+function sloOverride(p, over){
+  const ms=(p.state.members&&p.state.members.length? p.state.members : [{name:null,
+    conc:p.state.concurrent, resident:p.state.resident, visibleOut:p.state.visibleOut,
+    reasonTok:p.state.reasonTok, extend:p.state.extend,
+    sloTtft:p.state.sloTtft, sloTps:p.state.sloTps, sloP95:p.state.sloP95}])
+    .map((m,k)=>{ const o=over[p.members[k]]; return o? Object.assign({}, m, o) : m; });
+  const nz=v=>{ const n=v.filter(x=>x>0); return n.length? Math.min.apply(null,n) : 0; };
+  return {members:ms,
+    sloTps:Math.max.apply(null, ms.map(m=>+m.sloTps||0).concat([0])),
+    sloTtft:nz(ms.map(m=>+m.sloTtft||0)),
+    sloP95:nz(ms.map(m=>+m.sloP95||0))};
+}
+/* what Auto-size would buy for the whole project with these per-use-case targets */
+function sloPrice(prj, over){
+  let cards=0, stuck=false;
+  for(const p of prj.pools){
+    let r;
+    try{ r=solvePool(poolSolveState(p, prj.hw, sloOverride(p, over))); }
+    catch(e){ return null; }
+    if(!r||!r.ok) return null;
+    if(r.sloStuck) stuck=true;
+    cards += (r.cards||r.physGpus||0);
+  }
+  return {cards:Math.round(cards*100)/100, stuck};
+}
+let __sloMemo={key:'', recs:null};
+function sloOptScan(prj){
+  if(!prj||!prj.pools||!prj.pools.length) return [];
+  const key=prjSolveSig(prj);
+  if(__sloMemo.key===key) return __sloMemo.recs;
+  const recs=[];
+  try{ recs.push.apply(recs, sloOptBuild(prj)); }catch(e){}
+  __sloMemo={key, recs};
+  return recs;
+}
+function sloOptBuild(prj){
+  const hw=prj.hw, g=hw.g, out=[];
+  const U=Math.min(95,Math.max(50,+($('autoUtil')&&$('autoUtil').value)||80))/100;
+  const P95_FACTOR=1.5;   // the most a P95 promise may be relaxed in one suggestion
+  const base=sloPrice(prj,{});
+  if(!base||!base.cards) return out;
+  const secs=x=>fmt(x)+' s';
+  // a drop nobody would act on is noise: at least 2 tok/s and at least a tenth
+  const worth=(from,to)=>to<from-Math.max(2, 0.1*from);
+  /* Per use case: the target that fills U of this card, the floor its own
+     workload class refuses to cross, and the two speed targets that follow -
+     one that keeps its P95 promise exactly, one that relaxes it by at most half
+     again. Both are its own numbers; nothing is blended across use cases. */
+  const propOf=(p,x)=>{
+    const cur=+x.s.sloTps||0;
+    if(!(cur>0)) return null;
+    const gen=(+x.s.reasonTok||0)+(+x.s.visibleOut||0);
+    const lat=(x.d.ttft+x.s.ovh)/1000;          // first token + framework, seconds
+    const p95=+x.s.sloP95||0;
+    if(p95>0 && p95/1.3-lat<=0) return null;    // its P95 is already impossible
+    const minFor=f=>{ if(!(p95>0)||!(gen>0)) return 0;
+      const room=f*p95/1.3-lat; return room>0? gen/room : Infinity; };
+    const fl=sloTpsFloor(x.uc);
+    const atU=(g.bw*1000*p.state.ic*hw.mbu)/(U*g.vram);
+    const fill=Math.max(fl.tps, Math.floor(atU));
+    const cap=t=>Math.min(cur, Math.max(fill, Math.ceil(t)));
+    return {x, cur, gen, lat, atU, floor:fl, p95,
+      keep:cap(minFor(1)), relax:cap(minFor(P95_FACTOR)),
+      // round the paired promise the safe way: always a little looser than needed
+      p95For:t=>{ const v=1.3*(lat+gen/t); return v>=10? Math.ceil(v) : Math.ceil(v*10)/10; }};
+  };
+  const applyBtn=(label, sets, msg, primary)=>
+    `<button type="button" class="btn-rec no-print${primary?' pri':''}" data-apply="${esc(JSON.stringify({sets, msg}))}">${esc(label)}</button>`;
+  const label=pi=>{ if(prj.pools.length<2) return '';
+    const t=shortPoolTag(prj.pools,pi);
+    const dup=prj.pools.some((q,qj)=>qj!==pi&&shortPoolTag(prj.pools,qj)===t);
+    return (dup? `${t} TP${prj.pools[pi].state.tp}` : t)+' · '; };
+  // these are counts and targets, not measurements: print 48, not 48.0
+  const num=n=>Number.isInteger(+n)? (+n).toLocaleString('en-US') : fmt(n);
+  const cards=n=>`${num(n)} card${n===1?'':'s'}`;
+  // ---- 1. speed targets, per pool, priced by re-solving the whole project ----
+  const rows=[];
+  prj.pools.forEach((p,pi)=>{
+    const props=p.perUc.map(x=>propOf(p,x)).filter(Boolean);
+    if(!props.length) return;
+    const curMax=Math.max.apply(null, props.map(q=>q.cur));
+    const keepSet={}, relaxSet={};
+    props.forEach(q=>{ if(q.keep<q.cur-0.5) keepSet[q.x.i]={sloTps:q.keep};
+      if(q.relax<q.cur-0.5) relaxSet[q.x.i]={sloTps:q.relax, sloP95:q.p95>0? q.p95For(q.relax) : 0}; });
+    const keepMax=Math.max.apply(null, props.map(q=>q.keep));
+    const relaxMax=Math.max.apply(null, props.map(q=>q.relax));
+    const keepPr=(Object.keys(keepSet).length && worth(curMax,keepMax))? sloPrice(prj,keepSet) : null;
+    const relaxPr=(Object.keys(relaxSet).length && worth(curMax,relaxMax))? sloPrice(prj,relaxSet) : null;
+    const okp=r=>r && r.cards<base.cards-0.01 && !(r.stuck&&!base.stuck);
+    if(!okp(keepPr) && !okp(relaxPr)) return;
+    rows.push({p, pi, props, curMax,
+      keepSet, relaxSet, keepMax, relaxMax,
+      keepPr:okp(keepPr)? keepPr:null, relaxPr:okp(relaxPr)? relaxPr:null});
+  });
+  rows.sort((a,b)=>Math.min.apply(null,[a.keepPr,a.relaxPr].filter(Boolean).map(r=>r.cards))
+                  -Math.min.apply(null,[b.keepPr,b.relaxPr].filter(Boolean).map(r=>r.cards)));
+  // the same reasoning applied to every use case in the project, offered once
+  const allSet={};
+  prj.pools.forEach(p2=>p2.perUc.forEach(x2=>{ const q=propOf(p2,x2);
+    if(q&&q.keep<q.cur-0.5) allSet[x2.i]={sloTps:q.keep}; }));
+  const allPr=Object.keys(allSet).length>1? sloPrice(prj,allSet) : null;
+  let allOffered=false;
+  rows.slice(0,3).forEach(row=>{
+    const {p, pi, props, curMax}=row;
+    const bwCeil=g.bw*1000*p.state.ic*hw.mbu;
+    const holds=bwCeil/curMax, ceilPct=Math.min(100, holds/g.vram*100);
+    const best=row.keepPr||row.relaxPr;
+    const listed=props.filter(q=>q.keep<q.cur-0.5||q.relax<q.cur-0.5)
+      .sort((a,b)=>(b.cur-Math.min(b.keep,b.relax))-(a.cur-Math.min(a.keep,a.relax)));
+    const lines=listed.slice(0,3).map(q=>{
+      const t=row.keepPr? q.keep : q.relax;
+      const p95txt=(!row.keepPr&&q.p95>0&&q.relax<q.cur-0.5)
+        ? ` and its P95 promise from ${num(q.p95)} to ${num(q.p95For(q.relax))} s`
+        : (q.p95>0? ` · its ${num(q.p95)} s P95 promise is untouched`:'');
+      const why=(t<=q.floor.tps+0.001&&q.floor.tps>Math.floor(q.atU))? ` · no lower, because ${esc(q.floor.why)}`:'';
+      return `<br><b>${esc(ucName(q.x.uc))}</b>: ${num(q.cur)} → <b>${num(t)} tok/s</b>${p95txt}`
+        +` · ${fmtTok(q.gen)} tokens stream in ${secs(q.gen/t)} instead of ${secs(q.gen/q.cur)}${why}`;
+    }).join('');
+    const more=listed.length>3? `<br>…and ${listed.length-3} more use case${listed.length-3>1?'s':''} in this pool.`:'';
+    const acts=[];
+    if(row.keepPr) acts.push(applyBtn(
+      `Apply to ${Object.keys(row.keepSet).length} use case${Object.keys(row.keepSet).length>1?'s':''} → ${cards(row.keepPr.cards)}`,
+      row.keepSet, `Speed targets applied: ${cards(base.cards)} → ${cards(row.keepPr.cards)}`, true));
+    if(row.relaxPr && (!row.keepPr || row.relaxPr.cards<row.keepPr.cards-0.01)) acts.push(applyBtn(
+      `Relax P95 by up to ${Math.round((P95_FACTOR-1)*100)}% too → ${cards(row.relaxPr.cards)}`,
+      row.relaxSet, `Speed and P95 targets applied: ${cards(base.cards)} → ${cards(row.relaxPr.cards)}`, !row.keepPr));
+    if(!allOffered && allPr && best && allPr.cards<best.cards-0.01){
+      acts.push(applyBtn(`Apply to all ${Object.keys(allSet).length} use cases → ${cards(allPr.cards)}`,
+        allSet, `Speed targets applied project-wide: ${cards(base.cards)} → ${cards(allPr.cards)}`));
+      allOffered=true;
+    }
+    if(!acts.length) return;
+    out.push({lv: best.cards<=base.cards*0.7? 'warn':'ok',
+      t:`${label(pi)}The speed target is what this pool is really paying for`,
+      b:`Decode reads the weights and the live cache once per token, so a ${num(curMax)} tok/s target lets a ${esc(g.name)} hold only `
+        +`<b>${fmt(holds)} GB</b> of its ${fmt(g.vram)} GB (${ceilPct.toFixed(0)}%): the rest is memory the target forbids you to fill. `
+        +`Filling ${(U*100).toFixed(0)}% of the card asks for about <b>${fmt(props[0].atU)} tok/s</b>.`
+        +lines+more
+        +`<br>Auto-size buys <b>${cards(base.cards)}</b> at today's targets and <b>${cards(best.cards)}</b> at these`
+        +`${best.stuck?', with some targets still out of reach on any fleet size':''}.`,
+      acts});
+  });
+  // ---- 2. a first-token target that widened the tensor-parallel group ----
+  prj.pools.forEach((p,pi)=>{
+    try{
+      const r0=solvePool(poolSolveState(p, hw));
+      if(!(r0&&r0.ok&&r0.widened&&r0.ttftBinder)) return;
+      const x=p.perUc.find(y=>ucName(y.uc)===r0.ttftBinder);
+      if(!x||!(+x.s.sloTtft>0)) return;
+      const at=2*x.s.resident*x.s.active/(g.tflops*r0.tpFit*hw.mfu);
+      const prop=Math.ceil(at/50)*50;
+      if(!(prop>+x.s.sloTtft+1)) return;
+      const set={}; set[x.i]={sloTtft:prop};
+      const pr=sloPrice(prj, set);
+      if(!pr||pr.cards>=base.cards-0.01||(pr.stuck&&!base.stuck)) return;
+      out.push({lv:'ok', t:`${label(pi)}The first-token target is buying the TP width`,
+        b:`<b>${esc(ucName(x.uc))}</b> asks for its first token within ${num(x.s.sloTtft)} ms, and a ${fmtTok(x.s.resident)}-token prefill only makes that at `
+          +`TP${r0.tp}; TP${r0.tpFit} is all the model needs to fit. Tensor parallel widens every replica in the pool, so all of it pays for that one target. `
+          +`At TP${r0.tpFit} the first token lands in about <b>${fmt(at)} ms</b>. `
+          +`Auto-size buys <b>${cards(base.cards)}</b> today and <b>${cards(pr.cards)}</b> with a ${num(prop)} ms target. `
+          +`Prefix caching, chunked prefill or a disaggregated prefill pool attack the same number without relaxing the promise.`,
+        acts:[applyBtn(`Set ${ucName(x.uc)} to ${num(prop)} ms → ${cards(pr.cards)}`,
+          set, `First-token target applied: ${cards(base.cards)} → ${cards(pr.cards)}`, true)]});
+    }catch(e){}
+  });
+  return out.slice(0,4);
+}
+function sloRecHtml(prj){
+  return sloOptScan(prj).map(r=>`<div class="rec ${r.lv}"><div class="r-t">${r.t}</div><div class="r-b">${r.b}</div>`
+    +((r.acts&&r.acts.length)? `<div class="r-act no-print">${r.acts.join('')}</div>`:'')+`</div>`);
+}
+/* One delegated handler: write the targets across every use case in the action's
+   scope, re-solve, and offer the whole thing back as one Undo. */
+function applySloAction(act){
+  const sets=(act&&act.sets)||{};
+  const keys=Object.keys(sets);
+  if(!keys.length) return;
+  captureUc();
+  const before=keys.map(k=>({i:+k, f:Object.assign({}, (UC[+k]||{f:{}}).f), cards:+((UC[+k]||{}).cards)||0, key:(UC[+k]||{}).cardsKey||''}));
+  keys.forEach(k=>{ const u=UC[+k]; if(!u) return;
+    Object.keys(sets[k]).forEach(f=>{ u.f[f]=String(sets[k][f]); });
+    u.cards=0; u.cardsKey='';        // the old plan was solved against the old targets
+  });
+  loadUc(activeUc);
+  autoSize(true);
+  toast(act.msg||'Targets applied', false, {label:'Undo', fn:()=>{
+    before.forEach(b=>{ const u=UC[b.i]; if(!u) return; u.f=b.f; u.cards=b.cards; u.cardsKey=b.key; });
+    loadUc(activeUc); renderUcCards(); autoSize(true); toast('Targets restored');
+  }});
+}
+{ const rp=$('recs');
+  if(rp) rp.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-apply]');
+    if(!b) return;
+    try{ applySloAction(JSON.parse(b.dataset.apply)); }catch(err){ toast('Could not apply that suggestion', true); } }); }
 function buildRecs(s,d,m,g,prelaunch){
   const recs=[]; const util=d.avail>0? d.total/d.avail : 1;
   const push=(lv,t,b)=>recs.push({lv,t,b});
@@ -1880,7 +2127,9 @@ function render(){
     `<div class="mrow"><span>VRAM · bandwidth</span><b>${fmt(g.vram)} GB · ${fmt(g.bw)} TB/s</b></div>`+
     `<div class="mrow"><span>Dense FP16 TC</span><b>${fmt(g.tflops)} TFLOPS</b></div>`+
     `<div class="mrow"><span>${g.arch}</span><b>${g.mem} · ${g.watts} W · ${g.link}</b></div>`+
-    `<div class="mrow"><span>Fleet</span><b>${s.workers}× worker · ${s.perW} GPU = ${s.gpus} GPU</b></div>`+
+    `<div class="mrow"><span>Fleet</span><b>${s.gpus===s.workers*s.perW
+      ? `${s.workers}× worker · ${s.perW} GPU = ${s.gpus} GPU`
+      : `${s.gpus} GPU · packed onto shared nodes (${s.perW}/node)`}</b></div>`+
     `<div class="mrow"><span>Replicas</span><b>${d.replicas} × TP${s.tp}${s.gpus%s.tp? ' · '+(s.gpus%s.tp)+' idle':''}</b></div>`+
     `<div style="margin-top:4px">${d.replicas>1
       ? `${d.replicas} replicas: each is a full ${fmt(d.weights)} GB copy of the model on ${s.tp} GPUs, serving up to ${s.batch} calls. More TP distributes one copy wider; more workers add copies for more users.`
@@ -2012,7 +2261,10 @@ function render(){
 
   const rb=buildRecs(s,d,m,g,prelaunch);
   $('recBottleneck').textContent = rb.bottleneck==='none'? 'no active bottleneck' : 'primary bottleneck: '+rb.bottleneck;
-  $('recs').innerHTML = rb.recs.map(r=>`<div class="rec ${r.lv}"><div class="r-t">${r.t}</div><div class="r-b">${r.b}</div></div>`).join('');
+  // the SLO optimiser works on the same solver as the project view, so it belongs
+  // in the default single-use-case mode too
+  $('recs').innerHTML = (UC.length>1? [] : sloRecHtml(window.__prj))
+    .concat(rb.recs.map(r=>`<div class="rec ${r.lv}"><div class="r-t">${r.t}</div><div class="r-b">${r.b}</div></div>`)).join('');
 
   const dur = +$('ccDur').value>0? +$('ccDur').value : d.latency;
   const cc = Math.ceil((+$('ccSessions').value||0)*(+$('ccTurns').value||0)*((+$('ccShare').value||0)/100)*(+$('ccCalls').value||0)*dur/3600*(+$('ccBurst').value||1));
@@ -2329,7 +2581,14 @@ function poolState(pool, hw){
   const base=states[0];
   const conc=states.reduce((t,s)=>t+s.concurrent,0)||1;
   const wavg=get=>states.reduce((t,s)=>t+get(s)*s.concurrent,0)/conc;
+  // The card allocation belongs to the POOL, so a stamp that is stale for ANY
+  // member is stale for all of them. Reading only member 0's verdict meant the
+  // same edit gave two different fleets depending on which row you typed in.
+  const freshAll=pool.members.every(i=>{ const u=UC[i];
+    return (+u.cards>0) && u.cardsKey===cardsKey(u,hw); });
+  const gpus=freshAll? base.gpus : Math.max(1, base.workers*hw.perW);
   return Object.assign({}, base, {
+    gpus, tp:Math.min(base.tp, gpus),
     concurrent:conc,
     resident:Math.round(wavg(s=>s.resident)),
     visibleOut:Math.round(wavg(s=>s.visibleOut)),
@@ -2478,8 +2737,14 @@ function coPack(pools, hw){
   items.sort((a,b)=> b.tp-a.tp || b.mem-a.mem);
   const gpus=[];
   const grow=n=>{ while(gpus.length<n) gpus.push({mem:0, duty:0, slots:[]}); };
+  // Why a merge was refused, recorded WHERE it was refused. Rebuilding the
+  // reason afterwards from the three per-pool gates could not express the two
+  // that actually reject blocks (memory and decode duty), so a bandwidth-bound
+  // fleet was blamed on first-token headroom.
+  const why=[];   // {a, b, t, need, cap} per rejected pairing, most-informative first
+  const RANK={duty:0, mem:1, ttft:2, unsafe:3, samePool:4};
   items.forEach(it=>{
-    let placed=false;
+    let placed=false, best=null;
     if(it.safe){
       const limit=gpus.length;                       // only consider existing cards
       for(let b=0; b+it.tp<=limit; b+=it.tp){
@@ -2503,7 +2768,19 @@ function coPack(pools, hw){
         if(roomy&&allSafe&&!samePool&&ttftOk){ block.forEach((g,k)=>{ g.mem+=it.mem; g.duty+=it.duty;
           g.slots.push({pool:it.pool, rep:it.rep, shard:k, mem:it.mem, duty:it.duty, safe:it.safe, tslack:it.tslack, p95At:it.p95At}); });
           placed=true; break; }
+        // the block that came closest names the binding limit for this pairing
+        if(!block.some(g=>g.slots.length)) continue;
+        const hostPool=(block.find(g=>g.slots.length)||{slots:[{}]}).slots[0].pool;
+        const maxMem=Math.max.apply(null, block.map(g=>g.mem))+it.mem;
+        const maxDuty=Math.max.apply(null, block.map(g=>g.duty))+it.duty;
+        const t = maxDuty>DUTY_CAP+1e-9? 'duty'
+          : maxMem>cap+1e-9? 'mem'
+          : !allSafe? 'unsafe'
+          : samePool? 'samePool' : 'ttft';
+        const cand={a:it.pool, b:hostPool, t, duty:maxDuty, mem:maxMem};
+        if(!best || RANK[cand.t]<RANK[best.t]) best=cand;
       }
+      if(!placed&&best) why.push(best);
     }
     if(!placed){ // fresh aligned block: the first tenant always fits its own card
       const b=Math.ceil(gpus.length/it.tp)*it.tp; grow(b+it.tp);
@@ -2511,14 +2788,32 @@ function coPack(pools, hw){
         g.slots.push({pool:it.pool, rep:it.rep, shard:k, mem:it.mem, duty:it.duty, safe:it.safe, tslack:it.tslack, p95At:it.p95At}); }); }
   });
   const used=gpus.filter(g=>g.slots.length);
-  // why a pool could not take a neighbour: the binding reason, in the pool's words
-  const blockers=[];
+  // why no card took a second tenant, in order of how many pairings each limit
+  // blocked: the pool-level gates first (a pool that can never share), then the
+  // pairwise limits actually measured during placement.
+  const blockers=[], shared1=new Set();
+  used.forEach(g=>{ if(new Set(g.slots.map(s=>s.pool)).size>1) g.slots.forEach(s=>shared1.add(s.pool)); });
+  const nm=pi=>{ const p=pools[pi]; if(!p) return 'a pool';
+    const n=p.state.model.name;
+    // two pools of the same model are a real configuration: name the width so the
+    // reason points at one of them
+    return pools.some((q,qi)=>qi!==pi&&!q.sliced&&q.state.model.name===n)? `${n} (TP${p.state.tp})` : n; };
   pools.forEach((p,pi)=>{ if(p.sliced) return;
-    if(!(+p.state.sloTps>0)){ blockers.push(`${p.state.model.name} has no per-user speed target, so there is no share to guarantee it`); return; }
-    if(!coShareSafe(p)){ blockers.push(`${p.state.model.name} would miss its P95 at the speed a shared card guarantees`); return; }
-    const sl=coTtftSlack(p);
-    if(isFinite(sl) && sl<1.3) blockers.push(`${p.state.model.name} has only ${Math.round((sl-1)*100)}% first-token headroom, and a co-tenant needs more`);
+    if(!(+p.state.sloTps>0)){ blockers.push(`${nm(pi)} has no per-user speed target, so there is no share to guarantee it`); return; }
+    if(!coShareSafe(p)) blockers.push(`${nm(pi)} would miss its P95 at the speed a shared card guarantees`);
   });
+  { const tally={};
+    why.forEach(w=>{ const k=w.t+'|'+Math.min(w.a,w.b)+'|'+Math.max(w.a,w.b);
+      if(!tally[k]) tally[k]={...w, n:0}; tally[k].n++; });
+    Object.values(tally).sort((x,y)=>y.n-x.n).slice(0,3).forEach(w=>{
+      // a pool that did merge somewhere is not blocked, whatever a later pairing said
+      if(shared1.has(w.a)) return;
+      if(w.t==='duty') blockers.push(`${nm(w.a)} and ${nm(w.b)} together would need ${Math.round(w.duty*100)}% of one card's decode bandwidth, over the ${Math.round(DUTY_CAP*100)}% ceiling`);
+      else if(w.t==='mem') blockers.push(`${nm(w.a)} and ${nm(w.b)} together need ${fmt(w.mem)} GB on a card budgeted to ${fmt(cap)} GB`);
+      else if(w.t==='ttft') blockers.push(`sharing a card would stretch the first token of ${nm(w.a)} or ${nm(w.b)} past its target`);
+      else if(w.t==='unsafe') blockers.push(`${nm(w.b)} cannot hold its P95 at the speed a shared card guarantees, so nothing may join its cards`);
+      else blockers.push(`only cards already running ${nm(w.a)} had room, and two replicas of one model on a card add nothing`);
+    }); }
   const dedicatedG=pools.reduce((t,p)=>t+(p.sliced?0:p.d.replicas*Math.max(1,p.state.tp)),0);
   return {gpus:used, count:used.length, dedicatedG, saved:Math.max(0,dedicatedG-used.length),
     blockers:[...new Set(blockers)],
@@ -2721,14 +3016,28 @@ function buildFleetSites(prj){
         list.push({type:'pool', pool:s0.pool, rep:s0.rep, util, mix,
           tip:`${st.model.name} · replica ${s0.rep+1} of ${pools[s0.pool].d.replicas} (TP${st.tp} shard)\n${fmt(mix.w)} GB weights + ${fmt(mix.kv)} GB KV cache + ${fmt(mix.o)} GB working set = ${fmt(g.mem)} GB of ${fmt(hw.g.vram)} GB (${(util*100).toFixed(0)}%)${st.tp>1?`\na TP${st.tp} copy spans ${st.tp} cards over NVLink`:''}`});
         return; }
+      // one band per tenant, in its own pool colour: a flat teal card said
+      // "all KV" and matched no legend entry, and the tooltip was the only way
+      // to learn which models shared the card (gone in print).
       const slices=tenants.map(pi=>{ const st=pools[pi].state;
-        const mem=g.slots.filter(s=>s.pool===pi).reduce((t,s)=>t+s.mem,0);
-        return {kind:'pool', pool:pi, gb:mem, mu:mem,
+        const mine=g.slots.filter(s=>s.pool===pi);
+        const mem=mine.reduce((t,s)=>t+s.mem,0);
+        return {kind:'pool', pool:pi, gb:mem, mu:mem, mix:mixOf(mine),
           tip:`${st.model.name} (TP${st.tp}) · ${fmt(mem)} GB`}; });
-      list.push({type:'shared', mix, bin:{co:true, used:g.mem, slices},
+      list.push({type:'shared', mix, util, bin:{co:true, used:g.mem, slices},
         tip:`co-resident models on one GPU: ${slices.map(s=>s.tip).join(' · ')}\n${fmt(mix.w)} GB weights + ${fmt(mix.kv)} GB KV cache + ${fmt(mix.o)} GB working set = ${fmt(g.mem)} GB of ${fmt(hw.g.vram)} GB (${(util*100).toFixed(0)}%)`}); });
-    (shared.bins||[]).forEach(bin=>list.push({type:'shared', bin,
-      tip:'shared GPU: '+bin.slices.map(sl=>sl.tip||`${KIND_LABEL[sl.kind]||sl.kind}${sl.model?' '+sl.model:''}${sl.inst>1?' ×'+sl.inst:''} (${fmt(sl.gb)} GB)`).join(' · ')}));
+    // Every cell reports the same metric: memory. Node headers used to average
+    // MIG slice occupancy for these bins while the cell printed memory, so two
+    // bare percentages 24 points apart sat next to each other.
+    (shared.bins||[]).forEach(bin=>{
+      const memUsed=bin.slices.reduce((t,sl)=>t+(sl.fill!=null? sl.fill*(sl.gb||0)
+        : (sl.use!=null? sl.use : (sl.gb||0))),0);
+      const util=Math.min(1, memUsed/Math.max(1,hw.g.vram));
+      const part=hw.g.part||{max:1};
+      list.push({type:'shared', bin, util, memUsed,
+        tip:'shared GPU: '+bin.slices.map(sl=>sl.tip||`${KIND_LABEL[sl.kind]||sl.kind}${sl.model?' '+sl.model:''}${sl.inst>1?' ×'+sl.inst:''} (${fmt(sl.gb)} GB)`).join(' · ')
+          +`\n${fmt(memUsed)} GB of ${fmt(hw.g.vram)} GB in use (${(util*100).toFixed(0)}%)`
+          +(part.max>1? ` · ${bin.used} of ${binCap(part)} memory slices allocated`:'')}); });
     return list;
   }
   function serveNodesAll(copy){
@@ -2737,13 +3046,22 @@ function buildFleetSites(prj){
       const node={label:(copy?'B-':'ND-')+String(++nn).padStart(2,'0'), cls:'serve', pool:null,
         poolName:'', gpus:[], active:false};
       const chunk=list.slice(base, base+hw.perW);
-      const poolsIn=new Set(chunk.filter(g2=>g2.type==='pool').map(g2=>g2.pool));
-      const part=hw.g.part||{max:1};
-      node.util=chunk.length? chunk.reduce((x,g2)=>x+(g2.type==='pool'? g2.util : g2.type==='shared'? Math.min(1,((part.max>1&&!g2.bin.co)? g2.bin.used/binCap(part) : g2.bin.used/Math.max(1,hw.g.vram))) : 0),0)/hw.perW : 0;
+      // a serving pool counts whether it owns the card or co-tenants it: a node
+      // of merged serving cards used to read "shared / supporting", exactly like
+      // a node of embedding and ASR slices, and left node.pool undefined so the
+      // selected-pool outline emitted var(--poolundefined)
+      const poolsIn=new Set(), supIn=[];
+      chunk.forEach(g2=>{
+        if(g2.type==='pool') poolsIn.add(g2.pool);
+        else if(g2.type==='shared') (g2.bin.slices||[]).forEach(sl=>{
+          if(sl.kind==='pool') poolsIn.add(sl.pool); else supIn.push(sl); }); });
+      node.util=chunk.length? chunk.reduce((x,g2)=>x+(g2.util||0),0)/hw.perW : 0;
       chunk.forEach((g2,k)=>{ node.gpus.push({...g2, tip:`${node.label} · GPU ${k+1} · ${g2.tip}`}); });
       while(node.gpus.length<hw.perW) node.gpus.push({type:'spare', tip:`${node.label} · unassigned headroom`});
-      if(poolsIn.size===1){ node.pool=[...poolsIn][0]; node.poolName=pools[node.pool].state.model.name; }
-      else if(chunk.some(g2=>g2.type==='shared')&&poolsIn.size===0){ node.poolName='shared / supporting'; }
+      node.withSup=!!supIn.length;
+      if(poolsIn.size===1){ node.pool=[...poolsIn][0];
+        node.poolName=pools[node.pool].state.model.name+(supIn.length?' + supporting':''); }
+      else if(poolsIn.size===0&&chunk.some(g2=>g2.type==='shared')){ node.poolName='shared / supporting'; }
       else if(poolsIn.size>1){ node.poolName='mixed'; }
       node.active=chunk.some(g2=>g2.type==='pool'&&pools[g2.pool].members.includes(activeUc))
         || chunk.some(g2=>g2.type==='shared'&&g2.bin.slices.some(sl=>sl.kind==='pool'&&pools[sl.pool].members.includes(activeUc)));
@@ -2866,20 +3184,28 @@ function renderFleet(prj){
      cost of holding the model, KV is what the conversations occupy, and the
      working set is activations plus runtime overhead. The gap above is memory
      the speed target will not let you spend. */
-  const memStack=(mix, col, op)=>{
+  const memBands=(mix, col)=>{
     if(!mix) return '';
     const V=Math.max(1,hw.g.vram), pc=x=>Math.max(0,Math.min(100, x/V*100));
-    return `<div class="fm-stack" style="opacity:${op==null?1:op}">`
-      + `<div class="ms w" style="height:${pc(mix.w)}%;background:${col}"></div>`
+    return `<div class="ms w" style="height:${pc(mix.w)}%;background:${col}"></div>`
       + `<div class="ms kv" style="height:${pc(mix.kv)}%;background:${col}"></div>`
-      + `<div class="ms o" style="height:${pc(mix.o)}%"></div></div>`;
+      + `<div class="ms o" style="height:${pc(mix.o)}%"></div>`;
   };
+  const memStack=(mix, col, op)=>mix? `<div class="fm-stack" style="opacity:${op==null?1:op}">${memBands(mix,col)}</div>` : '';
+  /* A co-tenanted card: the same weights / KV / working-set reading, but one
+     group of bands per tenant in that pool's colour, bottom-up in placement
+     order, so the card matches the legend instead of one flat teal. */
+  const memStackCo=slices=>`<div class="fm-stack">`
+    + slices.map(sl=>memBands(sl.mix, `var(--pool${PC[sl.pool]})`)).join('')+`</div>`;
   const gpuHtml=g2=>{
     if(g2.type==='pool'){ const col=`var(--pool${PC[g2.pool]})`;
       return `<div class="fm-gpu assigned" title="${esc(g2.tip)}">${memStack(g2.mix, col, g2.rep%2?0.78:1)}${gp(g2.util)}</div>`; }
     if(g2.type==='idle'){ const col=g2.pool==null? 'var(--amber-border)' : (g2.mode==='drs'? 'var(--violet)' : `var(--pool${PC[g2.pool]})`);
       return `<div class="fm-gpu spare" title="${esc(g2.tip)}" style="border-color:${col}"></div>`; }
     if(g2.type==='sup'||g2.type==='shared'){ let y=0, memUsed=0, anyLab=false;
+      // keep in sync with .fm-gpu / .fleet-map.dense .fm-gpu in styles.css: the
+      // label test needs the real cell height, and it silently held the pre-5.21
+      // 26/34 px sizes after the cells grew to 34/46
       const cellPx=dense?34:46;
       const coBin=!!g2.bin.co;
       const bands=g2.bin.slices.map(sl=>{ const h=Math.max(10, (partMax>1&&!coBin)? (sl.mu||sl.units||sl.n||1)/binCap(hw.g.part)*100 : Math.min(100,(sl.gb||1)/Math.max(1,hw.g.vram)*100));
@@ -2891,18 +3217,22 @@ function renderFleet(prj){
         anyLab=anyLab||!!lab;
         const b=`<div class="band" style="bottom:${y}%;height:${h}%;background-color:color-mix(in srgb,${col} 24%,transparent)"><div class="bfill${sl.kind==='pool'?' solid':''}" style="height:${Math.round(fl*100)}%;background-color:${col}"></div>${lab}</div>`;
         y+=h; return b; }).join('');
-      const used=(partMax>1&&!coBin)? memUsed/Math.max(1,hw.g.vram) : g2.bin.used/Math.max(1,hw.g.vram);
+      const used=g2.util!=null? g2.util : (partMax>1&&!coBin)? memUsed/Math.max(1,hw.g.vram) : g2.bin.used/Math.max(1,hw.g.vram);
       // a co-resident card is several models' memory, so show the same split
-      if(coBin&&g2.mix) return `<div class="fm-gpu assigned" title="${esc(g2.tip)}">${memStack(g2.mix,'var(--seg-kv)')}${gp(Math.min(1,used))}</div>`;
+      if(coBin&&g2.bin.slices&&g2.bin.slices.every(sl=>sl.mix))
+        return `<div class="fm-gpu assigned" title="${esc(g2.tip)}">${memStackCo(g2.bin.slices)}${gp(Math.min(1,used))}</div>`;
       return `<div class="fm-gpu assigned" title="${esc(g2.tip)}">${bands}${anyLab?'':gp(Math.min(1,used))}</div>`; }
     return `<div class="fm-gpu spare" title="${esc(g2.tip)}"></div>`;
   };
   const nodeHtml=n2=>{
-    const role = n2.cls==='serve'? esc(n2.pool!=null? poolTag(n2.pool) : (n2.poolName||'mixed'))
+    const role = n2.cls==='serve'? esc(n2.pool!=null? poolTag(n2.pool)+(n2.withSup?' + sup':'') : (n2.poolName||'mixed'))
       : n2.cls==='support'? 'supporting'
       : n2.cls==='mirror'? 'mirror' : n2.cls==='drs'? 'DR standby' : 'standby';
     const right = n2.cls==='serve'? `<span class="pct">${(n2.util*100).toFixed(0)}%</span>` : `<span class="pct idle">idle</span>`;
-    return `<div class="fm-node ${n2.cls==='drs'?'standby':n2.cls}${n2.active?' fm-active':''}"${n2.active?` style="--acol:var(--pool${PC[n2.pool]})"`:''} title="${esc(n2.label+' · '+(ROLE_LABEL[n2.cls]||n2.cls)+(n2.poolName?' · '+n2.poolName:''))}">
+    // the outline marks the SELECTED use case's pool, so colour it from that pool:
+    // a mixed or co-tenanted node has no single owner and emitted var(--poolundefined)
+    const acol=PC[n2.pool!=null? n2.pool : Math.max(0, pools.findIndex(p=>p.members.includes(activeUc)))];
+    return `<div class="fm-node ${n2.cls==='drs'?'standby':n2.cls}${n2.active?' fm-active':''}"${n2.active?` style="--acol:var(--pool${acol})"`:''} title="${esc(n2.label+' · '+(ROLE_LABEL[n2.cls]||n2.cls)+(n2.poolName?' · '+n2.poolName:''))}">
       <div class="fm-nlab">${n2.label}<span class="role">${role}</span><span class="sp"></span>${n2.cls==='support'?'':right}</div>
       <div class="fm-gpus">${n2.gpus.map(gpuHtml).join('')}</div></div>`;
   };
@@ -2935,7 +3265,9 @@ function renderFleet(prj){
     const role=ROLE_LABEL[n2.cls]||n2.cls;
     const parts=n2.gpus.map((g2,k)=>{
       if(g2.type==='pool') return `GPU ${k+1}: ${pools[g2.pool].state.model.name} replica ${g2.rep+1}`;
-      if(g2.type==='sup'||g2.type==='shared') return `GPU ${k+1}: `+g2.bin.slices.map(sl=>sl.kind==='pool'? `${pools[sl.pool].state.model.name} replica slice` : `${KIND_LABEL[sl.sub||sl.kind]||sl.kind} ${sl.model||''}${sl.inst>1?' ×'+sl.inst:''}`).join(', ');
+      if(g2.type==='sup'||g2.type==='shared') return `GPU ${k+1}: `+g2.bin.slices.map(sl=>sl.kind==='pool'
+        ? `${pools[sl.pool].state.model.name} ${g2.bin.co? 'replica (co-resident on the whole card)' : 'replica slice'}`
+        : `${KIND_LABEL[sl.sub||sl.kind]||sl.kind} ${sl.model||''}${sl.inst>1?' ×'+sl.inst:''}`).join(', ');
       if(g2.type==='idle') return `GPU ${k+1}: ${role}`;
       return `GPU ${k+1}: spare`; });
     return `<li>${n2.label} (${role}): ${parts.join('; ')}</li>`; }).join('')+'</ul>').join('');
@@ -3162,6 +3494,10 @@ function renderProjectReport(prj){
         +`Advanced tuning &rarr; Interconnect efficiency, then re-run Auto-size.</div></div>`);
     }
   }catch(e){}
+  // Then the targets themselves: the cheapest GPU in the world is the one the
+  // speed target lets you fill. These carry Apply buttons, so they sit above the
+  // per-pool observations and below the hardware choice.
+  try{ const so=sloRecHtml(prj); for(let i=so.length-1;i>=0;i--) recs.unshift(so[i]); }catch(e){}
   // Is the card itself the wrong shape for this workload? Put it first: it is
   // the most expensive decision on the page and the easiest one to get wrong.
   try{
@@ -4218,18 +4554,48 @@ function solvePool(s){
             if(c.tps && m.sloTps>0 && dd.tps < m.sloTps) t=true;
             if(c.p95 && m.sloP95>0 && memberP95(m, dd.tps, tp) > m.sloP95) p=true; });
           return {t,p}; };
-        const r0=reps;
-        for(let guard=0; guard<400; guard++){
-          d=eva(reps,batch);
+        const r0=reps, b0=batch;
+        // How many replicas does the binding target actually need? Decode is
+        // bwEff / (activeParams x bytesW + batchPerRep x effSeq x kvTok) and
+        // batchPerRep is concurrent/replicas, so the answer is closed form.
+        // Growing one replica at a time made a 400-iteration guard the real
+        // ceiling: the loop fell out of it holding 400 extra replicas, still
+        // missing the target, and reported no problem. Solve it instead.
+        const batchFor=r=>Math.min(BATCH_MAX,Math.max(1,Math.ceil(s.concurrent/r)));
+        d=eva(reps,batch);
+        const miss0=missOf(d);
+        if(miss0.t||miss0.p){
+          // every per-user speed each target implies, in tok/s
+          const needs=[];
+          members.forEach(m=>{ const c=can[m.name||'_'];
+            if(c.tps && m.sloTps>0) needs.push(m.sloTps);
+            if(c.p95 && m.sloP95>0 && m.gen>0){
+              const room=m.sloP95/1.3-(ttftOf(m,tp)+s.ovh)/1000;
+              needs.push(room>0? m.gen/room : Infinity); } });
+          // replicas that speed needs: batch per replica is concurrent/replicas,
+          // and below one batch no replica count can help
+          const repsFor=T=>{ const bpr=(d.bwEff/T - s.active*s.bytesW)/Math.max(1e-12, d.effSeq*d.kvTok);
+            return bpr>=1? Math.max(r0, Math.ceil(s.concurrent/bpr)) : Infinity; };
+          // grow to the strictest target the hardware can still reach. One
+          // unreachable target must not suppress growth for a reachable one.
+          let want=0;
+          needs.forEach(T=>{ if(!isFinite(T)) return; const r2=repsFor(T);
+            if(r2<=REP_CAP && r2>want) want=r2; });
+          if(want>r0){
+            reps=want; batch=batchFor(reps); d=eva(reps,batch);
+            // rounding safety net only: the closed form lands on the answer
+            for(let guard=0; guard<8 && (missOf(d).t||missOf(d).p) && reps<REP_CAP; guard++){
+              reps++; batch=batchFor(reps); d=eva(reps,batch); }
+          }
           const miss=missOf(d);
-          if(!(miss.t||miss.p)) break;
-          if(batch<=1 || reps>=REP_CAP){
+          if(miss.t||miss.p){
             if(miss.t) stuckList.push('per-user speed');
             if(miss.p) stuckList.push('P95');
-            break;
+            // replicas that fixed nothing are pure waste: give them back. The old
+            // one-at-a-time loop ran into its 400-iteration guard, kept all 400 and
+            // reported no problem at all.
+            if(miss.t===miss0.t && miss.p===miss0.p){ reps=r0; batch=b0; d=eva(reps,batch); }
           }
-          reps++;
-          batch=Math.min(BATCH_MAX,Math.max(1,Math.ceil(s.concurrent/reps)));
         }
         // Give back what the targets do not need. Worker granularity can hand a
         // small pool a whole node, and every surplus replica re-reads the full
@@ -4287,8 +4653,12 @@ function solvePool(s){
   const tpsCan=members.every(m=>m.tpsCan), p95Can=members.every(m=>m.p95Can);
   if(!converged) return {ok:false, packPct,
     reason:`Could not fit ${s.model.name} at TP${tp} within the ${packPct}% memory target even at 64 workers: quantize the weights, raise the target, or pick a higher-VRAM GPU`};
+  // A dedicated pool costs CARDS since 5.21 (it packs onto shared nodes), so
+  // physGpus must be that same number. Pricing it in whole nodes made the sliced
+  // branch below beat a plan that was already cheaper: 3 MIG slices "saved"
+  // hardware against a single card rounded up to a node of eight.
   const dedicated={ok:true, mode:'dedicated', tp, tpFit, widened, ttftBinder, crossed, workers, cards, batch, packPct, weights, actGB, sloStuck, grewForSlo,
-    physGpus: Math.max(1,Math.floor(workers*s.perW/tp))*tp};
+    physGpus: cards};
   // MIG-sliced alternative: TP1 pools whose copy fits a hardware slice can run
   // one replica per slice, sharing physical GPUs with other models/supports
   if(tp===1 && interactive && UC.length>1){
@@ -4361,8 +4731,8 @@ function solvePool(s){
     if(best){
       best.sloStuck=[...new Set(members.flatMap(m=>[m.tpsCan===false?'per-user speed'+(m.name?` (${m.name})`:''):null,
         m.p95Can===false?'P95'+(m.name?` (${m.name})`:''):null]).filter(Boolean))].join(' and ')||null;
-      if(best.physGpus < dedicated.physGpus - 0.01) return best;
-      why={t:'nosave', phys:best.physGpus, ded:dedicated.physGpus};
+      if(best.physGpus < dedicated.cards - 0.01) return best;
+      why={t:'nosave', phys:best.physGpus, ded:dedicated.cards};
     }
     dedicated.sliceWhy =
       !why? null
@@ -4440,6 +4810,13 @@ function autoSize(quiet){
   $('inTp').value=tp; refreshCtl('inTp');
   $('inWorkers').value=workers; refreshCtl('inWorkers');
   $('inBatch').value=batch; refreshCtl('inBatch');
+  // Keep the CARD plan here too. Applying only inWorkers re-inflated the pool to
+  // whole nodes, so a plan the solver verified at 4 cards was reported at 16
+  // replicas: the single-use-case mode described a fleet nobody had solved.
+  captureUc();
+  { const u=UC[activeUc];
+    if(u){ u.cards=r.mode==='sliced'? 0 : (r.cards||0);
+      u.cardsKey=u.cards? cardsKey(u, readHw()) : ''; } }
   render();
   const df=compute(readState());
   const qAlt=QUANTS.filter(q=>q.bytes<s.bytesW && (s.params*q.bytes+actGB)<=0.8*s.perW*s.gpuVram).sort((a,b)=>b.bytes-a.bytes)[0];
@@ -4531,7 +4908,7 @@ $('fileImport').addEventListener('change',e=>{
 });
 
 /* ================= PUBLIC API & BOOT ================= */
-window.GPUscale = {compute, gpuFitScan, readState, serialize, applyConfig, buildXls, buildXlsxBytes, render, autoSize, computeProject, solvePool, sliceProfiles, MODELS, GPUS, QUANTS, CASES,
+window.GPUscale = {compute, gpuFitScan, sloOptScan, sloPrice, readState, serialize, applyConfig, buildXls, buildXlsxBytes, render, autoSize, computeProject, solvePool, sliceProfiles, MODELS, GPUS, QUANTS, CASES,
   usecases:{list:()=>UC, active:()=>activeUc, add:addUc, select:selectUc, remove:removeUc},
   projects:{list:lsIndex, load:loadProject, del:deleteProject, share:shareLink, id:()=>PROJ_ID}};
 window.SizingConsole = window.GPUscale;
