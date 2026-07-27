@@ -1274,7 +1274,7 @@ if(!MODELS.length || !GPUS.length || !QUANTS.length || !CASES.length){
   document.body.innerHTML = '<div style="font-family:system-ui,sans-serif;max-width:560px;margin:80px auto;padding:0 20px;line-height:1.65;color:#1A2536"><h2 style="margin-bottom:10px">Data files not loaded</h2><p>GPUscale.net could not find its library. Keep <code>index.html</code> together with the <code>data/</code> and <code>assets/</code> folders: the four files <code>data/models.js</code>, <code>data/gpus.js</code>, <code>data/quants.js</code> and <code>data/usecases.js</code> must sit next to this page.</p><p>If you need one portable file instead, use <code>dist/gpuscale_standalone.html</code> or rebuild it with <code>python3 tools/build_single_file.py</code>.</p></div>';
   throw new Error('GPUscale.net data missing');
 }
-const STUDIO_VERSION = '5.19.2', ENGINE_VERSION = 25;
+const STUDIO_VERSION = '5.19.3', ENGINE_VERSION = 25;
 function newProjId(){ const L='abcdefghjkmnpqrstuvwxyz', D='0123456789';
   const pick=s=>s[Math.floor(Math.random()*s.length)];
   return 'Project_'+pick(L)+pick(L)+pick(D)+pick(D)+pick(D); }
@@ -2363,6 +2363,15 @@ function coDuty(p){
    P95 comfortably at 95 tok/s alone and fail it at the 40 tok/s it is merely
    promised. Pools without a speed target have no guaranteed share at all, so
    they never share. */
+function coTtftSlack(p){
+  const st=p.state;
+  const ms=(st.members&&st.members.length)? st.members : [{resident:st.resident, sloTtft:st.sloTtft}];
+  let slack=Infinity;
+  ms.forEach(m=>{ if(!(+m.sloTtft>0)) return;
+    const solo=2*m.resident*st.active/(st.gpuTflops*Math.max(1,st.tp)*st.mfu);
+    slack=Math.min(slack, solo>0? m.sloTtft/solo : Infinity); });
+  return slack;
+}
 function coShareSafe(p){
   const st=p.state, t=+st.sloTps||0;
   if(!(t>0)) return false;
@@ -2377,12 +2386,12 @@ function coShareSafe(p){
 }
 function coPack(pools, hw){
   const packPct=Math.min(95,Math.max(50,+($('autoUtil')&&$('autoUtil').value)||80))/100;
-  const cap=packPct*hw.g.vram, DUTY_CAP=0.8;   // 20% bandwidth margin for prefill bursts
+  const cap=packPct*hw.g.vram, DUTY_CAP=0.95;  // prefill contention is checked explicitly below
   const items=[];
   pools.forEach((p,pi)=>{ if(p.sliced) return;
     const tp=Math.max(1,p.state.tp), gpus=Math.max(1,p.d.replicas*tp);
-    const mem=p.d.total/gpus, duty=coDuty(p), safe=coShareSafe(p);
-    for(let r=0;r<p.d.replicas;r++) items.push({pool:pi, rep:r, tp, mem, duty, safe});
+    const mem=p.d.total/gpus, duty=coDuty(p), safe=coShareSafe(p), tslack=coTtftSlack(p);
+    for(let r=0;r<p.d.replicas;r++) items.push({pool:pi, rep:r, tp, mem, duty, safe, tslack});
   });
   // widest TP first so aligned blocks nest, then heaviest cards first
   items.sort((a,b)=> b.tp-a.tp || b.mem-a.mem);
@@ -2399,19 +2408,37 @@ function coPack(pools, hw){
         const samePool=block.some(g=>g.slots.some(s=>s.pool===it.pool));
         const allSafe=block.every(g=>g.slots.every(s=>s.safe));
         const roomy=block.every(g=>g.mem+it.mem<=cap+1e-9 && g.duty+it.duty<=DUTY_CAP+1e-9);
-        if(roomy&&allSafe&&!samePool){ block.forEach((g,k)=>{ g.mem+=it.mem; g.duty+=it.duty;
-          g.slots.push({pool:it.pool, rep:it.rep, shard:k, mem:it.mem, duty:it.duty, safe:it.safe}); });
+        // sharing a card also shares its prefill: every tenant's first token
+        // stretches by roughly 1/(1 - what the neighbours take). Merge only
+        // while each tenant, incoming one included, still meets its TTFT.
+        const ttftOk=block.every(g=>{
+          const tot=g.duty+it.duty;
+          const infl=t=>{ const others=Math.min(0.99, tot-t); return 1/(1-others); };
+          if(infl(it.duty) > it.tslack) return false;
+          return g.slots.every(s=>infl(s.duty) <= s.tslack);
+        });
+        if(roomy&&allSafe&&!samePool&&ttftOk){ block.forEach((g,k)=>{ g.mem+=it.mem; g.duty+=it.duty;
+          g.slots.push({pool:it.pool, rep:it.rep, shard:k, mem:it.mem, duty:it.duty, safe:it.safe, tslack:it.tslack}); });
           placed=true; break; }
       }
     }
     if(!placed){ // fresh aligned block: the first tenant always fits its own card
       const b=Math.ceil(gpus.length/it.tp)*it.tp; grow(b+it.tp);
       gpus.slice(b, b+it.tp).forEach((g,k)=>{ g.mem+=it.mem; g.duty+=it.duty;
-        g.slots.push({pool:it.pool, rep:it.rep, shard:k, mem:it.mem, duty:it.duty, safe:it.safe}); }); }
+        g.slots.push({pool:it.pool, rep:it.rep, shard:k, mem:it.mem, duty:it.duty, safe:it.safe, tslack:it.tslack}); }); }
   });
   const used=gpus.filter(g=>g.slots.length);
+  // why a pool could not take a neighbour: the binding reason, in the pool's words
+  const blockers=[];
+  pools.forEach((p,pi)=>{ if(p.sliced) return;
+    if(!(+p.state.sloTps>0)){ blockers.push(`${p.state.model.name} has no per-user speed target, so there is no share to guarantee it`); return; }
+    if(!coShareSafe(p)){ blockers.push(`${p.state.model.name} would miss its P95 at the speed a shared card guarantees`); return; }
+    const sl=coTtftSlack(p);
+    if(isFinite(sl) && sl<1.3) blockers.push(`${p.state.model.name} has only ${Math.round((sl-1)*100)}% first-token headroom, and a co-tenant needs more`);
+  });
   const dedicatedG=pools.reduce((t,p)=>t+(p.sliced?0:p.d.replicas*Math.max(1,p.state.tp)),0);
   return {gpus:used, count:used.length, dedicatedG, saved:Math.max(0,dedicatedG-used.length),
+    blockers:[...new Set(blockers)],
     shares:used.filter(g=>new Set(g.slots.map(s=>s.pool)).size>1).length};
 }
 function allocShared(pools, hw){
@@ -2814,6 +2841,7 @@ function renderFleet(prj){
   $('fmNote').className='fm-note dtl';
   { const co=prj.co||{}, lim=[];
     if(co.shares) lim.push(`${co.shares} card${co.shares>1?'s':''} carry more than one model`);
+    else if((co.blockers||[]).length) lim.push(`no card carries two models: ${co.blockers[0]}`);
     const bwBound=pools.filter(p=>p.state.sloTps>0 && p.d.tps>0 && p.d.total/p.d.avail < 0.6).length;
     $('fmNote').innerHTML=notes.map(esc).join(' ')+
       ` GPU fill height is memory used; on a shared GPU each band is one model.`+

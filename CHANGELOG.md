@@ -1,5 +1,24 @@
 # Changelog
 
+## Studio 5.19.3 (2026-07-27)
+
+Co-residency now respects first-token latency, found by the same audit.
+
+- Sharing a card shares its prefill, so a co-tenant stretches every neighbour's
+  first token by roughly 1/(1 - the share the neighbours take). 5.19.1 guarded
+  P95 but not TTFT, so co-tenanted cards pushed a 500 ms first-token target to
+  684 ms and a 1000 ms one to 1554 ms while the fleet still reported all-clear.
+  Each merge is now checked against every tenant's own TTFT target.
+- With prefill contention modelled explicitly, the blanket 20% bandwidth margin
+  is gone: the decode budget runs to 95% and the latency check does the real work.
+- When nothing can be shared the map now says why, in the pool's own terms
+  ("only 11% first-token headroom, and a co-tenant needs more"), instead of
+  silently showing dedicated cards.
+
+Consequence worth stating: a project with tight first-token targets will not
+share cards, and its honest fleet is larger than a shared one would be. The
+previous release would have shared them and quietly missed the targets.
+
 ## Studio 5.19.2 (2026-07-27)
 
 - Shared GPUs no longer read "100%". A co-resident card was labelling each
