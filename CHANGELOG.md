@@ -1,5 +1,24 @@
 # Changelog
 
+## Studio 5.20 (2026-07-27)
+
+Auto-size no longer capped the batch at 64 behind your back.
+
+- The batch-per-replica control accepts up to 512, but the solver silently
+  clamped its own search to 64. That forced at least `concurrent / 64`
+  replicas, and every surplus replica re-reads the entire weight matrix on
+  every decode step, so the fleet paid twice: more cards, and more of each
+  card's bandwidth spent re-reading the same weights. A 370-call pool was
+  held at 6 replicas where 4 meet the same target. The solver now searches
+  up to the same ceiling the control allows and lets memory and the speed
+  targets decide.
+- Auto-size can also give nodes back: after growing to meet the targets it
+  now shrinks again while memory and every member's target still hold, so a
+  pool that overshot during the search does not keep the surplus.
+
+On a 13-use-case project this takes the fleet from 11 nodes to 10 with every
+target still met, on top of the 5.19 corrections.
+
 ## Studio 5.19.3 (2026-07-27)
 
 Co-residency now respects first-token latency, found by the same audit.
