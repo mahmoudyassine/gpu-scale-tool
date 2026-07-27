@@ -1,5 +1,25 @@
 # Changelog
 
+## Studio 5.21.1 (2026-07-27)
+
+Follow-ups from auditing 5.21 against a real project.
+
+- **A card allocation can no longer go stale.** The exact per-pool GPU count is
+  an auto-size output, so it is now stamped with the inputs it was solved
+  against (model, precision, GPU, GPUs per worker, TP, concurrency, context,
+  output and thinking tokens). Change any of them and that pool falls back to
+  whole-node sizing until you re-run Auto-size, instead of quietly keeping an
+  allocation that no longer fits.
+- **Interconnect efficiency below the default is now called out, with its
+  price.** The cross-node penalty is applied per pool since 5.19, so a blanket
+  value under 0.85 taxes pools whose copy never leaves a node. Older builds
+  wrote 0.70 into this field as a side effect of auto-size and it survives
+  every re-export, so the tool measures what it costs and says so: on the
+  reported project, 60 GPUs at 0.70 versus 46 at 0.85. It recommends rather
+  than rewrites, because a saved input is the user's, not ours.
+- Auto-size wording follows the card model: it now reports replicas and cards
+  rather than nodes, since a pool no longer buys whole nodes.
+
 ## Studio 5.21 (2026-07-27)
 
 Pools own cards, the map shows what fills them, and the tool now tells you when
