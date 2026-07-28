@@ -7,7 +7,7 @@ if(!MODELS.length || !GPUS.length || !QUANTS.length || !CASES.length){
   document.body.innerHTML = '<div style="font-family:system-ui,sans-serif;max-width:560px;margin:80px auto;padding:0 20px;line-height:1.65;color:#1A2536"><h2 style="margin-bottom:10px">Data files not loaded</h2><p>GPUscale.net could not find its library. Keep <code>index.html</code> together with the <code>data/</code> and <code>assets/</code> folders: the four files <code>data/models.js</code>, <code>data/gpus.js</code>, <code>data/quants.js</code> and <code>data/usecases.js</code> must sit next to this page.</p><p>If you need one portable file instead, use <code>dist/gpuscale_standalone.html</code> or rebuild it with <code>python3 tools/build_single_file.py</code>.</p></div>';
   throw new Error('GPUscale.net data missing');
 }
-const STUDIO_VERSION = '5.22.2', ENGINE_VERSION = 25;
+const STUDIO_VERSION = '5.23.0', ENGINE_VERSION = 25;
 function newProjId(){ const L='abcdefghjkmnpqrstuvwxyz', D='0123456789';
   const pick=s=>s[Math.floor(Math.random()*s.length)];
   return 'Project_'+pick(L)+pick(L)+pick(D)+pick(D)+pick(D); }
@@ -342,10 +342,39 @@ function chartSVG(opts){
     s+=`<line x1="${x}" y1="${T+ih}" x2="${x}" y2="${T+ih+4}" stroke="${P.axis}"/>`;
     s+=`<text x="${x}" y="${T+ih+16}" fill="${P.axis}" font-size="10.5" text-anchor="middle" font-family="IBM Plex Mono,monospace">${lab}</text>`; });
   if(opts.xLabel) s+=`<text x="${L+iw/2}" y="${H-7}" fill="${P.faint}" font-size="8.5" text-anchor="middle" font-family="Inter,sans-serif">${opts.xLabel}</text>`;
+  /* status zones: a tinted band with a text label, never colour alone. Drawn
+     over the grid and under the series so the data stays dominant. */
+  const zoneLabels=[];
+  (opts.zones||[]).forEach(z=>{
+    const top=niceCeil(opts.maxL);
+    const y1=Math.min(z.y1==null? top : z.y1, top), y0=Math.max(z.y0||0, 0);
+    if(y1<=y0) return;
+    const ya=T+ih-(y1/top)*ih, yb=T+ih-(y0/top)*ih;
+    s+=`<rect x="${L}" y="${ya.toFixed(1)}" width="${iw}" height="${(yb-ya).toFixed(1)}" fill="${z.color}" opacity="${z.op!=null?z.op:.07}"/>`;
+    if(z.label && (yb-ya)>=16)
+      zoneLabels.push(`<text x="${W-R-6}" y="${(z.labelTop? ya+11 : yb-6).toFixed(1)}" fill="${z.color}" font-size="8.5" text-anchor="end" font-family="Inter,sans-serif" opacity=".9" stroke="${P.bg}" stroke-width="3" paint-order="stroke">${z.label}</text>`);
+  });
   if(opts.guideY!=null && opts.guideY>0 && opts.guideY<=niceCeil(opts.maxL)){
     const gy=T+ih-(opts.guideY/niceCeil(opts.maxL))*ih;
     s+=`<line x1="${L}" y1="${gy}" x2="${W-R}" y2="${gy}" stroke="${P.amber}" stroke-width="1.4" stroke-dasharray="4 4" opacity=".9"/>`;
-    if(opts.guideYLabel) s+=`<text x="${L+6}" y="${gy-6}" fill="${P.amber}" font-size="10" font-family="IBM Plex Mono,monospace" stroke="${P.bg}" stroke-width="3" paint-order="stroke">${opts.guideYLabel}</text>`;
+    if(opts.guideYLabel){
+      // put the label on whichever side is free of a marker label: both are
+      // amber mono text, and overprinting them made the target unreadable
+      const bboxes=[opts.marker,opts.marker2].filter(Boolean).map(mk=>{
+        const sr=opts.series[mk.series||0]||opts.series[0];
+        const Ym=sr&&sr.axis==='R'? v=>T+ih-(v/niceCeil(opts.maxR))*ih : v=>T+ih-(v/niceCeil(opts.maxL))*ih;
+        const mw=String(mk.label||'').length*6.6, mx=X(mk.x), my=Math.max(Ym(mk.y)-8,T+10);
+        return {x0:mk.align==='left'? mx-8-mw : mx+8, x1:mk.align==='left'? mx-8 : mx+8+mw, y0:my-12, y1:my+3};
+      });
+      const gw=String(opts.guideYLabel).length*6.2;
+      const clash=(x0,x1,y)=>bboxes.some(b=>x0<b.x1&&x1>b.x0&&y-11<b.y1&&y>b.y0);
+      let gx=L+6, anchor='start', gyl=gy-6;
+      if(clash(gx,gx+gw,gyl)){
+        if(!clash(W-R-6-gw,W-R-6,gyl)){ gx=W-R-6; anchor='end'; }
+        else for(let k=1;k<=4 && clash(gx,gx+gw,gyl);k++) gyl=gy-6-12*k;
+      }
+      s+=`<text x="${gx}" y="${gyl}" fill="${P.amber}" font-size="10" text-anchor="${anchor}" font-family="IBM Plex Mono,monospace" stroke="${P.bg}" stroke-width="3" paint-order="stroke">${opts.guideYLabel}</text>`;
+    }
   }
   if(opts.guideX!=null && opts.guideX<=opts.xMax){ const x=X(opts.guideX);
     s+=`<line x1="${x}" y1="${T}" x2="${x}" y2="${T+ih}" stroke="${P.red}" stroke-width="1.4" stroke-dasharray="4 4" opacity=".85"/>`;
@@ -355,6 +384,7 @@ function chartSVG(opts){
   opts.series.forEach(sr=>{ const Y=YFOR(sr);
     const d=sr.pts.map((p,i)=>(i?'L':'M')+X(p[0]).toFixed(1)+' '+Y(p[1]).toFixed(1)).join(' ');
     s+=`<path d="${d}" fill="none" stroke="${sr.color}" stroke-width="2.2" stroke-linejoin="round"/>`; });
+  zoneLabels.forEach(t=>{ s+=t; });   // above the series: a line must never strike the words
   function drawMarker(mk){
     const sr=opts.series[mk.series||0]; const Y=YFOR(sr);
     const x=X(mk.x), y=Y(mk.y);
@@ -377,11 +407,14 @@ function renderBatchChart(s,d){
     const bpr=Math.max(1,S/d.replicas);
     const t=d.bwEff/(s.active*s.bytesW+bpr*d.effSeq*d.kvTok); const a=t*S;
     pts.push([S,t]); ptsA.push([S,a]); maxL=Math.max(maxL,t); maxR=Math.max(maxR,a); }
+  const tgt=+s.sloTps||0;
   $('chartBatch').innerHTML = chartSVG({
     aria:'Per-user and aggregate throughput versus admitted sequences',
     xScale:v=>(v-1)/(Smax-1||1), xMax:Smax, maxL, maxR, rightAxis:true,
     xTicks:[1,Math.round(Smax/4),Math.round(Smax/2),Math.round(3*Smax/4),Smax].map(v=>[v,fmt(v)]),
     guideX:memCapTotal, guideLabel:memCapTotal? 'mem limit '+fmt(memCapTotal):null,
+    guideY:tgt||null, guideYLabel:tgt? 'target ≥ '+fmt(tgt)+' tok/s':null,
+    zones:tgt? [{y0:0,y1:tgt,color:P.red},{y0:tgt,color:P.teal,op:.05}] : null,
     xLabel:'admitted sequences', yLabelL:'tok/s per user', yLabelR:'aggregate tok/s',
     series:[{pts,color:P.teal,axis:'L'},{pts:ptsA,color:P.violet,axis:'R'}],
     marker:{x:Math.min(d.active,Smax), y:d.tps, label:fmt(d.tps)+' @ '+d.active, series:0},
@@ -401,10 +434,14 @@ function renderCtxChart(s,d){
   const cur=Math.min(Math.max(d.effSeq,lo),hi);
   const bpr=Math.max(1,d.active/d.replicas);
   const curT=d.bwEff/(s.active*s.bytesW+bpr*cur*d.kvTok);
+  const tgtC=+s.sloTps||0;
   $('chartCtx').innerHTML = chartSVG({
     aria:'Per-user decode speed versus context length',
     xScale:v=>(Math.log2(v)-lgLo)/(lgHi-lgLo||1), xMax:hi, maxL, rightAxis:false,
     xTicks:ticks, guideX:null,
+    guideY:tgtC||null, guideYLabel:tgtC? 'target ≥ '+fmt(tgtC)+' tok/s':null,
+    zones:tgtC? [{y0:0,y1:tgtC,color:P.red,label:'below the speed target'},
+                 {y0:tgtC,color:P.teal,label:'meets the target',labelTop:true,op:.05}] : null,
     xLabel:'resident context (tokens, log scale)', yLabelL:'tok/s per user',
     series:[{pts,color:P.teal,axis:'L'}],
     marker:{x:cur,y:curT,label:fmtTok(Math.round(d.effSeq))+' · '+fmt(curT)+' t/s',series:0}
@@ -748,6 +785,25 @@ function sloOptBuild(prj){
   });
   return out.slice(0,4);
 }
+/* Bind a recommendation's abstract actions to concrete use cases. Manual-lever
+   actions are only offered where the solver will not immediately overwrite them:
+   single use case in Advanced mode. Everything else (targets, precisions,
+   resilience, auto-size) survives a re-solve, so it is offered everywhere. */
+function recActsHtml(acts, ucIdxs){
+  if(!acts||!acts.length) return '';
+  const multi=UC.length>1;
+  const normal=document.documentElement.dataset.uxMode==='normal';
+  const usable=acts.filter(a=> a.kind==='safe' || (!multi && !normal));
+  if(!usable.length) return '';
+  const btns=usable.map(a=>{
+    const payload={msg:a.label+' — applied', mode:(multi||a.solve)? 'solve':'render'};
+    if(a.solve) payload.solve=true;
+    if(a.fields){ payload.sets={}; ucIdxs.forEach(i=>{ payload.sets[i]=a.fields; }); }
+    if(a.global) payload.global=a.global;
+    return `<button type="button" class="btn-rec no-print" data-apply="${esc(JSON.stringify(payload))}">${esc(a.label)}</button>`;
+  });
+  return `<div class="r-act no-print">${btns.join('')}</div>`;
+}
 function sloRecHtml(prj){
   return sloOptScan(prj).map(r=>`<div class="rec ${r.lv}"><div class="r-t">${r.t}</div><div class="r-b">${r.b}</div>`
     +((r.acts&&r.acts.length)? `<div class="r-act no-print">${r.acts.join('')}</div>`:'')+`</div>`);
@@ -756,9 +812,14 @@ function sloRecHtml(prj){
    scope, re-solve, and offer the whole thing back as one Undo. */
 function applySloAction(act){
   const sets=(act&&act.sets)||{};
-  const keys=Object.keys(sets);
-  if(!keys.length) return;
+  const glob=(act&&act.global)||{};
+  const keys=Object.keys(sets), gks=Object.keys(glob);
+  if(!keys.length && !gks.length && !act.solve) return;
   captureUc();
+  const gBefore={}; gks.forEach(id=>{ const el=$(id); if(el) gBefore[id]=el.value; });
+  const setGlobal=(id,v)=>{ const el=$(id); if(!el) return; el.value=v;
+    if(id==='selResil'){ const sim=$('selResilSimple');
+      if(sim) sim.value = v==='n'? 'n' : (v==='n1'||v==='n2')? 'n1' : 'dr'; } };
   // snapshot EVERY use case, not just the ones being written: applying re-solves
   // the whole project, so a pool that is not in scope can still change geometry.
   // Undo that restored only the targets handed back a different fleet.
@@ -768,12 +829,15 @@ function applySloAction(act){
     Object.keys(sets[k]).forEach(f=>{ u.f[f]=String(sets[k][f]); });
     u.cards=0; u.cardsKey='';        // the old plan was solved against the old targets
   });
+  gks.forEach(id=>setGlobal(id, glob[id]));
   loadUc(activeUc);
-  autoSize(true);
+  if(act.mode==='render'){ renderUcCards(); render(); }
+  else autoSize(true);
   toast(act.msg||'Targets applied', false, {label:'Undo', fn:()=>{
     before.forEach(b=>{ const u=UC[b.i]; if(!u) return;
       u.f=b.f; u.cards=b.cards; u.cardsKey=b.key; u.sliceU=b.sliceU; });
-    loadUc(activeUc); renderUcCards(); render(); toast('Targets and fleet restored');
+    gks.forEach(id=>{ if(gBefore[id]!=null) setGlobal(id, gBefore[id]); });
+    loadUc(activeUc); renderUcCards(); render(); toast('Restored');
   }});
 }
 { const rp=$('recs');
@@ -782,7 +846,13 @@ function applySloAction(act){
     try{ applySloAction(JSON.parse(b.dataset.apply)); }catch(err){ toast('Could not apply that suggestion', true); } }); }
 function buildRecs(s,d,m,g,prelaunch){
   const recs=[]; const util=d.avail>0? d.total/d.avail : 1;
-  const push=(lv,t,b)=>recs.push({lv,t,b});
+  /* An action is offered only where clicking it does exactly what the sentence
+     says. kind 'lever' writes a manual control (TP, batch, workers) and only
+     makes sense where the solver is not about to overwrite it; kind 'safe'
+     changes an input the solver honours (a target, a precision, resilience). */
+  const push=(lv,t,b,acts)=>recs.push({lv,t,b,acts});
+  const qFp8=QUANTS.findIndex(q=>q.name==='FP8');
+  const kFp8=KV_QUANTS.findIndex(q=>q.name==='FP8');
   let bottleneck='none';
   if(!d.fits) bottleneck='VRAM capacity';
   else if(d.slo.ttft.on&&!d.slo.ttft.pass) bottleneck='prefill compute (TTFT)';
@@ -795,8 +865,10 @@ function buildRecs(s,d,m,g,prelaunch){
   if(perRepNeed>perRepCap){
     const minTp=Math.ceil(perRepNeed/s.gpuVram);
     const fitQ=QUANTS.filter(q=>q.bytes<s.bytesW && (s.params*q.bytes+d.act)<perRepCap).sort((a,b)=>b.bytes-a.bytes)[0];
+    const holdActs=[{label:`Set tensor parallel to ${minTp}`, fields:{inTp:minTp}, kind:'lever'}];
+    if(fitQ) holdActs.push({label:`Switch weights to ${fitQ.name}`, fields:{selWQuant:QUANTS.indexOf(fitQ)}, kind:'safe'});
     push('crit','One replica cannot hold the model',
-      `The model is distributed over TP GPUs, and GPUs beyond TP hold extra copies, not extra room. Each TP${s.tp} slice group spans ${fmt(perRepCap)} GB of VRAM but one copy of ${m.name} needs ${fmt(perRepNeed)} GB, so every group overflows identically and adding workers cannot help. Fix it with the Tensor parallel slider: TP ${minTp} or more fits one copy${minTp>s.perW?` (beyond the ${s.perW}-GPU NVLink island: raise GPUs per worker to model rack-scale parts, or set interconnect efficiency 0.6 to 0.7 for the cross-node hop; real systems use pipeline parallelism here, which this tool does not model)`:''}; TP ${s.gpus} distributes a single copy across the whole fleet. Alternatives: ${fitQ?`${fitQ.name} weights (${fmt(s.params*fitQ.bytes)} GB fits at TP${s.tp}), `:''}a higher-VRAM GPU, or a smaller model.`);
+      `The model is distributed over TP GPUs, and GPUs beyond TP hold extra copies, not extra room. Each TP${s.tp} slice group spans ${fmt(perRepCap)} GB of VRAM but one copy of ${m.name} needs ${fmt(perRepNeed)} GB, so every group overflows identically and adding workers cannot help. Fix it with the Tensor parallel slider: TP ${minTp} or more fits one copy${minTp>s.perW?` (beyond the ${s.perW}-GPU NVLink island: raise GPUs per worker to model rack-scale parts, or set interconnect efficiency 0.6 to 0.7 for the cross-node hop; real systems use pipeline parallelism here, which this tool does not model)`:''}; TP ${s.gpus} distributes a single copy across the whole fleet. Alternatives: ${fitQ?`${fitQ.name} weights (${fmt(s.params*fitQ.bytes)} GB fits at TP${s.tp}), `:''}a higher-VRAM GPU, or a smaller model.`, holdActs);
   }
   if(!d.fits){
     const overBy=d.total-d.avail, addW=Math.max(1,Math.ceil(overBy/(s.perW*s.gpuVram)));
@@ -805,7 +877,11 @@ function buildRecs(s,d,m,g,prelaunch){
     if(s.bytesW>1) opts.push(`FP8 weights (saves ${fmt(d.weightsAll/2)} GB)`);
     if(s.bytesK>1) opts.push(`FP8 KV cache (saves ${fmt(d.kvTotal/2)} GB)`);
     opts.push('trim resident context or batch');
-    push('crit','Configuration does not fit',`Needs ${fmt(d.total)} GB against ${fmt(d.avail)} GB of serving VRAM, over by ${fmt(overBy)} GB${d.replicas>1?` (${d.replicas} replicas × ${fmt(d.weights)} GB weights each)`:''}. Options: ${opts.join(', ')}.`);
+    const fitActs=[];
+    if(perRepNeed<=perRepCap) fitActs.push({label:`Add ${addW} worker${addW>1?'s':''}`, fields:{inWorkers:s.workers+addW}, kind:'lever'});
+    if(s.bytesW>1&&qFp8>=0) fitActs.push({label:'Switch weights to FP8', fields:{selWQuant:qFp8}, kind:'safe'});
+    if(s.bytesK>1&&kFp8>=0) fitActs.push({label:'Switch KV cache to FP8', fields:{selKQuant:kFp8}, kind:'safe'});
+    push('crit','Configuration does not fit',`Needs ${fmt(d.total)} GB against ${fmt(d.avail)} GB of serving VRAM, over by ${fmt(overBy)} GB${d.replicas>1?` (${d.replicas} replicas × ${fmt(d.weights)} GB weights each)`:''}. Options: ${opts.join(', ')}.`, fitActs);
   }
   if(d.effSeq>m.ctx)
     push('crit','Context exceeds the model',`Resident + reasoning is ${fmtTok(d.effSeq)} but ${m.name} tops out at ${fmtTok(m.ctx)}. Reduce resident tokens${s.extend&&s.reasonTok?', disable KV extension,':''} or pick a longer-context model.`);
@@ -817,22 +893,37 @@ function buildRecs(s,d,m,g,prelaunch){
   }
   if(d.fits&&d.slo.ttft.on&&!d.slo.ttft.pass){
     const tp2=Math.min(s.tp*2,s.gpus), t2=d.ttft*s.tp/tp2;
-    push('warn','TTFT misses its target',`Prefill takes ${fmt(d.ttft)} ms against a ${fmt(s.sloTtft)} ms target. TP ${s.tp} to ${tp2} lands ≈${fmt(t2)} ms${tp2>s.perW?' (but crosses nodes)':''}; prefix caching, chunked prefill or a disaggregated prefill pool attack the same problem without more GPUs.`);
+    push('warn','TTFT misses its target',`Prefill takes ${fmt(d.ttft)} ms against a ${fmt(s.sloTtft)} ms target. TP ${s.tp} to ${tp2} lands ≈${fmt(t2)} ms${tp2>s.perW?' (but crosses nodes)':''}; prefix caching, chunked prefill or a disaggregated prefill pool attack the same problem without more GPUs.`,
+      tp2>s.tp? [{label:`Widen to TP ${tp2} (≈${fmt(t2)} ms)`, fields:{inTp:tp2}, kind:'lever'}] : []);
   }
   if(d.fits&&d.slo.tps.on&&!d.slo.tps.pass){
     const halfB=Math.max(1,Math.floor(d.batchPerRep/2));
     const t2=d.bwEff/(s.active*s.bytesW+halfB*d.effSeq*d.kvTok);
-    push('warn','Per-user speed misses its target',`${fmt(d.tps)} tok/s against a ${fmt(s.sloTps)} tok/s target. Halving batch per replica to ${halfB} gives ≈${fmt(t2)} tok/s at lower aggregate; FP8 KV, a higher-bandwidth GPU, or speculative decoding (1.5 to 3x) are the structural fixes.`);
+    { // under the 'all sessions stay in KV' policy the engine admits everyone
+      // regardless of batch, so the batch lever is a no-op: the honest lever
+      // there is more replicas, which is what halves batch-per-replica
+      const pinned=s.policy==='all';
+      const w2=Math.ceil(d.replicas*2*s.tp/s.perW);
+      push('warn','Per-user speed misses its target',`${fmt(d.tps)} tok/s against a ${fmt(s.sloTps)} tok/s target. ${pinned
+        ? `Every session is pinned in KV, so batch cannot turn calls away: doubling replicas to ${d.replicas*2} (${w2} workers) gives ≈${fmt(t2)} tok/s`
+        : `Halving batch per replica to ${halfB} gives ≈${fmt(t2)} tok/s at lower aggregate`}; FP8 KV, a higher-bandwidth GPU, or speculative decoding (1.5 to 3x) are the structural fixes.`,
+      [pinned? {label:`Double replicas (${w2} workers, ≈${fmt(t2)} tok/s)`, fields:{inWorkers:w2}, kind:'lever'}
+             : {label:`Halve batch to ${halfB} (≈${fmt(t2)} tok/s)`, fields:{inBatch:halfB}, kind:'lever'}]
+        .concat(s.bytesK>1&&kFp8>=0? [{label:'Switch KV cache to FP8', fields:{selKQuant:kFp8}, kind:'safe'}] : [])); }
   }
   if(d.fits&&d.slo.p95.on&&!d.slo.p95.pass){
     const tpsMax=d.bwEff/(s.active*s.bytesW+d.effSeq*d.kvTok);
     const minLat=((d.ttft+s.ovh)/1000+d.genTok/tpsMax)*1.3;
     if(minLat>s.sloP95)
-      push('crit','P95 target is unachievable for this workload',`Each call generates ${fmtTok(d.genTok)} tokens (${fmtTok(s.reasonTok)} reasoning + ${fmtTok(s.visibleOut)} visible). Even alone on this hardware at batch 1, that takes ≈${fmt(minLat)} s at P95 against a ${fmt(s.sloP95)} s target. No amount of GPUs fixes this: cut reasoning or visible tokens, turn reasoning off for this use case, or relax the P95 target.`);
+      { const pv=minLat>=10? Math.ceil(minLat) : Math.ceil(minLat*10)/10;
+      push('crit','P95 target is unachievable for this workload',`Each call generates ${fmtTok(d.genTok)} tokens (${fmtTok(s.reasonTok)} reasoning + ${fmtTok(s.visibleOut)} visible). Even alone on this hardware at batch 1, that takes ≈${fmt(minLat)} s at P95 against a ${fmt(s.sloP95)} s target. No amount of GPUs fixes this: cut reasoning or visible tokens, turn reasoning off for this use case, or relax the P95 target.`,
+        [{label:`Relax P95 to ${fmt(pv)} s (the floor this workload can meet)`, fields:{sloP95:pv}, kind:'safe'}]
+          .concat(s.reasonTok>0? [{label:'Turn reasoning off', fields:{selReason:'None'}, kind:'safe'}] : [])); }
     else {
       const tpsNeeded=d.genTok/(s.sloP95/1.3-(d.ttft+s.ovh)/1000);
       const bNeeded=Math.max(1,Math.floor((d.bwEff/tpsNeeded-s.active*s.bytesW)/(d.effSeq*d.kvTok)));
-      push('warn','P95 latency misses its target',`P95 is ${fmt(d.p95)} s against ${fmt(s.sloP95)} s. Reaching ≈${fmt(tpsNeeded)} tok/s per user would meet it: lower max batch per replica to ≈${bNeeded} (fewer calls admitted per copy), or add speculative decoding (1.5 to 3x decode speed).`);
+      push('warn','P95 latency misses its target',`P95 is ${fmt(d.p95)} s against ${fmt(s.sloP95)} s. Reaching ≈${fmt(tpsNeeded)} tok/s per user would meet it: lower max batch per replica to ≈${bNeeded} (fewer calls admitted per copy), or add speculative decoding (1.5 to 3x decode speed).`,
+        s.policy==='all'? [] : [{label:`Cap batch at ${bNeeded}`, fields:{inBatch:bNeeded}, kind:'lever'}]);
     }
   }
   if(d.queued>0&&d.fits){
@@ -841,14 +932,20 @@ function buildRecs(s,d,m,g,prelaunch){
     const needW=Math.ceil(Math.max(1,Math.ceil(s.concurrent/s.batch))*s.tp/s.perW);
     push('warn','Calls queue at peak',`${d.queued} of ${s.concurrent} concurrent calls wait; only ${d.active} are admitted. ${canBatch
       ? `Raising max batch per replica from ${s.batch} to ${batchNeeded} admits everyone (memory allows up to ${fmt(Math.min(d.maxBatchMem,512))}).`
-      : `At batch ${s.batch}, admitting everyone needs ≈${needW} workers (currently ${s.workers}); or raise the batch and accept slower per-user speed.`}`);
+      : `At batch ${s.batch}, admitting everyone needs ≈${needW} workers (currently ${s.workers}); or raise the batch and accept slower per-user speed.`}`,
+      [canBatch? {label:`Raise batch to ${batchNeeded}`, fields:{inBatch:batchNeeded}, kind:'lever'}
+               : {label:`Set ${needW} workers`, fields:{inWorkers:needW}, kind:'lever'}]);
   }
   if(d.fits&&util>0.92)
-    push('warn','Headroom is thin',`${(util*100).toFixed(0)}% of serving VRAM is committed. Growth, longer contexts or a library update can tip this over; one more worker or FP8 KV restores margin.`);
+    push('warn','Headroom is thin',`${(util*100).toFixed(0)}% of serving VRAM is committed. Growth, longer contexts or a library update can tip this over; one more worker or FP8 KV restores margin.`,
+      [{label:'Add one worker', fields:{inWorkers:s.workers+1}, kind:'lever'}]
+        .concat(s.bytesK>1&&kFp8>=0? [{label:'Switch KV cache to FP8', fields:{selKQuant:kFp8}, kind:'safe'}] : []));
   if(d.kvTotal>d.weightsAll)
-    push('warn','KV-dominated deployment',`Cache (${fmt(d.kvTotal)} GB) outweighs weights (${fmt(d.weightsAll)} GB). FP8 or INT4 KV, compressed-KV models (MLA), or shorter resident sequences pay off most here.`);
+    push('warn','KV-dominated deployment',`Cache (${fmt(d.kvTotal)} GB) outweighs weights (${fmt(d.weightsAll)} GB). FP8 or INT4 KV, compressed-KV models (MLA), or shorter resident sequences pay off most here.`,
+      s.bytesK>1&&kFp8>=0? [{label:`Switch KV cache to FP8 (saves ${fmt(d.kvTotal/2)} GB)`, fields:{selKQuant:kFp8}, kind:'safe'}] : []);
   if(s.resil==='n'&&s.workers>1)
-    push('warn','No redundancy configured',`A single worker failure removes ${fmt(100/s.workers)}% of capacity with nothing to absorb it. N+1 costs one worker (${s.perW} GPUs, ${fmt(s.perW*g.watts/1000)} kW) and removes that cliff.`);
+    push('warn','No redundancy configured',`A single worker failure removes ${fmt(100/s.workers)}% of capacity with nothing to absorb it. N+1 costs one worker (${s.perW} GPUs, ${fmt(s.perW*g.watts/1000)} kW) and removes that cliff.`,
+      [{label:'Switch to N+1', global:{selResil:'n1'}, kind:'safe'}]);
   if(prelaunch)
     push('warn','Pre-launch GPU selected',`${g.name} is announced but not shipping; specs are estimates. Re-validate against datasheets before committing a proposal.`);
   const arch=g.arch||'';
@@ -861,7 +958,8 @@ function buildRecs(s,d,m,g,prelaunch){
   if(/Unified/i.test(g.mem))
     push('warn','Unified-memory hardware',`Capacity is generous but ${fmt(g.bw)} TB/s of bandwidth caps decode speed. Fine for development or single-user work, not for concurrent serving.`);
   if(d.fits&&util<0.35&&d.queued===0&&s.gpus>1)
-    push('ok','Likely over-provisioned',`Only ${(util*100).toFixed(0)}% of serving VRAM is used and every call is admitted. Fewer workers, a smaller TP, or a cheaper part could carry this load; alternatively raise batch and serve more traffic on the same metal.`);
+    push('ok','Likely over-provisioned',`Only ${(util*100).toFixed(0)}% of serving VRAM is used and every call is admitted. Fewer workers, a smaller TP, or a cheaper part could carry this load; alternatively raise batch and serve more traffic on the same metal.`,
+      [{label:'Run Auto-size', solve:true, kind:'safe'}]);
   if(!recs.some(r=>r.lv!=='ok')&&d.fits&&d.sloAll)
     push('ok','Balanced configuration',`Fits with ${fmt(d.headroom)} GB headroom (${(util*100).toFixed(0)}% used), all enabled SLOs pass, and every call is admitted at peak. No action needed.`);
   const rank={crit:0,warn:1,ok:2};
@@ -954,10 +1052,15 @@ function render(){
     .map(([k,val,c])=>`<span class="lg-li"><span class="lg-sw" style="background:${SEG[c]}"></span><span class="k">${k}</span><span class="v">${fmt(val)} GB</span><span class="pct">${(val/d.total*100).toFixed(0)}%</span></span>`).join('')
     +`<span class="lg-li"><span class="lg-sw" style="background:${d.fits?'transparent':cssVar('--red')};border:1px solid var(--line)"></span><span class="k">Utilization</span><span class="v" style="color:${d.fits?'var(--teal-strong)':'var(--red)'}">${(d.total/d.avail*100).toFixed(1)}%</span></span>`;
 
-  tween($('kpiTtft').querySelector('[data-v]'), d.ttft);
-  tween($('kpiTps').querySelector('[data-v]'), d.tps);
-  tween($('kpiAgg').querySelector('[data-v]'), d.agg);
-  tween($('kpiLat').querySelector('[data-v]'), d.latency);
+  // In project mode renderProjectReport() writes the demand-weighted averages
+  // into these tiles; a single-mode tween finishing later overwrote them with
+  // the active card's solo figures. The tiles belong to exactly one writer.
+  if(UC.length<=1){
+    tween($('kpiTtft').querySelector('[data-v]'), d.ttft);
+    tween($('kpiTps').querySelector('[data-v]'), d.tps);
+    tween($('kpiAgg').querySelector('[data-v]'), d.agg);
+    tween($('kpiLat').querySelector('[data-v]'), d.latency);
+  }
   $('kpiTtft').classList.toggle('miss', d.slo.ttft.on && !d.slo.ttft.pass);
   $('kpiTps').classList.toggle('miss', d.slo.tps.on && !d.slo.tps.pass);
   $('kpiLat').classList.toggle('miss', d.slo.p95.on && !d.slo.p95.pass);
@@ -1034,7 +1137,7 @@ function render(){
   // the SLO optimiser works on the same solver as the project view, so it belongs
   // in the default single-use-case mode too
   $('recs').innerHTML = (UC.length>1? [] : sloRecHtml(window.__prj))
-    .concat(rb.recs.map(r=>`<div class="rec ${r.lv}"><div class="r-t">${r.t}</div><div class="r-b">${r.b}</div></div>`)).join('');
+    .concat(rb.recs.map(r=>`<div class="rec ${r.lv}"><div class="r-t">${r.t}</div><div class="r-b">${r.b}</div>${recActsHtml(r.acts,[activeUc])}</div>`)).join('');
 
   const dur = +$('ccDur').value>0? +$('ccDur').value : d.latency;
   const cc = Math.ceil((+$('ccSessions').value||0)*(+$('ccTurns').value||0)*((+$('ccShare').value||0)/100)*(+$('ccCalls').value||0)*dur/3600*(+$('ccBurst').value||1));
@@ -2179,13 +2282,15 @@ function renderProjectReport(prj){
   const admitted=pools.reduce((x,p)=>x+p.d.active,0), queued=pools.reduce((x,p)=>x+p.d.queued,0);
   const setTile=(id,lab,val,unit,sub)=>{ const el=$(id); if(!el) return;
     el.querySelector('.k-lab').lastChild.textContent=lab;
-    el.querySelector('[data-v]').textContent=val;
+    const dv=el.querySelector('[data-v]'); dv.textContent=val;
+    // keep the tween's resume point honest for a later switch back to one card
+    dv.dataset.cur=String(parseFloat(String(val).replace(/,/g,''))||0);
     el.querySelector('.unit').textContent=unit;
     el.querySelector('.k-sub').textContent=sub; };
   setTile('kpiTtft','Avg first token', fmt(wavg(p=>p.d.ttft)),'ms','demand-weighted · per pool in Summary');
   setTile('kpiTps','Avg per-user speed', fmt(wavg(p=>p.d.tps)),'tok/s','demand-weighted across pools');
   setTile('kpiAgg','Aggregate throughput', fmt(agg),'tok/s',`${admitted} admitted · ${queued} queued`);
-  setTile('kpiLat','Avg user latency', fmt(wavg(p=>p.d.latency)),'s',`P95 up to ${fmt(Math.max.apply(null,pools.map(p=>p.d.p95)))} s`);
+  setTile('kpiLat','Avg user latency', fmt(wavg(p=>p.d.latency)),'s',`P95 up to ${fmt(Math.max.apply(null,pools.flatMap(p=>p.perUc.map(x=>x.d.p95))))} s`);
   // --- SLO roll-up: one chip per use case ---
   let chips='';
   pools.forEach((p,pi)=>p.perUc.forEach(x=>{
@@ -2210,12 +2315,15 @@ function renderProjectReport(prj){
   const yCap=Math.max(tgtTps, Math.max.apply(null, pools.map(p=>p.d.tps)))*3 || maxL;
   const capped=series.map(sr=>({...sr, pts:sr.pts.map(pt=>[pt[0], Math.min(pt[1], yCap)])}));
   const m1=pools[1];
+  const zonesFor=t=>t? [{y0:0,y1:t,color:P.red,label:'below the strictest target'},
+                        {y0:t,color:P.teal,label:'meets every target',labelTop:true,op:.05}] : null;
   $('chartBatch').innerHTML=chartSVG({
     aria:'Per-user streaming speed as simultaneous demand grows, one line per pool',
     xScale:v=>(v-1)/(Smax-1||1), xMax:Smax, maxL:Math.min(maxL,yCap), maxR:0, rightAxis:false,
     xTicks:[1,Math.round(Smax/4),Math.round(Smax/2),Math.round(3*Smax/4),Smax].map(v=>[v,String(Math.round(v))]),
     xLabel:'simultaneous calls being served', yLabelL:'tok/s per user',
     guideY:tgtTps||null, guideYLabel:tgtTps? 'target ≥ '+fmt(tgtTps)+' tok/s':null,
+    zones:zonesFor(tgtTps),
     series:capped,
     marker:{x:Math.min(m0.d.active,Smax), y:Math.min(m0.d.tps,yCap), label:'today · '+fmt(m0.d.tps)+' tok/s', series:0},
     marker2:m1?{x:Math.min(m1.d.active,Smax), y:Math.min(m1.d.tps,yCap), label:'today · '+fmt(m1.d.tps)+' tok/s', series:1, align:'left'}:null});
@@ -2233,9 +2341,15 @@ function renderProjectReport(prj){
     xTicks:[1024,4096,16384,65536,ctxMax].filter((v,ix,arr)=>arr.indexOf(v)===ix&&v<=ctxMax).map(v=>[v,fmtTok(v)]),
     xLabel:'conversation length (tokens, log scale)', yLabelL:'tok/s per user',
     guideY:tgtTps||null, guideYLabel:tgtTps? 'target ≥ '+fmt(tgtTps)+' tok/s':null,
+    zones:zonesFor(tgtTps),
     series:cCapped,
     marker:{x:Math.max(1024,Math.min(m0.state.resident,ctxMax)), y:Math.min(m0.d.tps,yCap), label:'today · '+fmt(m0.d.tps)+' tok/s @ '+fmtTok(m0.state.resident), series:0}});
-  const clg=id=>{ const el=$(id); if(el){ el.style.display='flex'; el.innerHTML=pools.map((p,pi)=>`<span class="lg-li"><span class="sw" style="background:${poolHex(PC[pi])}"></span>${esc(tag(pi))}</span>`).join(''); } };
+  const clg=id=>{ const el=$(id); if(el){ el.style.display='flex'; el.style.flexWrap='wrap';
+    el.innerHTML=pools.map((p,pi)=>`<span class="lg-li"><span class="sw" style="background:${poolHex(PC[pi])}"></span>${esc(tag(pi))}</span>`).join('')
+      +(tgtTps? `<span class="lg-li"><span class="sw swline"></span>strictest speed target</span>`
+        +`<span class="lg-li"><span class="sw zonebad"></span>below target</span>`
+        +`<span class="lg-li"><span class="sw zonegood"></span>meets target</span>`:'')
+      +`<span class="lg-li"><span class="sw swdot"></span>today's operating point</span>`; } };
   clg('chartBatchLgd'); clg('chartCtxLgd');
   document.querySelectorAll('.chart-legend').forEach(el=>el.style.display='none');
   // --- latency anatomy: one row per use case ---
@@ -2252,7 +2366,8 @@ function renderProjectReport(prj){
       <span class="t mono${over?' over':''}">${r2.tot>=1000? fmt(r2.tot/1000)+' s' : fmt(r2.tot)+' ms'}${r2.tgt?` / ${fmt(r2.tgt/1000)} s`:''}</span></div>`; });
   $('wfBar').className='wf-bar wf-multi';
   $('wfBar').innerHTML=`<div class="wfp-list">${rows.join('')}</div><div class="wf-scalenote">time taken / slowest allowed · tick = the allowed limit<span class="dtl"> · bars share one scale (longest request = full width) · the allowed figure is the mean time that still meets the P95 target</span></div>`;
-  $('wfLegend').innerHTML=[['TTFT','ttft'],['Overhead','ovh'],['Reasoning','reason'],['Visible output','out']].map(([n2,c2])=>`<span class="lg-li"><span class="lg-sw wf-seg ${c2}" style="width:10px;height:10px"></span><span class="k">${n2}</span></span>`).join('');
+  $('wfLegend').innerHTML=[['TTFT','ttft'],['Overhead','ovh'],['Reasoning','reason'],['Visible output','out']].map(([n2,c2])=>`<span class="lg-li"><span class="lg-sw wf-seg ${c2}" style="width:10px;height:10px"></span><span class="k">${n2}</span></span>`).join('')
+    +`<span class="lg-li"><span class="lg-sw ticksw"></span><span class="k">amber tick = the P95 promise (a bar past its tick runs late)</span></span>`;
   $('wfTotal').textContent=`mean ${fmt(wavg(p=>p.d.latency))} s (demand-weighted)`;
   // --- insights hidden (Summary carries findings); recommendations per pool ---
   const insPanel=$('insights').closest('section'); if(insPanel) insPanel.style.display='none';
@@ -2261,7 +2376,7 @@ function renderProjectReport(prj){
     const g2=hw.g, pre=/2026/.test(g2.cls);
     const rb=buildRecs(p.state, p.d, p.state.model, g2, pre);
     if(rb.bottleneck!=='none') bns.push(shortPoolTag(pools,pi)+': '+rb.bottleneck);
-    rb.recs.forEach(r=>recs.push(`<div class="rec ${r.lv}"><div class="r-t">${esc(shortPoolTag(pools,pi))} · ${r.t}</div><div class="r-b">${r.b}</div></div>`)); });
+    rb.recs.forEach(r=>recs.push(`<div class="rec ${r.lv}"><div class="r-t">${esc(shortPoolTag(pools,pi))} · ${r.t}</div><div class="r-b">${r.b}</div>${recActsHtml(r.acts, p.members)}</div>`)); });
   $('recBottleneck').textContent=bns.length? bns.join(' · ') : 'no active bottleneck';
   /* A global interconnect efficiency below the default is now double-counted:
      the cross-node penalty is applied per pool, so a blanket value taxes pools
@@ -2274,12 +2389,13 @@ function renderProjectReport(prj){
         return t + (r&&r.ok? (r.cards||r.physGpus||0) : 0); },0);
       const now=cardsAt(hw.ic), at=cardsAt(def);
       const crossing=pools.filter(p2=>p2.state.tp>hw.perW).length;
-      if(now>at) recs.unshift(`<div class="rec warn"><div class="r-t">Interconnect efficiency is set to ${fmt(hw.ic)}, and it is costing ${now-at} GPU${now-at>1?'s':''}</div>`
+      if(now>at) recs.unshift(`<div class="rec warn"><div class="r-t">Interconnect efficiency is set to ${fmt(hw.ic)}, and it is costing ${now-at} serving card${now-at>1?'s':''}</div>`
         +`<div class="r-b">The cross-node penalty is applied per pool now: only a copy that spans workers pays it`
         +`${crossing? `, and ${crossing} of your ${pools.length} pools ${crossing>1?'do':'does'}` : `, and none of your ${pools.length} pools do`}. `
-        +`A blanket ${fmt(hw.ic)} taxes the rest as well. This project needs <b>${now} GPUs</b> at ${fmt(hw.ic)} versus <b>${at}</b> at the ${fmt(def)} default. `
+        +`A blanket ${fmt(hw.ic)} taxes the rest as well. This project needs <b>${now} serving cards</b> at ${fmt(hw.ic)} versus <b>${at}</b> at the ${fmt(def)} default. `
         +`Older builds wrote 0.70 here as a side effect of auto-size and it survives every export, so check whether you chose it. `
-        +`Advanced tuning &rarr; Interconnect efficiency, then re-run Auto-size.</div></div>`);
+        +`Advanced tuning &rarr; Interconnect efficiency, then re-run Auto-size.</div>`
+        +`<div class="r-act no-print"><button type="button" class="btn-rec no-print" data-apply="${esc(JSON.stringify({global:{inIc:def}, mode:'solve', msg:`Interconnect efficiency reset to ${def} — re-sized: ${now} → ${at} serving cards`}))}">Reset to ${fmt(def)} and re-run Auto-size → ${at} serving cards</button></div></div>`);
     }
   }catch(e){}
   // Then the targets themselves: the cheapest GPU in the world is the one the

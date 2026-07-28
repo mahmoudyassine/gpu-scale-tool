@@ -1,5 +1,69 @@
 # Changelog
 
+## Studio 5.23.0 (2026-07-28)
+
+Recommendations now act, the charts show where good and bad live, the fleet map
+centres on phones, and the engine was re-verified independently. Engine v25 and
+library v32 are untouched.
+
+### Every actionable recommendation has a button
+
+- Fix-it actions that survive a re-solve are offered everywhere: switch weights
+  or KV cache to FP8 (with the GB saved), relax an unachievable P95 to the floor
+  the workload can actually meet, turn reasoning off, switch to N+1, reset a
+  costly interconnect value, run Auto-size. One click applies, re-solves where
+  that is the honest thing to do, and offers a single Undo that restores every
+  use case and every global control exactly.
+- Manual-lever actions (widen TP, halve or cap batch, add workers) appear in
+  single-use-case Advanced mode, where the solver will not overwrite them a
+  moment later. That is also the answer to "why did some warnings have no
+  button": a lever the next Auto-size recomputes is not an action, it is a lie.
+- Under the "all sessions stay in KV" policy the engine admits every call
+  regardless of batch, so the batch levers were a provable no-op there; the
+  speed suggestion now offers the replica lever instead, with the honest tok/s.
+- Pure observations (pre-launch hardware, TP crossing nodes, balanced) stay
+  button-less by design.
+
+### Charts say where good and bad are
+
+- Both tok/s charts tint the region below the strictest speed target red and
+  the region above it teal, with the amber dashed target line labelled. Zone
+  labels draw above the series so a line can never strike through the words,
+  and the target label moves out of the way of the operating-point markers.
+- Legends now name every mark: the pool lines, the target dashes, both zones,
+  the operating-point dot, and the latency chart's amber tick ("a bar past its
+  tick runs late"). Same entries in single-use-case mode.
+
+### Fixed on the way, found by the release judges
+
+- **The four KPI headline tiles could show corrupted figures in project mode**:
+  the single-mode count-up animation raced the project renderer and overwrote
+  the demand-weighted averages with the active card's solo numbers (or a stale
+  interpolation - "Avg user latency -10.8 s"). Present since the tiles were
+  introduced; the tiles now have exactly one writer per mode.
+- The new chart-legend entries made the legends min-content wide, overflowing
+  the page horizontally on phones, on desktops up to ~2050px, and clipping the
+  right chart in print. They wrap now.
+- "P95 up to" on the latency tile understated the worst case: it took the
+  worst pool blend, not the worst use case.
+- The interconnect recommendation quoted serving-card sums as "GPUs".
+- Action buttons meet the 34px touch minimum on coarse pointers.
+
+### Mobile
+
+Node tiles centre inside the site frame below 1020px instead of hugging the
+left edge with 40% dead space; site headers and the shared-GPU strip centre
+with them.
+
+### Engine re-verified
+
+The engine block is byte-identical to v5.22.2 and v5.21.3. An independent
+reimplementation written from the documented formulas matched the live engine
+on 3,000 randomised states x 19 fields = 57,000 comparisons with zero
+mismatches, including sliding-window KV models, both KV policies and the
+per-instance overhead path. The 1,293-plan solver fuzz and the full smoke on
+both reference projects pass unchanged (64 GPUs / 8 nodes and 40 / 5).
+
 ## Studio 5.22.2 (2026-07-27)
 
 - A recommendation could offer "→ 56 GPUs" and "→ 56 cards" side by side: the
