@@ -1,5 +1,24 @@
 # Changelog
 
+## Studio 5.23.1 (2026-07-28)
+
+The bundled `gpu-sizing` Claude skill is no longer three libraries behind.
+
+- `skill/sizing.mjs` is now **generated** by `tools/build_skill.py`, which embeds
+  the engine block and `solvePool` verbatim from `assets/app.js` and the model,
+  GPU, quant and workload listings verbatim from `data/*.js`. The CLI's numbers
+  are the studio's numbers by construction, and the generator runs on every
+  release.
+- The stale copy carried engine v23 / library v25 (94 models) and the uniform
+  KV form, over-stating KV by up to 6x for sliding-window models: it answered
+  40 GPUs for Gemma 3 12B on H100 at 32K context where the studio needs 6
+  serving cards. The regenerated CLI matches the studio's solver exactly -
+  verified on five configurations (hybrid attention, MoE, cross-node TP16 and
+  the pinned-KV voice policy): identical cards, TP and batch on every one.
+- The CLI gained `--policy running|all`, `--ttft/--tps/--p95` on presets,
+  honest card-based fleet lines, an `sloStuck` note when a target is out of
+  reach, and the hybrid-attention KV explanation in its story output.
+
 ## Studio 5.23.0 (2026-07-28)
 
 Recommendations now act, the charts show where good and bad live, the fleet map

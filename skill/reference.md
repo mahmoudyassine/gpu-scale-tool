@@ -1,9 +1,13 @@
 # GPUscale method reference (condensed from the white paper)
 
-## Closed forms (engine v23)
+## Closed forms (engine v25)
 
 - weights_per_replica = params_B x bytes_per_weight (GB)
 - KV_per_token = 2 x layers x kv_heads_eff x head_dim_eff x bytes_KV
+  (sliding-window hybrids: kvGlobal layers pay the full context, the other
+  layers only a kvWin-token window, so the per-token cost falls with context)
+  (sliding-window hybrids: kvGlobal layers pay the full context, the other
+  layers only a kvWin-token window, so the per-token cost falls with context)
   (MLA models: kv_heads_eff=1, head_dim_eff=288 encodes the 576-dim latent;
   hybrids scale head_dim by the full-attention layer fraction)
 - activations ~= min(effSeq, 8192) x hidden x 12 x bytes_W / 1e9 per replica

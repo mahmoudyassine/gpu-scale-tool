@@ -170,11 +170,12 @@ Enforce HTTPS.
 The `skill/` directory packages the engine as a [Claude Code](https://claude.com/claude-code)
 skill: copy it to `~/.claude/skills/gpu-sizing/` and Claude answers GPU sizing
 questions by running a CLI instead of estimating. `node skill/sizing.mjs --help`
-works standalone too. **It is behind the studio** (engine v23, library v25, 94
-models): it predates the v25 sliding-window KV form, so it over-states KV for
-hybrid-attention models, and it knows nothing of pools, supporting models,
-GPU sharing or card-based sizing. For current numbers use the studio itself or
-`gpuscale-link.skill`, which is rebuilt on every release.
+works standalone too. `sizing.mjs` is **generated** by `tools/build_skill.py`,
+which embeds the engine block and the auto-size solver verbatim from
+`assets/app.js` and the listings verbatim from `data/*.js`, so the CLI cannot
+drift from the studio; it is rebuilt on every release. It sizes one dedicated
+pool per invocation (the multi-use-case pooling, GPU sharing and supporting
+models live in the studio).
 
 ## 🤝 Contributing
 

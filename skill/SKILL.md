@@ -5,8 +5,8 @@ description: LLM/GenAI GPU capacity sizing with the GPUscale engine. Use for any
 
 # GPU sizing with the GPUscale engine
 
-You have the actual GPUscale.net sizing engine (engine v23, library v25: 94
-models, 38 GPUs) as a CLI in this skill's directory. For ANY numeric sizing
+You have the actual GPUscale.net sizing engine (engine v25, library v32: 101
+models, 37 GPUs) as a CLI in this skill's directory. For ANY numeric sizing
 question, run it; never hand-compute what the CLI can compute.
 
 ## Running the engine
