@@ -1,5 +1,23 @@
 # Changelog
 
+## Studio 5.24.1 (2026-07-29)
+
+The last three accuracy items from the 5.24.0 audit.
+
+- **The fill target ignored what a card holds but does not re-read.** An MoE keeps
+  every expert resident while decode reads only the active ones, and activations
+  and fixed overhead sit there too, so "filling 80% of the card asks for X tok/s"
+  was too low: DeepSeek-V3.2 671B at TP16 quoted 19.2 tok/s where the real answer
+  is 23.2. The residual is now subtracted before inverting.
+- **The fleet-map note blamed the speed target for every empty card**, and said
+  nothing at all when a pool had no speed target - exactly when an empty card
+  most needs explaining. It now counts the pools under 60% and names what holds
+  each one there: a per-user speed target, a first-token target that widened the
+  group, or one replica already admitting the peak.
+- **The auto-size note credited the whole tensor-parallel width to the
+  first-token target** even when the speed targets took it wider. It now
+  distinguishes the width TTFT needed from the width the plan settled on.
+
 ## Studio 5.24.0 (2026-07-29)
 
 From a real project: four clinical use cases on B300, 7 nodes procured, cards

@@ -7,7 +7,7 @@ if(!MODELS.length || !GPUS.length || !QUANTS.length || !CASES.length){
   document.body.innerHTML = '<div style="font-family:system-ui,sans-serif;max-width:560px;margin:80px auto;padding:0 20px;line-height:1.65;color:#1A2536"><h2 style="margin-bottom:10px">Data files not loaded</h2><p>GPUscale.net could not find its library. Keep <code>index.html</code> together with the <code>data/</code> and <code>assets/</code> folders: the four files <code>data/models.js</code>, <code>data/gpus.js</code>, <code>data/quants.js</code> and <code>data/usecases.js</code> must sit next to this page.</p><p>If you need one portable file instead, use <code>dist/gpuscale_standalone.html</code> or rebuild it with <code>python3 tools/build_single_file.py</code>.</p></div>';
   throw new Error('GPUscale.net data missing');
 }
-const STUDIO_VERSION = '5.24.0', ENGINE_VERSION = 25;
+const STUDIO_VERSION = '5.24.1', ENGINE_VERSION = 25;
 function newProjId(){ const L='abcdefghjkmnpqrstuvwxyz', D='0123456789';
   const pick=s=>s[Math.floor(Math.random()*s.length)];
   return 'Project_'+pick(L)+pick(L)+pick(D)+pick(D)+pick(D); }
@@ -653,7 +653,15 @@ function sloOptBuild(prj){
     const minFor=f=>{ if(!(p95>0)||!(gen>0)) return 0;
       const room=f*p95/1.3-lat; return room>0? gen/room : Infinity; };
     const fl=sloTpsFloor(x.uc);
-    const atU=(g.bw*1000*p.state.ic*hw.mbu)/(U*g.vram);
+    /* The speed that fills U of the card. A card holds more than it re-reads per
+       token: an MoE keeps every expert resident while reading only the active
+       ones, and activations plus fixed overhead sit there too. Ignoring that
+       residual asked for a target the card could not actually reach (DeepSeek
+       671B at TP16: 19.2 tok/s quoted, 23.2 real). */
+    const resid=((Math.max(0,x.s.params-x.s.active))*x.s.bytesW + x.d.act)/Math.max(1,p.state.tp)
+      + (x.d.fixed+x.d.multi)/Math.max(1, x.d.replicas*Math.max(1,p.state.tp));
+    const room=Math.max(1, U*g.vram - resid);
+    const atU=(g.bw*1000*p.state.ic*hw.mbu)/room;
     const fill=Math.max(fl.tps, Math.floor(atU));
     const cap=t=>Math.min(cur, Math.max(fill, Math.ceil(t)));
     // round the paired promise the safe way: always a little looser than needed,
@@ -2289,11 +2297,23 @@ function renderFleet(prj){
   { const co=prj.co||{}, lim=[];
     if(co.shares) lim.push(`${co.shares} card${co.shares>1?'s':''} ${co.shares>1?'carry':'carries'} more than one model`);
     else if((co.blockers||[]).length) lim.push(`no card carries two models: ${co.blockers[0]}`);
-    const bwBound=pools.filter(p=>p.state.sloTps>0 && p.d.tps>0 && p.d.total/p.d.avail < 0.6).length;
+    /* Why a card looks empty, by the promise that actually did it. The old note
+       only ever blamed the speed target, and said nothing at all when there was
+       none - exactly when an empty card most needs explaining. */
+    const empt=pools.filter(p=>p.d.avail>0 && p.d.total/p.d.avail < 0.6);
+    const speedB=empt.filter(p=>p.state.sloTps>0 && p.d.tps>0 && p.d.tps<=1.15*p.state.sloTps).length;
+    const ttftB=empt.filter(p=>{ try{ const r=solvePool(poolSolveState(p,hw)); return !!(r&&r.ok&&r.widened); }catch(e){ return false; } }).length;
+    const admitB=Math.max(0, empt.length-speedB-ttftB);
+    const bwBound=empt.length;
     $('fmNote').innerHTML=notes.map(esc).join(' ')+
       ` Each card is stacked bottom-up: model weights, then KV cache, then working set.`+
       (lim.length? ` ${esc(lim.join(', '))}.`:'')+
-      (bwBound? ` A card can look empty in memory and still be full: decode speed is bound by memory bandwidth, so pools sized to hit a per-user speed target leave VRAM unused by design (${bwBound} pool${bwBound>1?'s':''} here).`:'')+
+      (bwBound? ` A card can look empty in memory and still be fully busy: decode is bound by memory bandwidth and prefill by compute, so ${bwBound} pool${bwBound>1?'s here sit':' here sits'} under 60% by design`
+        +(speedB||ttftB||admitB? ' ('
+          +[speedB?`${speedB} held there by a per-user speed target`:null,
+            ttftB?`${ttftB} by a first-token target that widened the group`:null,
+            admitB?`${admitB} because one replica already admits the peak`:null].filter(Boolean).join(', ')+')':'')
+        +`.`:'')+
       ` Dashed cells are unused slots on the last node, since nodes are bought whole.`+
       `<span class="no-print"> Hover any GPU for exactly what sits on it.</span>`; }
   // per-slice breakdown for shared GPUs: identical bins grouped, % = share of
@@ -3563,6 +3583,7 @@ function solvePool(s){
     // not a width problem: keep the fitting width and report it as stuck below
     if(t>tp && members.every(m=>!(m.sloTtft>0) || ttftOf(m,t)>m.sloTtft)) t=tp;
     tp=Math.min(72,t); }
+  const ttftTp=tp;                 // the width the first-token targets alone needed
   const widened=tp>tpFit;
   const ttftBinder=widened? (members.filter(m=>m.sloTtft>0).sort((a,b)=>ttftOf(b,1)/b.sloTtft-ttftOf(a,1)/a.sloTtft)[0]||{}).name : null;
   const interactive=members.some(m=>m.sloTtft>0||m.sloTps>0||m.sloP95>0);
@@ -3737,7 +3758,7 @@ function solvePool(s){
   // physGpus must be that same number. Pricing it in whole nodes made the sliced
   // branch below beat a plan that was already cheaper: 3 MIG slices "saved"
   // hardware against a single card rounded up to a node of eight.
-  const dedicated={ok:true, mode:'dedicated', tp, tpFit, widened, ttftBinder, crossed, workers, cards, batch, packPct, weights, actGB, sloStuck, grewForSlo,
+  const dedicated={ok:true, mode:'dedicated', tp, tpFit, widened, ttftBinder, ttftTp, crossed, workers, cards, batch, packPct, weights, actGB, sloStuck, grewForSlo,
     physGpus: cards};
   // MIG-sliced alternative: TP1 pools whose copy fits a hardware slice can run
   // one replica per slice, sharing physical GPUs with other models/supports
@@ -3868,7 +3889,9 @@ function autoSizeProject(quiet){
       entries.push({title:`${p.state.model.name} ${p.state.wq.name}`, who:names,
         facts:`${r.workers} replica${r.workers>1?'s':''} on ${sliceName(r.prof,r.workers>1)} (${fmt(r.prof.gb)} GB) · batch ${r.batch} · ${p.state.concurrent} calls · shared GPUs`, subs});
     } else {
-      if(r.widened) subs.push(`TP widened to TP${r.tp} from TP${r.tpFit} for the TTFT target${r.ttftBinder?` of ${r.ttftBinder}`:''} (its prefill sets the floor for the whole pool)`);
+      if(r.widened) subs.push(r.ttftTp&&r.tp>r.ttftTp
+        ? `TP widened from TP${r.tpFit} to TP${r.ttftTp} for the TTFT target${r.ttftBinder?` of ${r.ttftBinder}`:''}, then to TP${r.tp} because that width was cheaper for the speed / P95 targets`
+        : `TP widened to TP${r.tp} from TP${r.tpFit} for the TTFT target${r.ttftBinder?` of ${r.ttftBinder}`:''} (its prefill sets the floor for the whole pool)`);
       if(r.grewForSlo) subs.push(`${r.grewForSlo} extra replica${r.grewForSlo>1?'s':''} (${r.grewForSlo*r.tp} card${r.grewForSlo*r.tp>1?'s':''}) added to meet the speed / P95 targets`);
       if(r.tp>1 && sliceProfiles(p.state.gpu).length && (r.weights+r.actGB)/r.tp <= 0.5*p.state.gpuVram)
         subs.push(`TP${r.tp} shards can never share a GPU or sit on MIG slices: tensor parallel needs NCCL peer-to-peer over NVLink, and MIG partitions have no peer-to-peer between them, so each copy owns ${r.tp} whole GPUs however empty they look`);
