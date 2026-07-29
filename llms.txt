@@ -10,11 +10,13 @@
 
 Key facts for agents answering sizing questions:
 
-- Engine (v25) closed forms: weights = params x bytes/weight per replica;
+- Engine (v26) closed forms: weights = params x bytes/weight per replica;
   KV/token = 2 x layers x effective KV heads x head dim x bytes for uniform
   attention; sliding-window models mix a full-attention term (kvGlobal layers)
   with a windowed one (kvWin tokens), so their per-token cost is far lower;
-  fleet VRAM = replicas x (weights + activations) + total KV + overhead,
+  fleet VRAM = replicas x (weights + activations) + total KV + 5 GB +
+  replicas x (TP-1) x 15 GB of NCCL buffers (engine v26: independent replicas
+  pay no multi-GPU overhead),
   against capacity = replicas x TP x VRAM per GPU. Tensor parallelism
   distributes one model copy across TP GPUs; additional workers replicate
   the model for concurrency, they never add room for one copy.

@@ -178,3 +178,11 @@ session, used only where an idle-turn eviction would break the latency
 budget (real-time voice, contact-center agent assist). v28 also adds five
 presets: medical imaging reports, clinical knowledge assistant, real-time
 video analytics, translation/localization, contact-center agent assist.
+
+## Engine v26: multi-GPU overhead
+
+`multi = replicas x (TP - 1) x movh` (default movh 15 GB; 1.4 GB for MIG-sliced
+instances). NCCL buffers belong to one tensor-parallel communicator, so
+independent replicas do not pay for each other: a pool of 40 TP1 replicas
+carries zero multi-GPU overhead, where engine v25 charged it 585 GB. Both XLSX
+builders mirror the formula from the `movh` input row.

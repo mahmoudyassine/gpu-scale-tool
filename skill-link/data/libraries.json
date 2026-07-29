@@ -3265,7 +3265,7 @@
  },
  "meta": {
   "library": "v32",
-  "engine": 25,
+  "engine": 26,
   "updated": "2026-07-23"
  },
  "kv_quants": [
@@ -3434,8 +3434,8 @@
  },
  "versions": {
   "schema": "gpuscale.net/5",
-  "engine": 25,
-  "studio": "5.24.1"
+  "engine": 26,
+  "studio": "5.25.0"
  },
  "kv_policies": [
   "running",

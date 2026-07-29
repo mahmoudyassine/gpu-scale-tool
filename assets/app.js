@@ -7,7 +7,7 @@ if(!MODELS.length || !GPUS.length || !QUANTS.length || !CASES.length){
   document.body.innerHTML = '<div style="font-family:system-ui,sans-serif;max-width:560px;margin:80px auto;padding:0 20px;line-height:1.65;color:#1A2536"><h2 style="margin-bottom:10px">Data files not loaded</h2><p>GPUscale.net could not find its library. Keep <code>index.html</code> together with the <code>data/</code> and <code>assets/</code> folders: the four files <code>data/models.js</code>, <code>data/gpus.js</code>, <code>data/quants.js</code> and <code>data/usecases.js</code> must sit next to this page.</p><p>If you need one portable file instead, use <code>dist/gpuscale_standalone.html</code> or rebuild it with <code>python3 tools/build_single_file.py</code>.</p></div>';
   throw new Error('GPUscale.net data missing');
 }
-const STUDIO_VERSION = '5.24.1', ENGINE_VERSION = 25;
+const STUDIO_VERSION = '5.25.0', ENGINE_VERSION = 26;
 function newProjId(){ const L='abcdefghjkmnpqrstuvwxyz', D='0123456789';
   const pick=s=>s[Math.floor(Math.random()*s.length)];
   return 'Project_'+pick(L)+pick(L)+pick(D)+pick(D)+pick(D); }
@@ -47,7 +47,7 @@ const RESIL = {
 };
 Object.values(RESIL).forEach(r=>{ r.extraW = n => r.mult(n)+r.add; });
 
-/* ================= ENGINE (pure · v25: per-replica weight/activation accounting, sliding-window KV, multiGb) ================= */
+/* ================= ENGINE (pure · v26: per-replica weight/activation accounting, sliding-window KV, multiGb) ================= */
 /*ENGINE-START*/
 function compute(s){
   const bw = s.bytesW, bk = s.bytesK;
@@ -70,7 +70,10 @@ function compute(s){
                : Math.min(s.concurrent, s.batch * replicas);
   const kvTotal = active * effSeq * kvTok;
   const act = Math.min(effSeq, 8192) * s.hidden * 12 * bw / 1e9;
-  const fixed = 5, multi = Math.max(0, s.gpus - 1) * (s.multiGb != null ? s.multiGb : 15);
+  /* NCCL buffers live in a communicator, and a communicator is one tensor-parallel
+     replica. Charging (poolGPUs - 1) billed independent replicas for talking to
+     each other: 40 TP1 replicas paid 585 GB to communicate with nobody. */
+  const fixed = 5, multi = replicas * Math.max(0, Math.max(s.tp,1) - 1) * (s.multiGb != null ? s.multiGb : 15);
   const weightsAll = replicas * weights, actAll = replicas * act;
   const total = weightsAll + kvTotal + actAll + fixed + multi;
   const servingGpus = replicas * Math.max(s.tp,1), idleGpus = s.gpus - servingGpus;
@@ -2947,7 +2950,7 @@ function xlsInputRows(s){
     ['conc','Concurrent LLM calls', s.concurrent, 'Peak in-flight requests'],
     ['batch','Max batch / replica', s.batch, 'Admission cap per replica'],
     ['policy','KV policy (1=all,0=running)', s.policy==='all'?1:0, 'Residency policy'],
-    ['movh','Per-extra-GPU overhead (GB)', s.multiGb!=null? s.multiGb : 15, 'NCCL buffers etc; 1.4 for MIG slices (per-instance)'],
+    ['movh','Overhead per extra GPU inside a replica (GB)', s.multiGb!=null? s.multiGb : 15, 'NCCL buffers within one tensor-parallel group; independent replicas pay none'],
     ['workers','GPU workers N', s.workers, 'Load-bearing nodes'],
     // Auto-size allocates CARDS and packs them onto nodes, so a pool can own
     // fewer GPUs than workers x perW. Carry that number or the workbook
@@ -2988,7 +2991,7 @@ function buildXls(){
   res('kvTotal','KV cache total','GB', ()=>`${R('active')}*${R('effSeq')}*${R('kvTok')}`);
   res('activ','Activations','GB', ()=>`MIN(${R('effSeq')},8192)*${I('hidden')}*12*${I('bytesW')}/1000000000`);
   res('fixed','Fixed overhead','GB', ()=>`5`);
-  res('multi','Multi-GPU overhead','GB', ()=>`MAX(0,${R('gpusTotal')}-1)*${I('movh')}`);
+  res('multi','Multi-GPU overhead','GB', ()=>`${R('replicas')}*MAX(0,${I('tp')}-1)*${I('movh')}`);
   res('total','Total VRAM required','GB', ()=>`${R('replicas')}*(${R('weights')}+${R('activ')})+${R('kvTotal')}+${R('fixed')}+${R('multi')}`);
   res('avail','VRAM available (serving GPUs)','GB', ()=>`${R('replicas')}*${I('tp')}*${I('vram')}`);
   res('headroom','Headroom','GB', ()=>`${R('avail')}-${R('total')}`);
@@ -3149,7 +3152,7 @@ async function buildXlsxBytes(){
   res('kvTotal','KV cache total','GB', ()=>`${R('active')}*${R('effSeq')}*${R('kvTok')}`, d.kvTotal);
   res('activ','Activations per replica','GB', ()=>`MIN(${R('effSeq')},8192)*${I('hidden')}*12*${I('bytesW')}/1000000000`, d.act);
   res('fixed','Fixed overhead','GB', ()=>`5`, d.fixed);
-  res('multi','Multi-GPU overhead','GB', ()=>`MAX(0,${R('gpusTotal')}-1)*${I('movh')}`, d.multi);
+  res('multi','Multi-GPU overhead','GB', ()=>`${R('replicas')}*MAX(0,${I('tp')}-1)*${I('movh')}`, d.multi);
   res('total','Total VRAM required','GB', ()=>`${R('replicas')}*(${R('weights')}+${R('activ')})+${R('kvTotal')}+${R('fixed')}+${R('multi')}`, d.total);
   res('avail','VRAM available (serving GPUs)','GB', ()=>`${R('replicas')}*${I('tp')}*${I('vram')}`, d.avail);
   res('headroom','Headroom','GB', ()=>`${R('avail')}-${R('total')}`, d.headroom);

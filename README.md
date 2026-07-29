@@ -76,7 +76,7 @@ flowchart LR
         W[Workload<br>context · concurrency · SLOs]
         H[Hardware<br>workers × GPUs · TP · resilience]
     end
-    E{{Engine v25<br>pure closed-form math}}
+    E{{Engine v26<br>pure closed-form math}}
     subgraph Outputs
         F[Memory fit verdict]
         K[TTFT · tok/s · latency]
@@ -102,7 +102,8 @@ export. Core relations:
 ```
 weights    = params x bytes/weight                     (per replica)
 KV/token   = 2 x layers x kvHeads_eff x headDim_eff x bytes/KV
-VRAM total = replicas x (weights + activations) + KV total + overhead
+VRAM total = replicas x (weights + activations) + KV total + 5 GB
+             + replicas x (TP-1) x 15 GB   (NCCL, inside a replica only)
 TPS/user   = BW x TP x IC x MBU / (active x bytes + batch/replica x seq x KV/token)
 TTFT       = 2 x seq x active / (TFLOPS x TP x MFU)
 ```

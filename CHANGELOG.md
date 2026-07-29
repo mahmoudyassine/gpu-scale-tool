@@ -1,5 +1,31 @@
 # Changelog
 
+## Studio 5.25.0 (2026-07-29) · engine v26
+
+**The multi-GPU overhead is charged per replica, not per pool.** Every number in
+the studio moves; nothing else about the engine changed.
+
+The engine billed `(pool GPUs - 1) x 15 GB` of NCCL buffers across a whole pool.
+But a communicator is one tensor-parallel replica: independent replicas never
+talk to each other during decode. A pool of 40 TP1 replicas was charged **585 GB
+to communicate with nobody** - 57% of that pool's reported memory. It is now
+`replicas x (TP - 1) x movh`.
+
+- TP1 pools pay nothing (was up to 945 GB in the fuzz corpus); a TP8 x 5 pool
+  pays 525 GB instead of 585; a single TP16 copy is unchanged.
+- Measured over 3,000 randomised states: 2,035 moved, and 79 configurations that
+  did not fit now do. Speed, first-token, latency and throughput are untouched -
+  this is a memory term only, verified field by field.
+- Both XLSX builders mirror the new formula from the `movh` input row, and that
+  row is relabelled: it is the overhead per extra GPU *inside* a replica.
+- Re-verified: an independent reimplementation of engine v26 written from the
+  documented physics agrees with the shipped engine on 12,000 checks; the
+  optimality fuzz still finds 0 of 3,664 plans beatable; both reference projects
+  are unchanged at 64 GPUs / 8 nodes and 40 / 5 with every SLO met.
+
+Docs, `llms.txt`, `docs/DATA.md`, the README formula block and the bundled
+sizing skill all state the new rule.
+
 ## Studio 5.24.1 (2026-07-29)
 
 The last three accuracy items from the 5.24.0 audit.
