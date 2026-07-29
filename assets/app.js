@@ -7,7 +7,7 @@ if(!MODELS.length || !GPUS.length || !QUANTS.length || !CASES.length){
   document.body.innerHTML = '<div style="font-family:system-ui,sans-serif;max-width:560px;margin:80px auto;padding:0 20px;line-height:1.65;color:#1A2536"><h2 style="margin-bottom:10px">Data files not loaded</h2><p>GPUscale.net could not find its library. Keep <code>index.html</code> together with the <code>data/</code> and <code>assets/</code> folders: the four files <code>data/models.js</code>, <code>data/gpus.js</code>, <code>data/quants.js</code> and <code>data/usecases.js</code> must sit next to this page.</p><p>If you need one portable file instead, use <code>dist/gpuscale_standalone.html</code> or rebuild it with <code>python3 tools/build_single_file.py</code>.</p></div>';
   throw new Error('GPUscale.net data missing');
 }
-const STUDIO_VERSION = '5.23.2', ENGINE_VERSION = 25;
+const STUDIO_VERSION = '5.24.0', ENGINE_VERSION = 25;
 function newProjId(){ const L='abcdefghjkmnpqrstuvwxyz', D='0123456789';
   const pick=s=>s[Math.floor(Math.random()*s.length)];
   return 'Project_'+pick(L)+pick(L)+pick(D)+pick(D)+pick(D); }
@@ -643,10 +643,12 @@ function sloOptBuild(prj){
      again. Both are its own numbers; nothing is blended across use cases. */
   const propOf=(p,x)=>{
     const cur=+x.s.sloTps||0;
-    if(!(cur>0)) return null;
     const gen=(+x.s.reasonTok||0)+(+x.s.visibleOut||0);
     const lat=(x.d.ttft+x.s.ovh)/1000;          // first token + framework, seconds
     const p95=+x.s.sloP95||0;
+    // a use case with no tok/s target at all can still have its P95 buying the
+    // whole pool; returning null here made it invisible to the optimiser
+    if(!(cur>0) && !(p95>0)) return null;
     if(p95>0 && p95/1.3-lat<=0) return null;    // its P95 is already impossible
     const minFor=f=>{ if(!(p95>0)||!(gen>0)) return 0;
       const room=f*p95/1.3-lat; return room>0? gen/room : Infinity; };
@@ -661,7 +663,17 @@ function sloOptBuild(prj){
     // A use case whose P95 already has slack must KEEP that slack: pairing the
     // promise with the new speed unconditionally tightened it, on a button that
     // says "relax".
-    return {x, cur, gen, lat, atU, floor:fl, p95, p95For,
+    /* WHICH promise is actually binding. When the P95 target implies a higher
+       per-token speed than sloTps does, the speed target is not the lever at
+       all: no reduction of it changes the fleet, and only the P95 can move.
+       That case bought 89% of a reported project's cards while the optimiser
+       stayed silent, because every proposal it knew how to make was a lower
+       sloTps. */
+    const p95Needs=minFor(1);                       // tok/s this P95 demands
+    const p95Binds=p95>0 && isFinite(p95Needs) && p95Needs>cur+0.5;
+    // what the P95 would have to become for the card-filling speed to be legal
+    const p95AtFill=p95>0? p95For(Math.max(fl.tps, Math.floor(atU))) : 0;
+    return {x, cur, gen, lat, atU, floor:fl, p95, p95For, p95Needs, p95Binds, p95AtFill,
       keep:cap(minFor(1)), relax,
       relaxP95: p95>0? Math.max(p95, p95For(relax)) : 0};
   };
@@ -685,10 +697,14 @@ function sloOptBuild(prj){
         : `: <b>${base.procW} node${base.procW>1?'s':''} · ${base.procG} GPUs</b> procured today versus <b>${pr.procW} node${pr.procW>1?'s':''} · ${pr.procG} GPUs</b>`)
       +`${pr.stuck?', with some targets still out of reach':''}.`;
   };
+  const gainOf=pr=>pr.procG<base.procG? `${pr.procG} GPUs` : `${cards(pr.cards)}, same order`;
+  const doneOf=(pr,what)=>pr.procG<base.procG
+    ? `${what}: ${base.procG} → ${pr.procG} GPUs procured (${cards(base.cards)} → ${cards(pr.cards)})`
+    : `${what}: ${cards(base.cards)} → ${cards(pr.cards)}, same ${base.procG}-GPU order`;
   // ---- 1. speed targets, per pool, priced by re-solving the whole project ----
   const rows=[];
   prj.pools.forEach((p,pi)=>{
-    const props=p.perUc.map(x=>propOf(p,x)).filter(Boolean);
+    const props=p.perUc.map(x=>propOf(p,x)).filter(q=>q&&q.cur>0);
     if(!props.length) return;
     const curMax=Math.max.apply(null, props.map(q=>q.cur));
     const keepSet={}, relaxSet={};
@@ -758,6 +774,49 @@ function sloOptBuild(prj){
         +outcome(best),
       acts});
   });
+  /* ---- 1b. the P95 promise IS the lever, per pool. A tight P95 on a long
+     generation demands a per-token speed far above the stated tok/s target, so
+     lowering the speed target changes nothing and the section above has nothing
+     to say. Price the P95 itself. ---- */
+  prj.pools.forEach((p,pi)=>{
+    const props=p.perUc.map(x=>propOf(p,x)).filter(Boolean);
+    const bind=props.filter(q=>q.p95Binds);
+    if(!bind.length) return;
+    // the loosest promise still worth calling a promise: what the card-filling
+    // speed would deliver, and a halfway step for the cautious
+    const mk=frac=>{ const set={};
+      bind.forEach(q=>{ const t=Math.max(q.floor.tps, Math.floor(q.atU));
+        const full=q.p95For(t), step=Math.max(q.p95, Math.min(full, q.p95+(full-q.p95)*frac));
+        const v=step>=10? Math.ceil(step) : Math.ceil(step*10)/10;
+        if(v>q.p95+1e-9) set[q.x.i]={sloP95:v}; });
+      return set; };
+    const half=mk(0.5), full=mk(1);
+    const prHalf=Object.keys(half).length? sloPrice(prj,half) : null;
+    const prFull=Object.keys(full).length? sloPrice(prj,full) : null;
+    const okp=r=>r && r.cards<base.cards-0.01 && !(r.stuck&&!base.stuck);
+    if(!okp(prHalf) && !okp(prFull)) return;
+    const bestP=okp(prFull)? prFull : prHalf;
+    const acts=[];
+    if(okp(prHalf) && (!okp(prFull) || prHalf.cards>prFull.cards+0.01))
+      acts.push(applyBtn(`Relax P95 halfway → ${gainOf(prHalf)}`, half,
+        doneOf(prHalf,'P95 targets relaxed'), true));
+    if(okp(prFull))
+      acts.push(applyBtn(`Relax P95 to what fills the card → ${gainOf(prFull)}`, full,
+        doneOf(prFull,'P95 targets relaxed'), !acts.length));
+    if(!acts.length) return;
+    const lines=bind.slice(0,3).map(q=>{
+      const t=Math.max(q.floor.tps, Math.floor(q.atU));
+      return `<br><b>${esc(ucName(q.x.uc))}</b>: a ${num(q.p95)} s P95 on ${fmtTok(q.gen)} generated tokens demands `
+        +`<b>${fmt(q.p95Needs)} tok/s</b> per user`
+        +(q.cur>0? `, ${fmt(q.p95Needs/q.cur)}× its own ${num(q.cur)} tok/s target. ` : ` (it has no tok/s target of its own; the P95 is the whole promise). `)
+        +`At ${num(t)} tok/s (the speed that fills the card) the same call finishes in about ${fmt(q.p95For(t))} s.`;
+    }).join('');
+    out.push({lv: bestP.cards<=base.cards*0.7? 'warn':'ok',
+      t:`${label(pi)}The P95 promise is what this pool is really paying for, not the speed target`,
+      b:`Lowering the tok/s target cannot shrink this pool: its P95 already demands more speed than the target does, so the P95 is the only promise with hardware behind it.`
+        +lines+outcome(bestP),
+      acts});
+  });
   // ---- 2. a first-token target that widened the tensor-parallel group ----
   prj.pools.forEach((p,pi)=>{
     try{
@@ -794,6 +853,8 @@ function sloOptBuild(prj){
       const allOver=fn=>{ const o={}; prj.pools.forEach(p=>p.perUc.forEach(x=>{ o[x.i]=fn(x); })); return o; };
       const noTtft=sloPrice(prj, allOver(()=>({sloTtft:0})));
       const noSpeed=sloPrice(prj, allOver(()=>({sloTps:0, sloP95:0})));
+      const noTps=sloPrice(prj, allOver(()=>({sloTps:0})));
+      const noP95=sloPrice(prj, allOver(()=>({sloP95:0})));
       const noAll=sloPrice(prj, allOver(()=>({sloTtft:0, sloTps:0, sloP95:0})));
       if(noAll){
         const dTtft=noTtft? Math.max(0, base.cards-noTtft.cards) : 0;
@@ -803,8 +864,27 @@ function sloOptBuild(prj){
         const resilG=Math.max(0,(fleet.procG||0)-(fleet.servG||0));
         const spareG=Math.max(0,(fleet.servG||0)-(fleet.activeG||0));
         const lines=[];
-        if(dSpeed>0.01) lines.push(`<br>· <b>${cards(dSpeed)}</b> exist only to keep the per-user speed and P95 promises`
-          +(out.some(r=>/speed target/.test(r.t))? '' : ` (already at the floor their workload class allows: no honest relaxation to offer)`));
+        if(dSpeed>0.01){
+          // only say a relaxation does not exist after PRICING the loosest one
+          const offered=out.some(r=>/speed target|P95 promise/.test(r.t));
+          let why='';
+          if(!offered){
+            const loose={}; prj.pools.forEach(p2=>p2.perUc.forEach(x=>{
+              const q=propOf(p2,x); if(!q) return;
+              const t=Math.max(q.floor.tps, Math.floor(q.atU));
+              loose[x.i]={sloTps:Math.min(q.cur,t), sloP95:q.p95>0? Math.max(q.p95, q.p95For(t)) : 0}; }));
+            const pr=Object.keys(loose).length? sloPrice(prj, loose) : null;
+            why = (pr && pr.cards<base.cards-0.01)
+              ? ` (a looser set would reach ${cards(pr.cards)}, but not by a change this tool is willing to propose on its own: relax the promises yourself in the Workload station)`
+              : ` (priced: even at the loosest targets their workload class allows, the fleet does not shrink, so the promises are not what is buying these cards)`;
+          }
+          const dP95=noP95? Math.max(0, base.cards-noP95.cards) : 0;
+          const dTps=noTps? Math.max(0, base.cards-noTps.cards) : 0;
+          // name the promise that owns them: they need different levers
+          if(dP95>0.01 && dP95>=dTps) lines.push(`<br>· <b>${cards(dP95)}</b> exist only to keep the <b>P95 promises</b>`+why);
+          else if(dTps>0.01 && dTps>dP95) lines.push(`<br>· <b>${cards(dTps)}</b> exist only to keep the <b>per-user stream speed</b> targets`+why);
+          else lines.push(`<br>· <b>${cards(dSpeed)}</b> exist only to keep the per-user speed and P95 promises together (neither alone accounts for them)`+why);
+        }
         if(dTtft>0.01) lines.push(`<br>· <b>${cards(dTtft)}</b> exist only to keep the first-token promises`);
         lines.push(`<br>· <b>${cards(floorC)}</b> is the floor with every target off: what admitting ${pools.reduce((t,p)=>t+p.state.concurrent,0)} concurrent calls and holding their KV takes on this hardware`);
         if(spareG>0) lines.push(`<br>· <b>${spareG} GPU slot${spareG>1?'s':''}</b> ${spareG>1?'are':'is'} node-rounding: nodes are bought whole (${hw.perW}/node)`);
@@ -991,11 +1071,14 @@ function buildRecs(s,d,m,g,prelaunch){
     push('ok','MXFP4 runs in software here',`MXFP4 is native on Blackwell-class parts; on ${arch} it executes via software kernels (as GPT-OSS does on Hopper). Memory savings are real; expect less of the throughput gain.`);
   if(/Unified/i.test(g.mem))
     push('warn','Unified-memory hardware',`Capacity is generous but ${fmt(g.bw)} TB/s of bandwidth caps decode speed. Fine for development or single-user work, not for concurrent serving.`);
-  if(d.fits&&util<0.35&&d.queued===0&&s.gpus>1)
+  // a latency-bound pool is not over-provisioned: its cards are bought by a
+  // promise, and telling the user to shrink it contradicts the solver
+  const latencyBound=(s.sloTps>0&&d.slo.tps.pass)||(s.sloP95>0&&d.slo.p95.pass)||(s.sloTtft>0&&d.slo.ttft.pass);
+  if(d.fits&&util<0.35&&d.queued===0&&s.gpus>1&&!latencyBound)
     push('ok','Likely over-provisioned',`Only ${(util*100).toFixed(0)}% of serving VRAM is used and every call is admitted. Fewer workers, a smaller TP, or a cheaper part could carry this load; alternatively raise batch and serve more traffic on the same metal.`,
       [{label:'Run Auto-size', solve:true, kind:'safe'}]);
   if(!recs.some(r=>r.lv!=='ok')&&d.fits&&d.sloAll)
-    push('ok','Balanced configuration',`Fits with ${fmt(d.headroom)} GB headroom (${(util*100).toFixed(0)}% used), all enabled SLOs pass, and every call is admitted at peak. No action needed.`);
+    push('ok','Balanced configuration',`Fits with ${fmt(d.headroom)} GB headroom (${(util*100).toFixed(0)}% used), all enabled SLOs pass, and every call is admitted at peak. Nothing here is broken; any further saving has to come from the promises themselves.`);
   const rank={crit:0,warn:1,ok:2};
   recs.sort((a,b)=>rank[a.lv]-rank[b.lv]);
   return {bottleneck, recs:recs.slice(0,7)};
@@ -2447,14 +2530,32 @@ function renderProjectReport(prj){
         && (!mine || r.cards<mine.cards-0.01 || (r.cards<=mine.cards && r.kW<mine.kW-0.05))).slice(0,3);
       const avgUtil=pools.reduce((t,p2)=>t+(p2.d.avail>0? p2.d.total/p2.d.avail:0),0)/Math.max(1,pools.length);
       const bwCeil=cur.bw*1000*hw.ic*hw.mbu;
-      const tgt=Math.max(...pools.map(p2=>+p2.state.sloTps||0));
+      /* the BINDING speed, not the strictest one on the page: a use case whose
+         P95 demands 340 tok/s sizes the fleet while a 50 tok/s target elsewhere
+         costs nothing, and quoting the 50 made the sentence describe a pool that
+         was not paying for anything. Weight by the cards each pool actually owns. */
+      const bindOf=p2=>{ let need=+p2.state.sloTps||0;
+        (p2.perUc||[]).forEach(x=>{ const gen=(+x.s.reasonTok||0)+(+x.s.visibleOut||0);
+          if(+x.s.sloP95>0 && gen>0){ const room=x.s.sloP95/1.3-(x.d.ttft+x.s.ovh)/1000;
+            if(room>0) need=Math.max(need, gen/room); }
+          need=Math.max(need, +x.s.sloTps||0); });
+        return need; };
+      const ranked=pools.map(p2=>({need:bindOf(p2), cards:p2.d.replicas*Math.max(1,p2.state.tp), p:p2}))
+        .filter(r=>r.need>0).sort((a,b)=>b.cards-a.cards);
+      const bindPool=ranked.length? ranked[0].p : pools[0];
+      const tgt=ranked.length? ranked[0].need : Math.max(...pools.map(p2=>+p2.state.sloTps||0));
+      // that pool's own interconnect, not the project-wide value
+      const bwCeilP=cur.bw*1000*(bindPool? bindPool.state.ic : hw.ic)*hw.mbu;
+      // and what its cards are ACTUALLY carrying, so the two numbers can be compared
+      const fillPct=bindPool&&bindPool.d.avail>0? bindPool.d.total/bindPool.d.avail*100 : 0;
       const ceilPct=tgt>0? Math.min(100, bwCeil/tgt/cur.vram*100) : 100;
       if(alt.length){
         const lv=(mine && alt[0].cards<=mine.cards*0.7)? 'warn':'ok';
+        const ttftBound=(()=>{ try{ const r0=solvePool(poolSolveState(bindPool,hw)); return !!(r0&&r0.ok&&r0.widened); }catch(e){ return false; } })();
         recs.unshift(`<div class="rec ${lv}"><div class="r-t">Hardware fit: ${esc(cur.name)} is `
-          +`${ceilPct<55?'more memory than these speed targets can use':'not the cheapest fit'} for this project</div>`
-          +`<div class="r-b">At a ${fmt(tgt)} tok/s target a ${esc(cur.name)} can only hold `
-          +`<b>${fmt(bwCeil/Math.max(1,tgt))} GB</b> of the ${fmt(cur.vram)} GB it ships (${ceilPct.toFixed(0)}%), because decode is bound by memory bandwidth, not capacity`
+          +`${ceilPct<55? (ttftBound? 'more memory than these first-token and speed promises can use' : 'more memory than these speed targets can use') : 'not the cheapest fit'} for this project</div>`
+          +`<div class="r-b">Decode re-reads the live weights and cache once per token, so at the ${fmt(tgt)} tok/s this project's largest pool actually needs (its speed target, or the speed its P95 promise implies) each ${esc(cur.name)} can re-read at most `
+          +`<b>${fmt(bwCeilP/Math.max(1,tgt))} GB</b> per token against the ${fmt(cur.vram)} GB it ships; its cards currently carry ${fillPct.toFixed(0)}%`
           +`${mine?`. This project needs <b>${mine.cards} ${esc(cur.name)}</b> (≈${fmt(mine.kW)} kW)`:''}. `
           +`Same workload, same targets: `
           + alt.map(r=>`<b>${r.cards}× ${esc(r.g.name)}</b> (≈${fmt(r.kW)} kW${/2026/.test(r.g.cls||'')?', pre-launch estimate':''})`).join(', ')
@@ -2462,8 +2563,8 @@ function renderProjectReport(prj){
       } else if(mine && rows[0] && rows[0].g.name===cur.name){
         recs.unshift(`<div class="rec ok"><div class="r-t">Hardware fit: ${esc(cur.name)} is the best fit in the library for this project</div>`
           +`<div class="r-b">No data-center part serves these use cases on fewer cards. `
-          +`Memory sits at ${(avgUtil*100).toFixed(0)}% because the ${fmt(tgt)} tok/s target caps what a card can hold at `
-          +`<b>${fmt(bwCeil/Math.max(1,tgt))} GB</b>; the spare VRAM is headroom for longer context or more users, not waste.</div></div>`);
+          +`Memory sits at ${(avgUtil*100).toFixed(0)}% because the ${fmt(tgt)} tok/s the largest pool needs caps what a card may re-read per token at `
+          +`<b>${fmt(bwCeilP/Math.max(1,tgt))} GB</b>; the spare VRAM is headroom for longer context or more users, not waste.</div></div>`);
       }
     }
   }catch(e){}
@@ -3427,9 +3528,12 @@ function solvePool(s){
   const weights=s.params*s.bytesW;
   const actGB=Math.min(s.resident+(s.extend?s.reasonTok:0),8192)*s.hidden*12*s.bytesW/1e9;
   const packPct=Math.min(95,Math.max(50,+($('autoUtil')&&$('autoUtil').value)||80)), pack=packPct/100;
-  // TP must leave room per GPU for the ~15 GB multi-GPU overhead too, or the
-  // worker loop can never converge: (weights+act)/tp + 15 <= pack*vram
-  let tp=[1,2,4,8,16,32,64,72].find(t=>weights+actGB<=Math.max(1,(pack*s.gpuVram-15))*t);
+  /* The smallest width that holds one copy with cache room. Use the SAME
+     inequality compute() enforces - fixed 5 GB plus (gpus-1) x multiGb across
+     the group - instead of charging the multi-GPU overhead to every card, which
+     was stricter than the engine and bought a width nobody needed. */
+  const mgb=(s.multiGb!=null? s.multiGb : 15);
+  let tp=[1,2,4,8,16,32,64,72].find(t=>weights+actGB+5+(t-1)*mgb <= pack*s.gpuVram*t);
   if(!tp) return {ok:false, packPct,
     reason:`No TP up to 64 fits one copy of ${s.model.name} on ${s.gpu.name}: quantize the weights or pick a higher-VRAM GPU`};
   const tpFit=tp;
@@ -3449,7 +3553,16 @@ function solvePool(s){
     .map(m=>({...m, gen:(m.reasonTok||0)+(m.visibleOut||0)}));
   const ttftOf=(m,t,tflops)=>2*m.resident*s.active/((tflops||s.gpuTflops)*t*s.mfu);
   // widen TP while any member's OWN TTFT target is missed at its OWN prefill
-  { let t=tp; while(t<64 && members.some(m=>m.sloTtft>0 && ttftOf(m,t)>m.sloTtft)) t*=2; tp=Math.min(72,t); }
+  /* Widen for the first-token targets, but never past the width that meets them
+     or past the node's own NVLink island: an unreachable TTFT used to run this
+     loop to TP64 and buy 64 cards per replica for a target still missed. */
+  { const wall=64;          // crossing nodes for prefill is allowed; it is priced by ic
+    let t=tp;
+    while(t<wall && members.some(m=>m.sloTtft>0 && ttftOf(m,t)>m.sloTtft)) t*=2;
+    // if even the widest allowed group misses every one of them, the target is
+    // not a width problem: keep the fitting width and report it as stuck below
+    if(t>tp && members.every(m=>!(m.sloTtft>0) || ttftOf(m,t)>m.sloTtft)) t=tp;
+    tp=Math.min(72,t); }
   const widened=tp>tpFit;
   const ttftBinder=widened? (members.filter(m=>m.sloTtft>0).sort((a,b)=>ttftOf(b,1)/b.sloTtft-ttftOf(a,1)/a.sloTtft)[0]||{}).name : null;
   const interactive=members.some(m=>m.sloTtft>0||m.sloTps>0||m.sloP95>0);
@@ -3536,9 +3649,14 @@ function solvePool(s){
             if(r2<=REP_CAP && r2>want) want=r2; });
           if(want>r0){
             reps=want; batch=batchFor(reps); d=eva(reps,batch);
-            // rounding safety net only: the closed form lands on the answer
+            // rounding safety net only: the closed form lands on the answer, so
+            // stop the moment an extra replica stops shrinking the missed set
+            // instead of spending the whole allowance on a target it cannot fix
             for(let guard=0; guard<8 && (missOf(d).t||missOf(d).p) && reps<REP_CAP; guard++){
-              reps++; batch=batchFor(reps); d=eva(reps,batch); }
+              const before=missOf(d).set;
+              const r2=reps+1, b2=batchFor(r2), d2=eva(r2,b2);
+              if(missOf(d2).set===before) break;
+              reps=r2; batch=b2; d=d2; }
           }
           const miss=missOf(d);
           if(miss.t||miss.p){
@@ -3592,9 +3710,12 @@ function solvePool(s){
   // TP candidates: the TTFT-driven width, plus wider ones up to one node's
   // NVLink island (crossing nodes costs interconnect efficiency, so we never
   // widen past perW purely for speed).
-  const speedTargets=members.some(m=>m.sloTps>0||m.sloP95>0);
+  /* Candidate widths. A wider group is not only a speed lever: it also holds a
+     bigger batch per replica, so a pool with NO speed target at all can still
+     need far fewer cards at TP4 than at TP1. Gating the sweep on speed targets
+     gave memory-bound pools an explosion of narrow replicas. */
   const cands=[tp];
-  if(interactive&&speedTargets) [1,2,4,8,16,32,64,72].forEach(t=>{ if(t>tp&&t<=s.perW) cands.push(t); });
+  if(interactive||s.concurrent>1) [1,2,4,8,16,32,64,72].forEach(t=>{ if(t>tp&&t<=s.perW) cands.push(t); });
   let plan=null;
   cands.forEach(t=>{ const pl=planAt(t); if(!pl.converged) return;
     const better = !plan

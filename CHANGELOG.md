@@ -1,5 +1,70 @@
 # Changelog
 
+## Studio 5.24.0 (2026-07-29)
+
+From a real project: four clinical use cases on B300, 7 nodes procured, cards
+rendered at 12%, and not one actionable recommendation. The fleet was
+arithmetically correct. Everything around it was not.
+
+### The P95 promise can be the thing buying the hardware, and the optimiser could not say so
+
+The reported project's largest pool cost 40 of its 45 cards, and every one of
+them was bought by a **4-second P95 on a 1,000-token generation**: that promise
+demands 343 tok/s per user, 11x the use case's own 30 tok/s speed target. The
+SLO optimiser only ever knew how to propose a LOWER speed target, so it clamped
+every proposal back to the current value and said nothing at all. Measured over
+957 randomised projects: of those where speed/P95 demonstrably drove a quarter
+or more of the fleet, **32.6% got no suggestion, and 68.5% of those silences
+were this exact case**.
+
+- A pool whose P95 implies more speed than its tok/s target now gets its own
+  recommendation naming that, with Apply buttons that relax the P95 (halfway, or
+  to the level that fills the card) priced by the same whole-project re-solve.
+  On the reported project: **56 GPUs to 24**, with every SLO still met.
+- A use case with no tok/s target at all but a binding P95 was invisible to the
+  optimiser entirely. It is not any more.
+
+### The solver was leaving hardware on the table
+
+An independent optimality fuzz compared every plan against every cheaper
+(TP, replica) configuration meeting the identical targets. **6.7% of plans were
+beatable, the worst by 13.5x.** Three causes, all fixed:
+
+- The tensor-parallel sweep only ran when a speed or P95 target existed, so
+  memory-bound pools got an explosion of narrow replicas instead of a wider,
+  cheaper group.
+- The width-fitting heuristic charged the 15 GB multi-GPU overhead to every
+  card, while the engine charges it once per extra GPU plus a flat 5 GB. It was
+  stricter than the thing it was approximating and bought widths nobody needed.
+- The first-token widening loop had no feasibility guard: an unreachable TTFT
+  target walked it to TP64 and bought 64 cards per replica for a promise still
+  missed. It now stops at the width that meets the target, and keeps the fitting
+  width when none does.
+- The post-growth rounding guard could spend its whole allowance on a target it
+  could not move; it now stops as soon as an extra replica stops shrinking the
+  set of missed targets.
+
+After: **0 of 3,607 plans beatable**, on the tool's own policy of not crossing
+NVLink islands for speed alone.
+
+### Saying which promise is responsible
+
+- The hardware-fit recommendation quoted the strictest tok/s target anywhere in
+  the project and the project-wide interconnect. On the reported project that
+  described a pool costing zero marginal cards. It now quotes the binding speed
+  of the pool that actually owns the cards, using that pool's own interconnect,
+  and prints what its cards are really carrying beside the ceiling.
+- That ceiling is a per-token READ SET, not resident VRAM, so it is no longer
+  worded as what a card "can hold".
+- The empty-fleet explainer split "speed and P95" into the two promises, which
+  need different levers, and no longer claims no relaxation exists without
+  pricing one first.
+- "Likely over-provisioned" no longer fires on a pool whose emptiness is a
+  latency promise being kept, where it contradicted the solver.
+
+Reference projects unchanged (64 GPUs / 8 nodes and 40 / 5, all SLOs met);
+engine v25 byte-identical and verified over 3,000 states.
+
 ## Studio 5.23.2 (2026-07-28)
 
 A project whose cards sit half empty could still get no explanation and no
