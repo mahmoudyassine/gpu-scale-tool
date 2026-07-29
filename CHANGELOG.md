@@ -1,5 +1,21 @@
 # Changelog
 
+## Studio 5.23.2 (2026-07-28)
+
+A project whose cards sit half empty could still get no explanation and no
+button: the SLO optimiser only speaks when a promise can be honestly relaxed,
+and a fleet driven by admission, KV memory, first-token compute, node rounding
+or the resilience pattern got silence. Reported from a real project ("GPUs are
+empty and still advising 7 nodes, and no action offered").
+
+- When project memory sits under 50%, a new recommendation prices each
+  constraint class with the same re-solve the suggestions use and itemises the
+  order: cards kept only for the speed/P95 promises (saying so when those are
+  already at their workload-class floor and no honest relaxation exists), cards
+  for the first-token promises, the floor with every target off (admission +
+  KV), node-rounding slots, and the resilience pattern's share.
+- Grammar: "1 GPU slot are node-rounding".
+
 ## Studio 5.23.1 (2026-07-28)
 
 The bundled `gpu-sizing` Claude skill is no longer three libraries behind.
