@@ -1,5 +1,73 @@
 # Changelog
 
+## Studio 5.28.0 (2026-07-30) · engine v27
+
+Links any AI assistant can write. A share link normally carries the project as
+deflate + base64, which no model can produce in a chat window: it cannot
+compress, and it cannot base64 a kilobyte of JSON reliably. So a user asking
+ChatGPT, Gemini or Claude "how many GPUs do I need for 2,000 support agents?"
+got arithmetic they could not check, instead of a link to a sized fleet.
+
+### The readable form
+
+```
+https://gpuscale.net/#p=t:gpu=H200+141GB+NVL;perw=8;resil=n1;uc=Support+chat;model=Llama+3.3+70B;quant=FP8;preset=Simple+RAG;users=2000
+```
+
+`key=value` pairs separated by `;`; every `uc=` starts a use case, and keys
+before the first one are project-wide. Spaces may be `+`, literal, or `%20`.
+Names are matched case- and punctuation-insensitively, so `llama-3.3-70b` finds
+`Llama 3.3 70B Instruct`, and an ambiguous shorthand says which entry it took.
+
+It describes the WORKLOAD only. There is deliberately no tensor-parallel or
+worker key, because the studio auto-sizes on import and would overwrite them:
+hardware is the answer, not the input. That is also what makes the format safe
+for a model to write, since the part it could get wrong is the part it does not
+supply.
+
+Thirty-one keys in total, covering everything the encoder already supported:
+model (including `custom:params/active/hidden/layers/kvHeads/headDim/ctx`),
+quantizations, preset, resident and output tokens, reasoning, shared cached
+prefix, KV policy, all three SLO targets, users or explicit concurrency, the
+traffic shape, supporting models, pool isolation, GPU, node width, resilience
+and the four tuning factors.
+
+An unresolvable model or GPU refuses the import and says so rather than sizing
+the wrong thing; an unresolvable preset, quantization or resilience pattern
+falls back and reports it in a toast.
+
+### Documentation, which was the point
+
+- **[docs/URL-FORMAT.md](docs/URL-FORMAT.md)** is new and is the authoritative
+  specification: all three payload forms, the complete key table, five worked
+  examples, Python and JavaScript encoding recipes, and the rules that stop an
+  assistant producing a link that is wrong in a way the user cannot see (never
+  invent a library name; `seq` is tokens held per request, not the context
+  window; every field is one model call; never assume a prefix-cache hit rate;
+  state your assumptions under the link).
+- **llms.txt** carries the format inline, so an assistant that fetches only that
+  one file can already build a correct link, plus pointers to the full spec and
+  to the generated list of every valid name.
+- **README** gains a section and a feature bullet; both skills, the payload
+  schema and DATA.md cross-reference the format; the footer links it.
+
+Every example link in the new documentation was loaded in a browser and checked
+against the fleet it produces, and every count it quotes is re-derived from the
+data files.
+
+### Also
+
+- `GPUscale.parseTextShare(text)` and `GPUscale.textShare()` on the page API:
+  parse a readable payload, or print the readable link for whatever is on
+  screen. The second is the quickest way to learn the format, and it round-trips
+  exactly.
+- `KV_QUANTS` and `SUPPORT` are exposed on `window.GPUscale` alongside the other
+  libraries.
+- Verified: a project imported from a readable link, written back out with
+  `textShare()` and re-imported is byte-identical; use-case and project names
+  from a link are escaped, so a hostile link cannot inject markup; both
+  reference projects are untouched by this release.
+
 ## Studio 5.27.0 (2026-07-30) · engine v27
 
 Prefix caching, the last gap the 2026 practice review left open. Until now the

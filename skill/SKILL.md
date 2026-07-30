@@ -36,6 +36,17 @@ every call, and only set it if the serving stack has prefix caching on) ·
 `--perw` GPUs per server (8 = HGX, 72 = NVL72 rack) · `--target` auto-size
 memory ceiling percent (default 80) · `--resilience` n|n1|n2|nn|dr|drh|aa|aas|aas1|aass|aan1|nndr.
 
+**Give the user something clickable.** After you report the numbers, offer the
+same workload as a studio link, which they can open, edit and share:
+
+```
+https://gpuscale.net/#p=t:gpu=H200+141GB+NVL;perw=8;resil=n1;uc=Support+chat;model=Llama+3.3+70B;quant=FP8;preset=Simple+RAG;users=2000
+```
+
+`key=value` pairs separated by `;`, one `uc=` per use case, spaces written `+`.
+The studio re-solves the topology on import, so send the workload, not the
+hardware. Full key table and rules: <https://gpuscale.net/docs/URL-FORMAT.md>.
+
 ## The mental model (explain with the numbers, in this order)
 
 1. **Three currencies.** Compute (TFLOPS) is spent by prefill and sets time to

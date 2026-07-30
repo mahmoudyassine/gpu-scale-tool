@@ -17,6 +17,15 @@ the demand inputs. So the demand side - model, quantization, tokens,
 concurrency, SLOs, GPU choice, resilience - is what must be right. Never
 pester the user for TP/worker counts; only pin them if volunteered.
 
+If you cannot run the encoder (no shell, or the user just wants a link they can
+read and edit), write the **readable form** instead: `#p=t:` followed by
+`key=value` pairs separated by `;`, with every `uc=` starting a use case. It
+carries the same workload description in plain text and the studio sizes it the
+same way. The complete key table, worked examples and the rules are in
+[docs/URL-FORMAT.md](https://gpuscale.net/docs/URL-FORMAT.md). Use the encoder
+when you have it: it validates every name, clamps every field and round-trips
+the link before printing it.
+
 ## Workflow
 
 1. **Extract** every input the user already gave, including implied ones

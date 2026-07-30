@@ -1,5 +1,9 @@
 # Maintaining the data library
 
+Building a link programmatically or from an AI assistant is a separate document:
+[URL-FORMAT.md](URL-FORMAT.md) covers the readable `#p=t:` form, the encoded
+`j:` / `z:` forms and the rules for getting a link right.
+
 All of the studio's knowledge lives in five small files under `data/`
 (`models.js`, `gpus.js`, `quants.js`, `usecases.js`, `support.js`). Each file
 assigns one array onto `window.GPUSCALE_DATA`, one entry per line, so adding an

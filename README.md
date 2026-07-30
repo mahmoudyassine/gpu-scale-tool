@@ -48,6 +48,7 @@ static: no backend, no build step, nothing uploaded.
 - 🩺 **Fix-it buttons on the findings**: KV cache to FP8, weights to FP8, a reachable P95, reasoning off, N+1 redundancy, a tensor-parallel width, a batch cap - each one applies across the use cases in scope, re-solves, and offers one Undo
 - 🌓 **Polished**: light and dark themes, mobile friendly, installable, keyboard accessible
 - 🤖 **Claude skill**: download `gpuscale-link.skill` from the footer, hand it to Claude, and it turns plain-language requirements into a ready, verified share link (gpuscale.net + mirror)
+- 🔗 **Readable links any AI can write**: `#p=t:gpu=H200+141GB+NVL;uc=Support+chat;model=Llama+3.3+70B;preset=Simple+RAG;users=2000` opens a fully sized fleet. Plain text, no compression, no tooling, so ChatGPT, Gemini or Claude can answer a sizing question with a working link instead of arithmetic. Spec in [docs/URL-FORMAT.md](docs/URL-FORMAT.md)
 
 ## 🗺️ Fleet map & GPU sharing
 
@@ -162,6 +163,7 @@ dist/      gpuscale_standalone.html  the portable build (generated)
 skill/     the gpu-sizing CLI skill (generated)
 skill-link/  the gpuscale-link skill sources (share-link builder)
 docs/      DATA.md             schemas, effective-KV convention, solver notes
+           URL-FORMAT.md       how to build a link (for AI assistants, scripts)
            PRACTICES.md        the serving evidence the presets are calibrated on
            V5-DESIGN.md        the v5 architecture decisions
 ```
@@ -195,6 +197,31 @@ lives at [docs/dns-cloudflare.txt](docs/dns-cloudflare.txt). Import it under
 Cloudflare → DNS → Import, keep the records unproxied (grey cloud) until the
 GitHub certificate is issued, then set the custom domain in GitHub and enable
 Enforce HTTPS.
+
+## 🔗 Ask an AI assistant for a link
+
+Any assistant can answer a sizing question with a link that opens the sized
+fleet, instead of arithmetic nobody can check. The readable link form is plain
+text, so ChatGPT, Gemini, Claude or anything else can write one with no tools:
+
+```
+https://gpuscale.net/#p=t:gpu=H200+141GB+NVL;perw=8;resil=n1;uc=Support+chat;model=Llama+3.3+70B;quant=FP8;preset=Simple+RAG;users=2000
+```
+
+`key=value` pairs separated by `;`, every `uc=` starts a use case, spaces are
+`+`. It describes the workload; the studio solves tensor parallelism, replicas,
+batch size and the node topology on import. There are also `#p=j:` (base64 JSON)
+and `#p=z:` (deflate + base64) forms for callers that can run code.
+
+**[docs/URL-FORMAT.md](docs/URL-FORMAT.md)** is the complete specification: every
+key, worked examples, the encoding recipes, and the rules that keep an assistant
+from producing a link that is wrong in a way the user cannot see. Point your
+assistant at it, or at [llms.txt](llms.txt), and it can build links unaided.
+Every valid model, GPU, preset and quantization name is listed in
+[skill-link/references/libraries.md](skill-link/references/libraries.md).
+
+In the page, `GPUscale.textShare()` prints the readable link for whatever is on
+screen, which is the quickest way to learn the format.
 
 ## 🤖 Claude Code skill
 

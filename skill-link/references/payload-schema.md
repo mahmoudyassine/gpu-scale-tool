@@ -1,5 +1,10 @@
 # GPUscale.net share-link payload (`gpuscale.net/5`)
 
+> A plain-text alternative exists for callers that cannot run code: `#p=t:` with
+> `key=value` pairs. It describes the same workload without compression or
+> base64, and the studio sizes it identically. See
+> [docs/URL-FORMAT.md](https://gpuscale.net/docs/URL-FORMAT.md).
+
 Read this when you need to hand-edit a decoded payload, debug a link, or
 understand exactly what the encoder emits. For normal encoding, the friendly
 spec in SKILL.md is all you need - `scripts/gpuscale_url.py` builds this

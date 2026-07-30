@@ -1022,6 +1022,7 @@ ul.sum li:has(.as-list){flex-wrap:wrap}
       <a href="https://github.com/mahmoudyassine/gpu-scale-tool/issues" target="_blank" rel="noopener">Report an issue</a>
       <a href="dist/gpuscale_standalone.html" download="gpuscale_standalone.html">Portable single-file build</a>
       <a href="gpuscale-link.skill" download="gpuscale-link.skill" title="Give this file to Claude: it turns plain-language requirements into a ready GPUscale share link">Claude skill: brief &#8594; share link</a>
+      <a href="docs/URL-FORMAT.md" title="The readable link format, so ChatGPT, Gemini, Claude or a script can answer a sizing question with a working GPUscale link">Ask an AI for a link: URL format</a>
     </nav>
     <div class="f-col" aria-label="Studio internals">
       <h2>Studio</h2>
@@ -1324,7 +1325,7 @@ if(!MODELS.length || !GPUS.length || !QUANTS.length || !CASES.length){
   document.body.innerHTML = '<div style="font-family:system-ui,sans-serif;max-width:560px;margin:80px auto;padding:0 20px;line-height:1.65;color:#1A2536"><h2 style="margin-bottom:10px">Data files not loaded</h2><p>GPUscale.net could not find its library. Keep <code>index.html</code> together with the <code>data/</code> and <code>assets/</code> folders: the four files <code>data/models.js</code>, <code>data/gpus.js</code>, <code>data/quants.js</code> and <code>data/usecases.js</code> must sit next to this page.</p><p>If you need one portable file instead, use <code>dist/gpuscale_standalone.html</code> or rebuild it with <code>python3 tools/build_single_file.py</code>.</p></div>';
   throw new Error('GPUscale.net data missing');
 }
-const STUDIO_VERSION = '5.27.0', ENGINE_VERSION = 27;
+const STUDIO_VERSION = '5.28.0', ENGINE_VERSION = 27;
 function newProjId(){ const L='abcdefghjkmnpqrstuvwxyz', D='0123456789';
   const pick=s=>s[Math.floor(Math.random()*s.length)];
   return 'Project_'+pick(L)+pick(L)+pick(D)+pick(D)+pick(D); }
@@ -4122,6 +4123,208 @@ async function shareLink(){
   try{ await navigator.clipboard.writeText(url); toast('Share link copied: the project travels inside the link itself'+(url.length>2000?' (~'+(url.length/1024).toFixed(1)+' KB)':'')); }
   catch(e){ window.prompt('Copy this share link:', url); }
 }
+/* ================= READABLE SHARE LINKS  #p=t:  =================
+   A normal share link carries the whole project as deflate + base64, which no
+   assistant can produce in a chat window: it cannot compress, and it cannot
+   base64 a kilobyte of JSON reliably. This form is plain text, so ChatGPT,
+   Gemini, Claude and anything else can write a working link straight into an
+   answer, and a person can read and edit it afterwards.
+
+     #p=t:gpu=H200 141GB NVL;perw=8;resil=n1;uc=Support chat;model=Llama 3.3 70B;
+          quant=FP8;preset=Simple RAG;users=2000
+
+   Pairs are separated by ";", each is key=value, and every "uc=" starts a new
+   use case (keys before the first one are project-wide). It describes the
+   WORKLOAD only: the studio solves TP, replicas and batch on import, exactly as
+   it does for a compressed link, so there is nothing here a caller can get
+   wrong about the hardware. */
+function tsDec(v){ let x=String(v==null?'':v).replace(/\+/g,' ');
+  try{ x=decodeURIComponent(x); }catch(e){}
+  return x.trim(); }
+function tsBool(v){ const x=tsDec(v).toLowerCase();
+  return !(x==='0'||x==='no'||x==='false'||x==='off'); }
+/* Forgiving on purpose: an assistant writing "h200" or "llama-3.3-70b" from
+   memory should land on the library entry, and an ambiguous shorthand should
+   say so rather than silently size the wrong thing. */
+function tsPick(names, q, notes, what){
+  const norm=x=>String(x).toLowerCase().replace(/[^a-z0-9.]+/g,'');
+  const n=norm(q); if(!n) return -1;
+  const idx=names.map((x,i)=>[norm(x),i]);
+  let hits=idx.filter(h=>h[0]===n);
+  if(!hits.length) hits=idx.filter(h=>h[0].startsWith(n));
+  if(!hits.length) hits=idx.filter(h=>h[0].includes(n));
+  if(!hits.length) return -1;
+  if(hits.length>1) notes.push(`"${q}" matches ${hits.length} ${what} entries; used "${names[hits[0][1]]}"`);
+  return hits[0][1];
+}
+function parseTextShare(text){
+  const notes=[], unknown=[];
+  const cards=[]; let g={}, cur=null;
+  String(text).split(';').forEach(part=>{
+    if(!part.trim()) return;
+    const eq=part.indexOf('=');
+    if(eq<0){ unknown.push(part.trim()); return; }
+    const k=tsDec(part.slice(0,eq)).toLowerCase(), v=part.slice(eq+1);
+    if(k==='uc'||k==='usecase'||k==='use-case'){ cur={name:tsDec(v)}; cards.push(cur); return; }
+    (cur||g)[k]=v;
+  });
+  if(!cards.length){ // a single-use-case link may skip "uc=" entirely
+    cur={name:''}; cards.push(cur);
+    Object.keys(g).forEach(k=>{ if(!TS_PROJECT[k]){ cur[k]=g[k]; delete g[k]; } });
+  }
+  // ---- project level
+  const gi=g.gpu!=null? tsPick(GPUS.map(x=>x.name), tsDec(g.gpu), notes, 'GPU') : -1;
+  if(g.gpu!=null && gi<0) return {error:`GPU "${tsDec(g.gpu)}" is not in the library. Names are listed in docs/URL-FORMAT.md.`};
+  const num=(v,d)=>{ const n=+tsDec(v); return isFinite(n)? n : d; };
+  const cfg={ hardware:{}, tuning:{} };
+  if(gi>=0) cfg.gpu=GPUS[gi].name;
+  if(g.perw!=null) cfg.hardware.gpusPerWorker=num(g.perw, 8);
+  if(g.resil!=null){ const r=tsDec(g.resil).toLowerCase();
+    if(RESIL[r]) cfg.hardware.resilience=r;
+    else notes.push(`resilience "${tsDec(g.resil)}" is not a pattern; kept the current one`); }
+  if(g.mfu!=null) cfg.tuning.prefillMFU=num(g.mfu);
+  if(g.mbu!=null) cfg.tuning.decodeMBU=num(g.mbu);
+  if(g.ic!=null) cfg.tuning.interconnectEff=num(g.ic);
+  if(g.ovh!=null) cfg.tuning.frameworkOverheadMs=num(g.ovh);
+  if(g.util!=null) cfg.tuning.autoSizeUtilPct=num(g.util);
+  Object.keys(g).forEach(k=>{ if(!TS_PROJECT[k]) unknown.push(k); });
+  // ---- use cases
+  const usecases=[];
+  for(let i=0;i<cards.length;i++){
+    const c=cards[i], out={};
+    Object.keys(c).forEach(k=>{ if(k!=='name' && !TS_CARD[k]) unknown.push(k); });
+    // preset first: it supplies every workload field the link does not state
+    let ci=-1;
+    if(c.preset!=null){
+      ci=tsPick(CASES.map(x=>x.name), tsDec(c.preset), notes, 'workload preset');
+      if(ci<0) notes.push(`workload preset "${tsDec(c.preset)}" is not in the library; used explicit values only`);
+    }
+    const cs=ci>=0? CASES[ci] : null;
+    // model
+    let model=null;
+    const mv=c.model!=null? tsDec(c.model) : '';
+    if(/^custom:/i.test(mv)){
+      const n2=mv.slice(7).split('/').map(x=>+x);
+      if(n2.length<7 || n2.some(x=>!isFinite(x)||x<=0))
+        return {error:`custom model on "${c.name||'use case '+(i+1)}" needs params/active/hidden/layers/kvHeads/headDim/ctx`};
+      model={custom:true, params:n2[0], active:n2[1], hidden:n2[2], layers:n2[3], kvHeads:n2[4], headDim:n2[5], ctx:n2[6]};
+    } else if(mv){
+      const mi=tsPick(MODELS.map(x=>x.name), mv, notes, 'model');
+      if(mi<0) return {error:`model "${mv}" is not in the library. Use one of the ${MODELS.length} names in docs/URL-FORMAT.md, or model=custom:params/active/hidden/layers/kvHeads/headDim/ctx.`};
+      model={custom:false, name:MODELS[mi].name};
+    } else return {error:`use case ${i+1} has no model. Every "uc=" needs a model=.`};
+    out.model=model;
+    const qi=c.quant!=null? tsPick(QUANTS.map(x=>x.name), tsDec(c.quant), notes, 'weight quantization') : -1;
+    if(c.quant!=null && qi<0) notes.push(`weight quantization "${tsDec(c.quant)}" not found; used FP8`);
+    out.weightQuant=qi>=0? QUANTS[qi].name : 'FP8';
+    const ki=c.kv!=null? tsPick(KV_QUANTS.map(x=>x.name), tsDec(c.kv), notes, 'KV quantization') : -1;
+    if(c.kv!=null && ki<0) notes.push(`KV quantization "${tsDec(c.kv)}" not found; used FP8`);
+    out.kvQuant=ki>=0? KV_QUANTS[ki].name : 'FP8';
+    out.preset=cs? cs.name : null;
+    out.residentSeq = c.seq!=null? num(c.seq, 4096) : (cs&&cs.resident? cs.resident : 4096);
+    out.visibleOut  = c.out!=null? num(c.out, 400)  : (cs&&cs.visibleOut? cs.visibleOut : 400);
+    out.sharedPrefixPct = c.cache!=null? Math.min(95, Math.max(0, num(c.cache, 0))) : (cs&&cs.cachePct? cs.cachePct : 0);
+    // reasoning: a number is an exact budget, a word is one of the classes
+    let rz;
+    if(c.reason!=null){
+      const rv=tsDec(c.reason), rn=+rv;
+      if(isFinite(rn)) rz = rn>0? {mode:'Custom', tokens:rn} : {mode:'None', tokens:0};
+      else { const key=Object.keys(REASON_TOK).find(x=>x.toLowerCase().startsWith(rv.toLowerCase().slice(0,5)));
+        if(key) rz={mode:key, tokens:REASON_TOK[key]};
+        else { notes.push(`reasoning "${rv}" is not a class or a token count; used None`); rz={mode:'None', tokens:0}; } }
+    } else if(cs) rz = cs.reasonTok? {mode:'Custom', tokens:cs.reasonTok} : {mode:cs.reasoning||'None', tokens:REASON_TOK[cs.reasoning]||0};
+    else rz={mode:'None', tokens:0};
+    rz.extendsKV = c.extend!=null? tsBool(c.extend) : true;
+    out.reasoning=rz;
+    out.kvPolicy = c.policy!=null
+      ? (/^(all|session|pinned)/i.test(tsDec(c.policy))? 'all' : 'running')
+      : (cs&&cs.policy==='all'? 'all' : 'running');
+    const slo={ttftMs:0, tps:0, p95s:0};
+    slo.ttftMs = c.ttft!=null? num(c.ttft, 0) : (cs? cs.ttftTarget||0 : 0);
+    slo.tps    = c.tps !=null? num(c.tps, 0)  : (cs? cs.tpsTarget ||0 : 0);
+    slo.p95s   = c.p95 !=null? num(c.p95, 0)  : (cs? cs.p95Target ||0 : 0);
+    out.sloTargets=slo;
+    if(c.batch!=null) out.maxBatchPerReplica=num(c.batch, 64);
+    // concurrency: an explicit count wins and is marked manual, otherwise the
+    // people-at-peak number drives the estimator the same way Normal mode does
+    const users = c.users!=null? Math.max(1, Math.round(num(c.users, 0))) : null;
+    const conc  = c.conc !=null? Math.max(1, Math.round(num(c.conc,  0))) : null;
+    if(conc!=null) out.concurrentCalls=conc;
+    const est={};
+    if(c.turns!=null) est.turnsPerHour=num(c.turns);
+    if(c.calls!=null) est.callsPerTurn=num(c.calls);
+    if(c.burst!=null) est.burst=num(c.burst);
+    if(c.dur!=null)   est.callDurS=num(c.dur);
+    if(users!=null) est.sessions=users;
+    if(Object.keys(est).length) out.estimator=est;
+    // supports: named kinds, "none" to strip them, otherwise the preset's own
+    let sup;
+    if(c.supports!=null){
+      const raw=tsDec(c.supports).toLowerCase();
+      if(!raw||raw==='none'||raw==='-') sup=[];
+      else sup=raw.split(',').map(x=>x.trim()).filter(Boolean).map(k=>{
+        const kk=TS_SUP.find(x=>x.startsWith(k.slice(0,3)));
+        if(!kk){ notes.push(`support kind "${k}" is not one of ${TS_SUP.join(', ')}`); return null; }
+        const d=SUP_DEFAULT(kk); return d? {kind:kk, model:d.name, on:true} : null; }).filter(Boolean);
+    } else sup = ci>=0? defaultSupports(ci) : [];
+    usecases.push({id:'uc'+(i+1), name:c.name||'', isolate:c.isolate!=null&&tsBool(c.isolate),
+      supports:sup, concManual:conc!=null, activeUsers:users||null, config:out, snapshot:{}});
+  }
+  const j={schema:'gpuscale.net/5', engine:ENGINE_VERSION, studio:STUDIO_VERSION,
+    name: g.name!=null? tsDec(g.name) : 'Shared project',
+    mode: g.mode!=null && /^norm/i.test(tsDec(g.mode))? 'normal' : 'advanced',
+    config:cfg, project:{active:0, usecases}};
+  const uniq=[...new Set(unknown)];
+  if(uniq.length) notes.push(`ignored unknown key${uniq.length>1?'s':''}: ${uniq.join(', ')}`);
+  return {json:j, notes};
+}
+const TS_PROJECT={name:1,gpu:1,perw:1,resil:1,mfu:1,mbu:1,ic:1,ovh:1,util:1,mode:1};
+const TS_CARD={model:1,quant:1,kv:1,preset:1,seq:1,cache:1,out:1,reason:1,extend:1,
+  conc:1,users:1,batch:1,policy:1,ttft:1,tps:1,p95:1,isolate:1,supports:1,
+  turns:1,calls:1,burst:1,dur:1};
+const TS_SUP=['embed','rerank','asr','tts','ocr','guard'];
+/* The same format written back out, so any project in the studio can be handed
+   to an assistant as an editable one-line description of itself. */
+function textShare(){
+  captureUc();
+  const parts=[];
+  const nm=($('scenarioName').value||'').trim();
+  if(nm) parts.push('name='+nm);
+  parts.push('gpu='+(GPUS[+$('selGpu').value||0]||{}).name);
+  parts.push('perw='+(+$('inPerW').value||8));
+  parts.push('resil='+$('selResil').value);
+  const dflt={inMfu:0.5, inMbu:0.65, inIc:0.85, inOvh:30};
+  Object.keys(dflt).forEach(id=>{ const v=+$(id).value;
+    if(isFinite(v) && Math.abs(v-dflt[id])>1e-9) parts.push({inMfu:'mfu',inMbu:'mbu',inIc:'ic',inOvh:'ovh'}[id]+'='+v); });
+  UC.forEach(u=>{ const f=u.f, ci=+f.selCase, cs=ci>=0? CASES[ci] : null;
+    parts.push('uc='+(u.name||ucName(u)));
+    parts.push('model='+(f.chkCustom
+      ? 'custom:'+[f.cusParams,f.cusActive,f.cusHidden,f.cusLayers,f.cusKvh,f.cusHdim,f.cusCtx].join('/')
+      : (MODELS[+f.selModel||0]||{}).name));
+    parts.push('quant='+(QUANTS[+f.selWQuant||0]||{}).name);
+    parts.push('kv='+(KV_QUANTS[+f.selKQuant||0]||{}).name);
+    if(cs) parts.push('preset='+cs.name);
+    const put=(k,v,base)=>{ if(base==null || +v!==+base) parts.push(k+'='+v); };
+    put('seq', +f.inSeq, cs&&cs.resident);
+    put('out', +f.inOut, cs&&cs.visibleOut);
+    if(+f.inCache) parts.push('cache='+(+f.inCache));
+    const rt=+f.inReasonTok||0;
+    if(rt !== (cs? (cs.reasonTok!=null? cs.reasonTok : (REASON_TOK[cs.reasoning]||0)) : 0)) parts.push('reason='+rt);
+    if(!f.chkExtend) parts.push('extend=0');
+    if(f.selPolicy==='all' && !(cs&&cs.policy==='all')) parts.push('policy=all');
+    if(f.selPolicy!=='all' && cs&&cs.policy==='all') parts.push('policy=running');
+    put('ttft', +f.sloTtft, cs&&cs.ttftTarget);
+    put('tps',  +f.sloTps,  cs&&cs.tpsTarget);
+    put('p95',  +f.sloP95,  cs&&cs.p95Target);
+    if(u.concManual) parts.push('conc='+(+f.inConc||1));
+    else if(+f.nrmUsers) parts.push('users='+(+f.nrmUsers));
+    if(u.isolate) parts.push('isolate=1');
+    const kinds=(u.supports||[]).filter(sp=>sp.on!==false).map(sp=>sp.kind);
+    const def=(ci>=0? defaultSupports(ci) : []).map(sp=>sp.kind);
+    if(kinds.join(',')!==def.join(',')) parts.push('supports='+(kinds.length? kinds.join(',') : 'none'));
+  });
+  return location.origin+location.pathname+'#p=t:'+parts.join(';').replace(/ /g,'+');
+}
 /* A share link is a one-shot import: the payload becomes a NEW local project
    (never the sender's id, so it can't clobber existing local work), it is
    saved immediately, and the data is stripped from the address bar. Refresh
@@ -4145,6 +4348,13 @@ async function loadSharedFromUrl(){
         const buf=await new Response(new Blob([b64uDec(payload.slice(2))]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer();
         json=new TextDecoder().decode(buf);
       } else if(payload.indexOf('j:')===0) json=new TextDecoder().decode(b64uDec(payload.slice(2)));
+      else if(payload.indexOf('t:')===0){
+        const r=parseTextShare(payload.slice(2));
+        if(r.error){ toast(r.error, true); try{ history.replaceState(null,'',location.pathname); }catch(e){} return true; }
+        importShared(r.json);
+        if(r.notes && r.notes.length) setTimeout(()=>toast('Imported with notes: '+r.notes.join(' · ')), 2200);
+        return true;
+      }
       else return false;
       const j=JSON.parse(json);
       importShared(j);
@@ -5481,7 +5691,7 @@ $('fileImport').addEventListener('change',e=>{
 });
 
 /* ================= PUBLIC API & BOOT ================= */
-window.GPUscale = {compute, gpuFitScan, sloOptScan, sloPrice, readState, serialize, applyConfig, buildXls, buildXlsxBytes, render, autoSize, computeProject, solvePool, sliceProfiles, MODELS, GPUS, QUANTS, CASES,
+window.GPUscale = {compute, gpuFitScan, sloOptScan, sloPrice, readState, serialize, applyConfig, buildXls, buildXlsxBytes, render, autoSize, computeProject, solvePool, sliceProfiles, parseTextShare, textShare, MODELS, GPUS, QUANTS, KV_QUANTS, CASES, SUPPORT,
   usecases:{list:()=>UC, active:()=>activeUc, add:addUc, select:selectUc, remove:removeUc},
   projects:{list:lsIndex, load:loadProject, del:deleteProject, share:shareLink, id:()=>PROJ_ID}};
 window.SizingConsole = window.GPUscale;
