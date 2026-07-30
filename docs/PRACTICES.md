@@ -68,15 +68,15 @@ should move · **GAP** a class the library does not cover.
 
 | Preset | Now (ttft / tps / p95) | Verdict | Evidence |
 |---|---|---|---|
-| Simple chatbot | 400 / 20 / 18 | TIGHTEN ttft to 300 | Interactive chat is 300 ms p99 in 2026 guidance; 20 tok/s is exactly the 50 ms ITL convention |
-| Simple RAG | 800 / 25 / 18 | TIGHTEN ttft to 400 | RAG chat is 400 ms p99; retrieval latency is a separate budget line, not an excuse for a slower first token |
+| Simple chatbot | **300** / 20 / 18 | APPLIED 5.26.0 (was 400) | Interactive chat is 300 ms p99 in 2026 guidance; 20 tok/s is exactly the 50 ms ITL convention |
+| Simple RAG | **400** / 25 / 18 | APPLIED 5.26.0 (was 800) | RAG chat is 400 ms p99; retrieval latency is a separate budget line, not an excuse for a slower first token |
 | Advanced RAG | 1200 / 40 / 45 | OK | Agentic RAG adds planning and verification passes; the 800-token reasoning budget matches an o-class trace |
 | Internal GPT / Copilot | 600 / 25 / 18 | OK | Between chat and RAG; sits in the band |
 | Document Q&A | 2500 / 30 / 40 | OK | Long grounded prefill legitimately relaxes TTFT |
 | Document generation | 1000 / 40 / 70 | OK | 2,000 visible tokens at 40 tok/s is 50 s of streaming, inside the 70 s promise |
-| Code generation | 300 / 60 / 2 | TIGHTEN ttft to 100 | This preset's 60-token output is inline completion, where 2026 practice is 100 ms p99 and 25 ms ITL (40 tok/s). A panel-completion variant at 300 ms / 20 tok/s is the other half of the class |
+| Code generation (inline) | **100** / 60 / 2 | APPLIED 5.26.0 (was 300) | This preset's 60-token output is inline completion, where 2026 practice is 100 ms p99 and 25 ms ITL (40 tok/s). A panel-completion variant at 300 ms / 20 tok/s is the other half of the class |
 | Code agent | 1000 / 50 / 60 | OK, note the schema tax | Per tool step is right; consider raising `resident` to cover the 2-5K tokens of tool schema every step carries |
-| Voice agent | 300 / 50 / 3.5 | TIGHTEN ttft to 200 | The LLM's share of a 400 ms p50 voice budget is 150-250 ms; 50 tok/s is above the 33 tok/s convention and safe |
+| Voice agent | **200** / 50 / 3.5 | APPLIED 5.26.0 (was 300) | The LLM's share of a 400 ms p50 voice budget is 150-250 ms; 50 tok/s is above the 33 tok/s convention and safe |
 | Reasoning light | 600 / 60 / 55 | OK | 60 tok/s sits just under MLPerf's 67 tok/s interactive reasoning bar |
 | Reasoning heavy | 800 / 60 / 200 | OK | MLPerf caps reasoning output at 10,240 tokens; the preset's 8,000-token Heavy class is inside that |
 | Video summarization | 3000 / 40 / 90 | OK | Vision prefill dominates; unchanged |
@@ -89,27 +89,30 @@ should move · **GAP** a class the library does not cover.
 | Translation | 500 / 40 / 18 | OK | Unchanged |
 | Contact-center assist | 400 / 40 / 3 | OK | Agent-facing suggestions, tighter than the caller-facing voice path |
 
-### Gaps: classes the library does not cover
+### Classes added in 5.26.0
+
+Four of the five gaps this review found are now presets. Each is a distinct
+sizing shape, not a variant of an existing one, and each is sized PER REQUEST.
+
+| Preset | ttft / tps / p95 | Shape | Grounding |
+|---|---|---|---|
+| Computer-use / browser agent | 2000 / 30 / 60 | 64K resident, 200 visible, 1,000 thinking | One step of a task that runs about 200K tokens; each step re-sends the transcript plus 2-5K of tool schema and answers with a short tool call |
+| Speech-to-speech (native audio) | 200 / 50 / 5 | 4K resident, 150 audio tokens out, KV pinned | Native stacks reach 160-400 ms voice-to-voice against 1-2 s for an STT/LLM/TTS pipeline, so the whole budget sits on one model and no ASR or TTS is attached |
+| Code review agent | 3000 / 30 / 110 | 64K resident, 800 out, 1,500 thinking | About 50K tokens of prefill for a 2,000-line pull request, one long think, a page of comments |
+| Code completion (panel) | 300 / 20 / 18 | 8K resident, 250 out | The relaxed half of the completion class: read rather than accepted inline |
+
+### Gap still open
 
 Each of these is a distinct sizing shape, not a variant of an existing preset.
 
-1. **Computer-use / browser agent.** About 200,000 tokens per task across many
-   steps, each step carrying tool schemas and screenshots. Sizing shape: very large
-   `resident` (64-128K), small visible output, loose TTFT, and a `traffic` entry
-   whose turns-per-task is high. Nothing in the library models a step of a
-   long-running autonomous task.
-2. **Native speech-to-speech.** 160-400 ms voice-to-voice with audio tokens in
-   and out, no STT/TTS support models attached. Materially different from the
-   pipeline the current voice preset describes.
-3. **Code review agent.** About 50,000 tokens per review, a single very large
-   prefill against a whole diff, one modest answer. Between long-doc analysis
-   and the code agent, and closer to neither than it looks.
-4. **Panel code completion.** The 300 ms / 20 tok/s half of the completion
-   class, distinct from the inline 100 ms / 40 tok/s case.
-5. **Prefix-cache-aware sizing.** Not a preset: the studio has no notion of a
-   cache hit, so a workload with a large shared system prompt is sized for a
-   full prefill every call. Modelling a hit rate would reduce TTFT and prefill
-   compute honestly, and is the single largest modelling gap this review found.
+**Prefix-cache-aware sizing.** Not a preset, and not yet modelled: the studio
+has no notion of a cache hit, so a workload with a large shared system prompt
+is sized for a full prefill on every call. Production stacks cache that prefix,
+which cuts first-token time and prefill compute for exactly the workloads whose
+TTFT targets are hardest to meet, agentic loops most of all (a 2-5K tool schema
+repeats verbatim every step). Modelling a hit rate would make the estimate less
+conservative in a defensible direction. It is the largest modelling gap this
+review found, and it needs an engine change rather than a data edit.
 
 ## What was deliberately not changed
 
@@ -118,9 +121,11 @@ Each of these is a distinct sizing shape, not a variant of an existing preset.
 - **P95 stays at 1.3x mean.** The engine's P95 is a fixed multiplier, not a
   measured tail. It is documented as such in the CLI and the report footer, and
   a real deployment should validate the tail with GenAI-Perf or vLLM bench.
-- **Preset numbers were not silently edited during this review.** Changing them
-  moves every saved project that uses them, so the table above is a proposal
-  for sign-off, not a changelog of applied edits.
+- **Preset numbers were changed only with sign-off, and only the four the
+  evidence moved.** Everything marked OK above is untouched. Saved projects
+  reference presets by NAME, not by index, so appending the four new classes
+  cannot disturb an existing project; the four corrected targets only apply to
+  a card when its preset is re-selected.
 
 ## Sources
 

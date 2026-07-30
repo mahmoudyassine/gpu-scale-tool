@@ -2340,7 +2340,7 @@
    "resident": 4096,
    "reasoning": "None",
    "visibleOut": 250,
-   "ttftTarget": 400,
+   "ttftTarget": 300,
    "tpsTarget": 20,
    "p95Target": 18,
    "note": "Short support chat. 20 tok/s outruns reading speed; a 250-tok reply streams in ~13 s.",
@@ -2360,7 +2360,7 @@
    "resident": 8192,
    "reasoning": "None",
    "visibleOut": 300,
-   "ttftTarget": 800,
+   "ttftTarget": 400,
    "tpsTarget": 25,
    "p95Target": 18,
    "note": "Single-pass RAG. TTFT budget includes retrieval + rerank (~400 ms) ahead of prefill.",
@@ -2465,7 +2465,7 @@
    "resident": 8192,
    "reasoning": "None",
    "visibleOut": 60,
-   "ttftTarget": 300,
+   "ttftTarget": 100,
    "tpsTarget": 60,
    "p95Target": 2,
    "note": "IDE completion / small edits: 10-100 token suggestions; anything slower than ~2 s gets discarded, so P95 is tight.",
@@ -2506,7 +2506,7 @@
    "resident": 4096,
    "reasoning": "None",
    "visibleOut": 100,
-   "ttftTarget": 300,
+   "ttftTarget": 200,
    "tpsTarget": 50,
    "p95Target": 3.5,
    "note": "Telephony/IVR. Voice-to-voice budget needs LLM TTFT under ~300 ms; 50 tok/s feeds sentence-chunked TTS without gaps.",
@@ -2732,6 +2732,86 @@
    "traffic": {
     "direct": 1,
     "pct": "100%: live assisted calls are the concurrency"
+   }
+  },
+  {
+   "name": "Computer-use / browser agent",
+   "resident": 65536,
+   "reasoning": "Custom",
+   "reasonTok": 1000,
+   "visibleOut": 200,
+   "ttftTarget": 2000,
+   "tpsTarget": 30,
+   "p95Target": 60,
+   "note": "One STEP of an autonomous browser or desktop agent. A whole task runs about 200K tokens across many steps; each step re-sends the accumulated transcript plus 2-5K tokens of tool schema, and answers with a short tool call.",
+   "supports": [
+    "guard"
+   ],
+   "traffic": {
+    "turns": 4,
+    "calls": 25,
+    "durS": 8,
+    "burst": 1.5,
+    "pct": "~35%: each engaged user keeps an agent loop stepping"
+   }
+  },
+  {
+   "name": "Speech-to-speech (native audio)",
+   "resident": 4096,
+   "reasoning": "None",
+   "visibleOut": 150,
+   "ttftTarget": 200,
+   "tpsTarget": 50,
+   "p95Target": 5,
+   "policy": "all",
+   "note": "A model that takes audio in and emits audio out, with no separate ASR or TTS. Native stacks reach 160-400 ms voice-to-voice against 1-2 s for a pipeline, so the whole budget sits on this one model.",
+   "supports": [
+    "guard"
+   ],
+   "traffic": {
+    "direct": 1,
+    "pct": "100%: live callers are the concurrency"
+   }
+  },
+  {
+   "name": "Code review agent",
+   "resident": 65536,
+   "reasoning": "Custom",
+   "reasonTok": 1500,
+   "visibleOut": 800,
+   "ttftTarget": 3000,
+   "tpsTarget": 30,
+   "p95Target": 110,
+   "note": "A whole diff reviewed in one pass: about 50K tokens of prefill for a 2,000-line pull request, a long think, and a page of review comments. Prefill dominates.",
+   "supports": [
+    "embed"
+   ],
+   "traffic": {
+    "turns": 3,
+    "calls": 1,
+    "durS": 0,
+    "burst": 2,
+    "pct": "~10%"
+   }
+  },
+  {
+   "name": "Code completion (panel)",
+   "resident": 8192,
+   "reasoning": "None",
+   "visibleOut": 250,
+   "ttftTarget": 300,
+   "tpsTarget": 20,
+   "p95Target": 18,
+   "note": "Sidebar or chat-panel completion, where the answer is read rather than accepted inline. The relaxed half of the completion class: 300 ms first token and reading-speed streaming.",
+   "supports": [
+    "embed"
+   ],
+   "traffic": {
+    "turns": 20,
+    "calls": 1,
+    "durS": 0,
+    "burst": 3,
+    "pct": "~4%"
    }
   }
  ],
@@ -3264,9 +3344,9 @@
   ]
  },
  "meta": {
-  "library": "v32",
+  "library": "v33",
   "engine": 26,
-  "updated": "2026-07-23"
+  "updated": "2026-07-30"
  },
  "kv_quants": [
   {
@@ -3435,7 +3515,7 @@
  "versions": {
   "schema": "gpuscale.net/5",
   "engine": 26,
-  "studio": "5.25.1"
+  "studio": "5.26.0"
  },
  "kv_policies": [
   "running",

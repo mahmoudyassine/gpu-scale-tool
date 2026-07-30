@@ -1,5 +1,48 @@
 # Changelog
 
+## Studio 5.26.0 (2026-07-30) · library v33
+
+The 2026 practice review in [docs/PRACTICES.md](docs/PRACTICES.md), applied.
+Four first-token targets move to the current convention, and the four workload
+classes the review found missing are now presets. 24 presets, all passing
+`tools/check_presets.py`.
+
+### Four targets corrected
+
+| Preset | TTFT | Why |
+|---|---|---|
+| Code generation (inline) | 300 -> **100 ms** | A 60-token completion is inline, where 2026 practice is 100 ms p99 and 25 ms ITL |
+| Voice agent | 300 -> **200 ms** | The LLM's share of a 400 ms p50 voice budget is 150-250 ms (STT 80-120, TTS first chunk 60-100, transport 20-60) |
+| Simple chatbot | 400 -> **300 ms** | Interactive chat converged on 300 ms p99 |
+| Simple RAG | 800 -> **400 ms** | RAG chat is 400 ms p99; retrieval is its own budget line, not an excuse for a slower first token |
+
+Nothing else moved. Every preset the review marked OK is untouched.
+
+### Four classes added
+
+Each is a distinct sizing shape, and each is sized PER REQUEST, not per task.
+
+- **Computer-use / browser agent** (2000 / 30 / 60, 64K resident, 1,000 thinking
+  tokens, 200 visible). One step of a task that runs about 200,000 tokens: the
+  step re-sends the accumulated transcript plus 2-5K tokens of tool schema and
+  answers with a short tool call.
+- **Speech-to-speech (native audio)** (200 / 50 / 5, KV pinned per session, no
+  ASR or TTS attached). Native stacks reach 160-400 ms voice-to-voice against
+  1-2 s for a pipeline, so the entire budget sits on one model.
+- **Code review agent** (3000 / 30 / 110, 64K resident, 1,500 thinking, 800
+  out). About 50,000 tokens of prefill for a 2,000-line pull request, one long
+  think, a page of comments. Prefill dominates.
+- **Code completion (panel)** (300 / 20 / 18). The relaxed half of the
+  completion class, read rather than accepted inline.
+
+### Safety of the change
+
+Saved and shared projects reference presets by NAME, not by index, so appending
+four classes cannot disturb an existing project. The four corrected targets
+apply to a card only when its preset is re-selected. Both reference projects
+re-verified byte-identical: 64 GPUs / 8 nodes and 40 / 5, all SLOs met,
+auto-size idempotent, round-trip stable.
+
 ## Studio 5.25.1 (2026-07-30) · documentation
 
 A review of current serving practice, and a documentation pass over everything
