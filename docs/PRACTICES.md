@@ -101,18 +101,50 @@ sizing shape, not a variant of an existing one, and each is sized PER REQUEST.
 | Code review agent | 3000 / 30 / 110 | 64K resident, 800 out, 1,500 thinking | About 50K tokens of prefill for a 2,000-line pull request, one long think, a page of comments |
 | Code completion (panel) | 300 / 20 / 18 | 8K resident, 250 out | The relaxed half of the completion class: read rather than accepted inline |
 
-### Gap still open
+### The last gap, closed in 5.27.0
 
-Each of these is a distinct sizing shape, not a variant of an existing preset.
+**Prefix-cache-aware sizing.** The review's largest finding was that the studio
+had no notion of a cache hit, so a workload with a large shared system prompt
+was sized for a full prefill on every call. Every production stack caches that
+prefix (vLLM, SGLang and TensorRT-LLM all ship automatic prefix caching), which
+cuts first-token time and prefill compute for exactly the workloads whose TTFT
+targets are hardest to meet, agentic loops most of all: a 2-5K tool schema
+repeats verbatim every step, and step N+1's prompt is step N's prompt plus one
+observation.
 
-**Prefix-cache-aware sizing.** Not a preset, and not yet modelled: the studio
-has no notion of a cache hit, so a workload with a large shared system prompt
-is sized for a full prefill on every call. Production stacks cache that prefix,
-which cuts first-token time and prefill compute for exactly the workloads whose
-TTFT targets are hardest to meet, agentic loops most of all (a 2-5K tool schema
-repeats verbatim every step). Modelling a hit rate would make the estimate less
-conservative in a defensible direction. It is the largest modelling gap this
-review found, and it needs an engine change rather than a data edit.
+Engine v27 models it. A per-use-case **shared cached prefix** fraction splits
+the sequence: `floor(resident x fraction)` is prefilled once and held once per
+replica, the remainder is charged per call. TTFT falls with the prefill, KV
+memory falls with the duplication, and **decode is not discounted** because a
+call still re-reads its whole context on every generated token. The formulas are
+in [DATA.md](DATA.md#engine-v27-prefix-caching).
+
+Three decisions kept it honest:
+
+- **Zero by default.** A hit rate is a fact about the serving stack, not about
+  the workload class, so no preset ships one and no existing project moved. At
+  zero the engine is byte-identical to v26, verified over 9,000 comparisons.
+- **Offered, never assumed.** Where a pool carries 8K+ resident tokens and no
+  fraction set, the optimiser prices 30% and 60% by re-solving the whole project
+  and offers whichever actually deliver, labelled with what they buy: GPUs off
+  the order, or first-token headroom. The recommendation says outright that it
+  should only be accepted if the stack has prefix caching enabled.
+- **Guidance, not a number.** The field's help text carries the observed bands
+  (agent loops 40-80%, RAG 10-30%, unique documents 0%) so the user supplies a
+  measured hit rate rather than inheriting a guess.
+
+### Typical shared-prefix fractions
+
+Bands only. Measure yours; vLLM and SGLang both report cache hit rate.
+
+| Workload | Shared prefix | What repeats |
+|---|---|---|
+| Agent / tool loop | 40-80% | Tool schemas (2-5K tokens) plus the transcript so far, verbatim each step |
+| Code agent on one repo | 40-70% | System prompt, tool schemas, the file map |
+| RAG chat | 10-30% | System prompt and instructions; retrieved chunks differ per query |
+| Chat with a long system prompt | 20-50% | The system prompt across every turn of every session |
+| Document Q&A on one document | 60-90% | The document itself across a question series |
+| One-off document processing | 0% | Nothing; each call is a new document |
 
 ## What was deliberately not changed
 
@@ -121,6 +153,10 @@ review found, and it needs an engine change rather than a data edit.
 - **P95 stays at 1.3x mean.** The engine's P95 is a fixed multiplier, not a
   measured tail. It is documented as such in the CLI and the report footer, and
   a real deployment should validate the tail with GenAI-Perf or vLLM bench.
+- **Decode speed is not discounted by prefix caching.** Only prefill and KV
+  memory are. Paged-attention kernels that read shared blocks once per batch
+  exist, but they are not universal, and decode bandwidth is the number that
+  sizes most fleets: being optimistic there would be the expensive kind of wrong.
 - **Preset numbers were changed only with sign-off, and only the four the
   evidence moved.** Everything marked OK above is untouched. Saved projects
   reference presets by NAME, not by index, so appending the four new classes

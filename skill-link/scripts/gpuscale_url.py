@@ -155,6 +155,11 @@ def build_usecase(u, gl, idx, warnings):
         return default
     resident = clamp('residentSeq', from_case('resident', 'residentSeq', FR['residentSeq']['default']), warnings)
     visible  = clamp('visibleOut', from_case('visibleOut', 'visibleOut', FR['visibleOut']['default']), warnings)
+    # prefix caching: 0 unless the caller states a measured hit rate. Presets never
+    # ship one, so from_case falls through to the spec value or to zero.
+    cachep  = clamp('sharedPrefixPct',
+                    u['sharedPrefixPct'] if u.get('sharedPrefixPct') is not None
+                    else (case or {}).get('cachePct', 0) or 0, warnings)
     # --- reasoning
     rz = u.get('reasoning')
     if rz is None:
@@ -251,7 +256,7 @@ def build_usecase(u, gl, idx, warnings):
         'model': model_cfg,
         'weightQuant': wq['name'], 'kvQuant': kq['name'],
         'preset': preset,
-        'residentSeq': resident, 'visibleOut': visible,
+        'residentSeq': resident, 'sharedPrefixPct': cachep, 'visibleOut': visible,
         'reasoning': {'mode': mode, 'tokens': tokens, 'extendsKV': extends},
         'concurrentCalls': conc, 'maxBatchPerReplica': batch, 'kvPolicy': policy,
         'hardware': {'workers': workers, 'tensorParallel': tp},

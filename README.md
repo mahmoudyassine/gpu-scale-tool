@@ -44,6 +44,7 @@ static: no backend, no build step, nothing uploaded.
 - 🪄 **Auto-size**: one click picks the TP that fits one copy of the model and the workers that admit your peak load
 - 🎯 **SLO optimiser**: decode re-reads `bandwidth × interconnect × MBU / target tok/s` GB per card per token, so the speed target sizes the fleet. Recommendations propose the targets that fill the GPU you already chose, bounded by each use case's P95 promise and its workload class (a live voice path is never asked to read at 19 tok/s), priced by re-solving the whole project, and applied across use cases in one click with a single Undo
 - 🧾 **It tells you which promise is buying the hardware**: when a P95 target implies a higher per-user speed than the tok/s target does, lowering the speed target cannot shrink anything, and the tool says so and offers the P95 instead. When the cards look empty it itemises the order: cards held by the speed and P95 promises, by the first-token targets, by the admission and KV floor, by whole-node rounding, and by the resilience pattern
+- 🧠 **Prefix-cache aware**: tell it what share of the sequence is byte-identical every call (a system prompt, a tool schema, a few-shot block) and the engine prefills only the rest and holds the shared KV once per replica. When a project has a long resident context and no fraction set, the optimiser prices two levels and offers them as buttons, saying plainly that you should only accept them if your stack has prefix caching on
 - 🩺 **Fix-it buttons on the findings**: KV cache to FP8, weights to FP8, a reachable P95, reasoning off, N+1 redundancy, a tensor-parallel width, a batch cap - each one applies across the use cases in scope, re-solves, and offers one Undo
 - 🌓 **Polished**: light and dark themes, mobile friendly, installable, keyboard accessible
 - 🤖 **Claude skill**: download `gpuscale-link.skill` from the footer, hand it to Claude, and it turns plain-language requirements into a ready, verified share link (gpuscale.net + mirror)
@@ -78,7 +79,7 @@ flowchart LR
         W[Workload<br>context · concurrency · SLOs]
         H[Hardware<br>workers × GPUs · TP · resilience]
     end
-    E{{Engine v26<br>pure closed-form math}}
+    E{{Engine v27<br>pure closed-form math}}
     subgraph Outputs
         F[Memory fit verdict]
         K[TTFT · tok/s · latency]
@@ -104,11 +105,21 @@ export. Core relations:
 ```
 weights    = params x bytes/weight                     (per replica)
 KV/token   = 2 x layers x kvHeads_eff x headDim_eff x bytes/KV
+cached     = floor(resident x shared prefix fraction)  (prefilled once)
+unique     = seq - cached                              (per call)
+KV total   = calls x unique x KV/token + replicas x cached x KV/token
 VRAM total = replicas x (weights + activations) + KV total + 5 GB
              + replicas x (TP-1) x 15 GB   (NCCL, inside a replica only)
 TPS/user   = BW x TP x IC x MBU / (active x bytes + batch/replica x seq x KV/token)
-TTFT       = 2 x seq x active / (TFLOPS x TP x MFU)
+TTFT       = 2 x (resident - cached) x active / (TFLOPS x TP x MFU)
 ```
+
+The shared-prefix fraction is 0 unless you set it, so the default sizing charges
+a full prefill on every call. Set it and the engine prefills only the unique part
+and holds the shared block once per replica, which is what a server with
+automatic prefix caching does. Decode is deliberately not discounted: every call
+still re-reads its whole context on every token, so the fraction moves
+first-token time and KV memory and nothing else.
 
 All figures are peak estimates; production typically achieves 70 to 90 percent.
 Validate with vLLM bench or GenAI-Perf before committing hardware.

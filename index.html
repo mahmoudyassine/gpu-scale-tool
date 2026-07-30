@@ -101,6 +101,8 @@
       <div class="f-help" id="hCase">Presets fill resident sequence, reasoning mode, visible output and the three SLO targets with realistic values for the workload. Everything stays editable afterwards.</div>
     </div>
     <div id="m_inSeq"></div>
+    <div id="m_inCache"></div>
+    <div class="f-help" id="hCache" style="margin-top:-6px;margin-bottom:10px">Set this only if your serving stack has automatic prefix caching on. It cuts first-token time and KV memory for the shared part; it does not speed up decode.</div>
     <div id="m_inOut"></div>
     <div class="field adv">
       <div class="f-head"><label for="selReason">Reasoning mode</label><button class="info" data-help="hReason" aria-expanded="false" type="button">i</button></div>

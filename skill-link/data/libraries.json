@@ -3456,6 +3456,11 @@
    "max": 1048576,
    "default": 4096
   },
+  "sharedPrefixPct": {
+   "min": 0,
+   "max": 95,
+   "default": 0
+  },
   "visibleOut": {
    "min": 16,
    "max": 16384,
@@ -3514,8 +3519,8 @@
  },
  "versions": {
   "schema": "gpuscale.net/5",
-  "engine": 26,
-  "studio": "5.26.0"
+  "engine": 27,
+  "studio": "5.27.0"
  },
  "kv_policies": [
   "running",

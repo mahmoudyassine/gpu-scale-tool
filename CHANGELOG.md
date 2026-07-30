@@ -1,5 +1,96 @@
 # Changelog
 
+## Studio 5.27.0 (2026-07-30) · engine v27
+
+Prefix caching, the last gap the 2026 practice review left open. Until now the
+studio charged a full prefill on every call, which over-sized exactly the
+workloads whose first-token targets are hardest to meet: an agent loop re-sends
+2-5K tokens of tool schema verbatim every step, and step N+1's prompt is step
+N's prompt plus one observation. Every serious serving stack computes that
+prefix once (vLLM, SGLang and TensorRT-LLM all ship automatic prefix caching).
+
+### The model
+
+A per-use-case **Shared cached prefix** field (0-95%, default 0) says what share
+of the resident sequence is byte-identical every call:
+
+```
+cached   = floor(resident x fraction)      prefilled once, held once per replica
+unique   = max(0, effSeq - cached)         charged per call
+TTFT     = 2 x (resident - cached) x active / (TFLOPS x TP x MFU)
+KV total = calls x unique x KV/token + replicas x cached x KV/token
+```
+
+Three decisions kept it honest:
+
+- **Decode is not discounted.** Per-user tok/s still divides by the full
+  sequence. A cached prefix saves prefill FLOPs and one copy of the KV, but a
+  call still re-reads its whole context from HBM on every generated token unless
+  the kernel batches shared pages, which not every stack does. Decode bandwidth
+  is the number that sizes most fleets; being optimistic there is the expensive
+  kind of wrong.
+- **The shared block is per replica, not per fleet.** Each replica holds its own
+  copy. A pool with more replicas than concurrent calls saves less, correctly.
+- **Zero by default.** A hit rate is a fact about the serving stack, not about
+  the workload class. No preset ships one, no saved project moved, and at zero
+  the engine is byte-identical to v26 (verified over 9,000 comparisons across
+  three ways a pre-5.27 project can arrive without the field).
+
+The solver uses the same split: TTFT widening prices the prefill rather than the
+whole sequence, and the TP fit heuristic reserves the shared block before sizing
+per-call KV. Both XLSX builders mirror the chain (`cachedTok`, `uniqueSeq`,
+`kvShared`, `kvTotal`, `ttft`) as live formulas, and the CLI skill gains
+`--cache pct` plus the four derived fields in `--json`.
+
+### Offered, never assumed
+
+Where a pool carries 8K+ resident tokens with no fraction set, the optimiser
+prices 30% and 60% by re-solving the whole project and offers whichever actually
+deliver, each button labelled with what it buys: GPUs off the order, cards at
+the same order, or the first-token number it lands on. The quoted first token is
+rebuilt from the engine's own closed form at the TP the re-solve chose, and is
+suppressed entirely when that reconstruction cannot reproduce today's number.
+The recommendation says outright that it should only be accepted if the serving
+stack has prefix caching on and the prompts really do share that prefix.
+
+One recommendation per project, not one per pool: three pools with the same
+opportunity is one insight repeated, and each repeat evicted something the
+reader needed more.
+
+### Fixed along the way
+
+- **The optimiser's recommendation cap silently dropped an explanation.** The
+  list is capped, and the new class pushed "why the fleet is this size when the
+  cards sit at N%" off the end on both reference projects: the very section a
+  reader with a half-empty fleet needs. The cap is now 6, and the reference
+  projects are byte-identical to 5.26.0 on every line except the added entry.
+- **The shared prefix did not survive a save.** `serialize` and both importers
+  omitted it, so a saved project or a share link lost the setting. It is now
+  `config.sharedPrefixPct` at both levels, absent-means-zero on import, and the
+  share-link skill encodes and clamps it (0-95).
+- **The replica-trimming P95 guard rebuilt TTFT by hand** from the full resident
+  sequence, so it refused trims that were legal once the prefix was cached.
+- **`tools/build_skill.py` was not idempotent.** It appended the sliding-window
+  note to `skill/reference.md` on every build; twelve copies had accumulated by
+  5.26.0. Collapsed to one, and the generator now checks before inserting.
+- **The white paper's library counts were stale** (94 models / 38 accelerators,
+  actually 101 / 37).
+
+### Verified
+
+- Cache-free parity against the released v5.26.0 engine: 9,000 comparisons, 0
+  differences.
+- An independent Python reimplementation of v27, written from the documented
+  formulas: 2,500 states (1,836 with caching on), 75,000 field checks and six
+  invariants per state, 0 mismatches.
+- Solver optimality: 3,664 dedicated plans, 0 beatable by a cheaper feasible one.
+- Recommendation fuzz: 420 random projects, 140 fired the new class, 264 buttons
+  checked promise-against-delivery, 0 mismatches, 0 that would have cost more.
+- Reference projects f4 and NCSA: every line identical to 5.26.0 except the one
+  added recommendation. Apply, then Undo, restores the project exactly.
+- JSON, share-link and standalone-build round-trips; workbook chain with no bad
+  references; no horizontal overflow at 390 px.
+
 ## Studio 5.26.0 (2026-07-30) · library v33
 
 The 2026 practice review in [docs/PRACTICES.md](docs/PRACTICES.md), applied.

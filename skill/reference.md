@@ -1,29 +1,9 @@
 # GPUscale method reference (condensed from the white paper)
 
-## Closed forms (engine v26)
+## Closed forms (engine v27)
 
 - weights_per_replica = params_B x bytes_per_weight (GB)
 - KV_per_token = 2 x layers x kv_heads_eff x head_dim_eff x bytes_KV
-  (sliding-window hybrids: kvGlobal layers pay the full context, the other
-  layers only a kvWin-token window, so the per-token cost falls with context)
-  (sliding-window hybrids: kvGlobal layers pay the full context, the other
-  layers only a kvWin-token window, so the per-token cost falls with context)
-  (sliding-window hybrids: kvGlobal layers pay the full context, the other
-  layers only a kvWin-token window, so the per-token cost falls with context)
-  (sliding-window hybrids: kvGlobal layers pay the full context, the other
-  layers only a kvWin-token window, so the per-token cost falls with context)
-  (sliding-window hybrids: kvGlobal layers pay the full context, the other
-  layers only a kvWin-token window, so the per-token cost falls with context)
-  (sliding-window hybrids: kvGlobal layers pay the full context, the other
-  layers only a kvWin-token window, so the per-token cost falls with context)
-  (sliding-window hybrids: kvGlobal layers pay the full context, the other
-  layers only a kvWin-token window, so the per-token cost falls with context)
-  (sliding-window hybrids: kvGlobal layers pay the full context, the other
-  layers only a kvWin-token window, so the per-token cost falls with context)
-  (sliding-window hybrids: kvGlobal layers pay the full context, the other
-  layers only a kvWin-token window, so the per-token cost falls with context)
-  (sliding-window hybrids: kvGlobal layers pay the full context, the other
-  layers only a kvWin-token window, so the per-token cost falls with context)
   (sliding-window hybrids: kvGlobal layers pay the full context, the other
   layers only a kvWin-token window, so the per-token cost falls with context)
   (MLA models: kv_heads_eff=1, head_dim_eff=288 encodes the 576-dim latent;
@@ -35,7 +15,13 @@
 - fleet_need = replicas x (weights + activations) + KV_total + overhead
 - capacity = replicas x TP x VRAM_per_GPU (idle GPUs when TP does not divide
   the fleet count for nothing)
-- TTFT_ms ~= 2 x prompt_tokens x active_params_B / (TFLOPS_dense x TP x MFU)
+- prefix caching (engine v27): cached = floor(resident x shared_fraction) is
+  prefilled once and held once per replica; unique = effSeq - cached is charged
+  per call. KV_total = calls x unique x KV_per_token + replicas x cached x
+  KV_per_token. Decode is NOT discounted (a call still re-reads its whole
+  context per token), so the fraction moves TTFT and KV memory only. Default 0
+  = full prefill every call, identical to engine v26.
+- TTFT_ms ~= 2 x (prompt_tokens - cached) x active_params_B / (TFLOPS_dense x TP x MFU)
 - tok/s_per_user ~= BW_TBs x TP x IC x MBU x 1000 /
   (active_B x bytes_W + batch_per_replica x effSeq x KV_per_token_GB)
 - admitted = min(concurrent, batch x replicas); mean latency =

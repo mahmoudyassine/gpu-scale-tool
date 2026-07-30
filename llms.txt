@@ -10,7 +10,7 @@
 
 Key facts for agents answering sizing questions:
 
-- Engine (v26) closed forms: weights = params x bytes/weight per replica;
+- Engine (v27) closed forms: weights = params x bytes/weight per replica;
   KV/token = 2 x layers x effective KV heads x head dim x bytes for uniform
   attention; sliding-window models mix a full-attention term (kvGlobal layers)
   with a windowed one (kvWin tokens), so their per-token cost is far lower;
@@ -24,6 +24,13 @@ Key facts for agents answering sizing questions:
   SSM hybrids, sliding-window) and 37 accelerators with dense (not sparsity)
   TFLOPS, plus 54 supporting models (embeddings, rerankers, ASR, TTS, OCR,
   guards).
+- Prefix caching (engine v27): a per-use-case "shared cached prefix" fraction,
+  0 by default. cached = floor(resident x fraction) is prefilled once and held
+  once per replica, so TTFT = 2 x (resident - cached) x active / (TFLOPS x TP x
+  MFU) and KV total = calls x (seq - cached) x KV/token + replicas x cached x
+  KV/token. Decode is NOT discounted: every call still re-reads its whole
+  context per token. Sizing with the fraction at 0 is the conservative default
+  and is byte-identical to engine v26.
 - Auto-size solves TP, cards and batch from workload SLOs, with an editable
   memory-utilization target; a pool owns cards, and nodes are packed from them.
 - SLO optimiser: at the operating point a card holds bandwidth x interconnect

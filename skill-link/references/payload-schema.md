@@ -51,6 +51,11 @@ https://mahmoudyassine.github.io/gpuscale/#p=z:<fragment>
     "preset": "Internal GPT / Copilot",   // CASES name, or null for manual
     "residentSeq": 16384,
     "visibleOut": 800,
+    "sharedPrefixPct": 0,                 // 0-95. Share of residentSeq that is
+    //   byte-identical on every call, so a stack with automatic prefix caching
+    //   prefills it once and holds it once per replica. OMIT OR LEAVE 0 unless
+    //   the user states a measured hit rate: 0 sizes for a full prefill, which
+    //   is the conservative default and what every preset ships.
     "reasoning": {"mode": "None", "tokens": 0, "extendsKV": true},
     "concurrentCalls": 50,
     "maxBatchPerReplica": 15,
@@ -143,7 +148,8 @@ GPU partitions (MIG/fractional per the GPU's `part` capability).
 
 ## Field ranges (the app clamps inputs to these)
 
-residentSeq 128–1,048,576 · visibleOut 16–16,384 · reasoningTokens 0–32,768 ·
+residentSeq 128–1,048,576 · sharedPrefixPct 0–95 · visibleOut 16–16,384 ·
+reasoningTokens 0–32,768 ·
 concurrentCalls 1–10,000 · maxBatchPerReplica 1–512 · workers 1–64 ·
 gpusPerWorker 1–72 · tensorParallel 1–72 · prefillMFU 0.1–0.9 ·
 decodeMBU 0.2–0.95 · interconnectEff 0.4–1 · frameworkOverheadMs 0–200.

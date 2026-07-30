@@ -102,6 +102,7 @@ quant options are fixed in `app.js` (`KV_QUANTS`).
 | `ttftTarget` | First-token target in ms. `0` disables the check. |
 | `tpsTarget` | Per-user streaming speed target in tok/s. `0` disables. This is per user, never aggregate. |
 | `p95Target` | End-to-end P95 target in seconds. `0` disables. |
+| `cachePct` | Optional, 0-95. Share of `resident` that is byte-identical on every call, so a server with automatic prefix caching prefills it once and holds it once per replica. **Every shipped preset leaves this at 0** and sizes for a full prefill: a hit rate is a fact about the serving stack, not about the workload class. `check_presets.py` warns on any non-zero default. |
 | `policy` | `"all"` pins per-session KV for the whole session. Only for paths where an idle-turn eviction would break the latency budget. |
 | `supports` | Kind keys that auto-attach: `embed`, `rerank`, `asr`, `tts`, `ocr`, `guard`. |
 | `traffic` | Users-to-concurrency shape. See the `traffic` section below. |
@@ -217,7 +218,7 @@ video analytics, translation/localization, contact-center agent assist.
 
 ## Engine version history
 
-The current engine is **v26**. `ENGINE_VERSION` in `assets/app.js` and the
+The current engine is **v27**. `ENGINE_VERSION` in `assets/app.js` and the
 `engine` field in `data/models.js` meta must always agree with it.
 
 | Engine | Change |
@@ -226,6 +227,42 @@ The current engine is **v26**. `ENGINE_VERSION` in `assets/app.js` and the
 | v24 | `multiGb` input: per-extra-GPU overhead becomes a parameter (15 GB default, 1.4 for MIG slices). |
 | v25 | Sliding-window KV: `kvGlobal` / `kvWin` (+ `kvgHeads`, `kvgDim`, `kvgKeyOnly`, `kvLayers`) make the per-token cost exact at every context. |
 | v26 | Multi-GPU overhead moves from the pool to the replica: `replicas x (TP-1) x movh`. |
+| v27 | Prefix caching: `cachePct` splits the sequence into a shared prefix prefilled once and held once per replica, and a unique remainder charged per call. At `cachePct = 0` the engine is byte-identical to v26. |
+
+## Engine v27: prefix caching
+
+Every serious serving stack computes a repeated prefix once (vLLM, SGLang and
+TensorRT-LLM all ship automatic prefix caching), so charging a full prefill on
+every call over-sizes exactly the workloads whose first-token targets are
+hardest to meet. `cachePct` (state) / `inCache` (field, 0-95%) / `sharedPrefixPct`
+(JSON) says what share of `resident` is byte-identical every time:
+
+```
+cached     = floor(resident x clamp(cachePct, 0, 0.95))
+unique     = max(0, effSeq - cached)          effSeq = resident + reasoning (if it extends KV)
+prefill    = max(0, resident - cached)
+TTFT       = 2 x prefill x active / (TFLOPS x TP x MFU)
+KV total   = calls x unique x KV/token + replicas x cached x KV/token
+```
+
+Three properties are deliberate:
+
+- **Decode is not discounted.** `tps` still divides by the full `effSeq`. A
+  cached prefix saves the prefill FLOPs and one copy of the KV, but every call
+  still re-reads its whole context from HBM on every generated token unless the
+  kernel batches shared pages, which not every stack does. Discounting decode
+  would make the tool optimistic about the number that sizes the fleet.
+- **The shared block is per replica, not per fleet.** Each replica holds its own
+  copy, hence `replicas x cached x KV/token`. A pool with more replicas than
+  concurrent calls therefore saves less, which is correct.
+- **The default is 0.** Nothing assumes a hit rate. The SLO optimiser offers
+  30% and 60% as priced buttons and states that the user should only accept them
+  if their stack has prefix caching enabled.
+
+The solver uses the same split: TTFT widening prices `prefill`, not `resident`,
+and the TP fit heuristic reserves `floor(resident x cachePct) x KV/token` for the
+shared block before sizing the per-call KV. Both XLSX builders mirror the chain
+(`cachedTok`, `uniqueSeq`, `kvShared`, `kvTotal`, `ttft`) as live formulas.
 
 ## Engine v26: multi-GPU overhead
 
@@ -241,8 +278,8 @@ builders mirror the formula from the `movh` input row.
 An exact per-pool GPU count is an auto-size OUTPUT, valid only for the inputs it
 was solved against, so it is stamped: `cardsKey(u, hw)` hashes the model (or the
 custom geometry), both quantizations, the GPU, GPUs per worker, TP, KV policy,
-KV extension, concurrency, resident, output and reasoning tokens, all three SLO
-targets, and the auto-size memory target. `ucState` uses `u.cards` only while
+KV extension, concurrency, resident, the shared cached prefix, output and
+reasoning tokens, all three SLO targets, and the auto-size memory target. `ucState` uses `u.cards` only while
 that stamp matches; anything else returns the pool to whole-node sizing rather
 than quietly keeping an allocation that no longer fits.
 

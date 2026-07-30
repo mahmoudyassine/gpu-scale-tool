@@ -49,6 +49,13 @@ for c in cases:
             fail.append(f'{n}: {field} is negative ({v})')
     if c['resident'] + rt > 1048576:
         fail.append(f'{n}: resident + reasoning exceeds the largest context in the library')
+    # a hit rate is a fact about the serving stack, not about the workload class
+    cache = c.get('cachePct', 0)
+    if not isinstance(cache, (int, float)) or cache < 0 or cache > 95:
+        fail.append(f'{n}: cachePct {cache!r} is outside 0-95 (the engine clamps at 95)')
+    elif cache > 0:
+        warn.append(f'{n}: ships a {cache}% shared-prefix default, so it sizes for '
+                    'prefix caching being enabled; every stock preset leaves this at 0')
     for k in c.get('supports', []):
         if k not in {'embed', 'rerank', 'asr', 'tts', 'ocr', 'guard'}:
             fail.append(f'{n}: unknown support kind "{k}"')

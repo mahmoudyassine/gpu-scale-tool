@@ -51,7 +51,8 @@ studio = re.search(r"STUDIO_VERSION = '([^']+)'", APP).group(1)
 engine = int(re.search(r"ENGINE_VERSION = (\d+)", APP).group(1))
 
 FIELD_MAP = {  # friendly spec key -> FIELDS id
-    'residentSeq': 'inSeq', 'visibleOut': 'inOut', 'reasoningTokens': 'inReasonTok',
+    'residentSeq': 'inSeq', 'sharedPrefixPct': 'inCache',
+    'visibleOut': 'inOut', 'reasoningTokens': 'inReasonTok',
     'concurrentCalls': 'inConc', 'maxBatchPerReplica': 'inBatch', 'workers': 'inWorkers',
     'gpusPerWorker': 'inPerW', 'tensorParallel': 'inTp', 'prefillMFU': 'inMfu',
     'decodeMBU': 'inMbu', 'interconnectEff': 'inIc', 'frameworkOverheadMs': 'inOvh',

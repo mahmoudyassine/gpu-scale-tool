@@ -96,6 +96,7 @@ function makeState(o){
     kvgKeyOnly:m.kvgKeyOnly, kvLayers:m.kvLayers,
     bytesW:o.wq.bytes, bytesK:o.kq.bytes,
     resident:o.resident, visibleOut:o.visibleOut, reasonTok:o.reasonTok, extend:o.extend!==false,
+    cachePct:o.cachePct??0,
     concurrent:o.concurrent, batch:o.batch, policy:o.policy||'running',
     workers:o.workers, perW:o.perW, gpus:o.gpus??(o.workers*o.perW), tp:Math.min(o.tp, o.gpus??(o.workers*o.perW)),
     gpuVram:g.vram, gpuBw:g.bw, gpuTflops:g.tflops,
@@ -138,10 +139,13 @@ function report(s,d,resil,sol){
     fits:d.fits, utilizationPct:+(d.total/d.avail*100).toFixed(1),
     memory:{ totalGB:+d.total.toFixed(1), availGB:d.avail, weightsPerReplicaGB:+d.weights.toFixed(1),
       weightsAllGB:+d.weightsAll.toFixed(1), kvTotalGB:+d.kvTotal.toFixed(1), replicas:d.replicas,
-      kvPerTokenKB:+(d.kvTok*1e6).toFixed(2), headroomGB:+d.headroom.toFixed(1) },
+      kvPerTokenKB:+(d.kvTok*1e6).toFixed(2), headroomGB:+d.headroom.toFixed(1),
+      sharedPrefixPct:+(Math.min(0.95,Math.max(0,s.cachePct||0))*100).toFixed(0),
+      cachedPrefixTok:d.cachedTok, uniqueSeqTok:d.uniqueSeq,
+      kvSharedPerReplicaGB:+d.kvShared.toFixed(2) },
     fleet:{ servingCards:d.servingGpus, nodes:servW, gpusPerNode:s.perW, tp:s.tp,
       batchPerReplica:s.batch, admitted:d.active, queued:d.queued },
-    performance:{ ttftMs:+d.ttft.toFixed(1), perUserTps:+d.tps.toFixed(1), aggregateTps:+d.agg.toFixed(0),
+    performance:{ ttftMs:+d.ttft.toFixed(1), prefilledTok:d.prefillTok, perUserTps:+d.tps.toFixed(1), aggregateTps:+d.agg.toFixed(0),
       meanLatencyS:+d.latency.toFixed(2), p95S:+d.p95.toFixed(2) },
     slo:{ ttft:s.sloTtft? (d.slo.ttft.pass?'PASS':'FAIL'):'off', tps:s.sloTps? (d.slo.tps.pass?'PASS':'FAIL'):'off',
       p95:s.sloP95? (d.slo.p95.pass?'PASS':'FAIL'):'off' },
@@ -168,7 +172,7 @@ Usage:
   sizing.mjs --model "DeepSeek-V3" --gpu B300 --quant FP8 [--kv FP8]
              (--workload "Internal GPT" | --resident 16384 --out 800 --reasoning 0)
              --concurrent 377 [--auto [--target 80] | --workers 3 --tp 4 --batch 63]
-             [--ttft ms --tps tokps --p95 s] [--policy running|all]
+             [--ttft ms --tps tokps --p95 s] [--policy running|all] [--cache pct]
              [--perw 8] [--resilience n|n1|n2|nn|dr|drh|aa|aas|aas1|aass|aan1|nndr] [--json]
   sizing.mjs --list-models | --list-gpus | --list-workloads`);
   process.exit(0);
@@ -181,13 +185,13 @@ if(!gpu){ console.error('Unknown GPU. Try --list-gpus'); process.exit(1); }
 const wq=QUANTS.find(q=>q.name.toLowerCase()===String(args.quant||'FP8').toLowerCase())||QUANTS.find(q=>q.name==='FP8');
 const kq=KV_QUANTS.find(q=>q.name.toLowerCase()===String(args.kv||'FP8').toLowerCase())||KV_QUANTS.find(q=>q.name==='FP8');
 
-let wl={resident:4096, visibleOut:400, reasonTok:0, sloTtft:0, sloTps:0, sloP95:0, policy:'running'};
+let wl={resident:4096, visibleOut:400, reasonTok:0, sloTtft:0, sloTps:0, sloP95:0, policy:'running', cachePct:0};
 if(args.workload){
   const c=CASES.find(x=>x.name.toLowerCase().includes(String(args.workload).toLowerCase()));
   if(c) wl={resident:c.resident||4096, visibleOut:c.visibleOut||400,
             reasonTok:c.reasonTok!=null? c.reasonTok : (REASON_TOK[c.reasoning]||0),
             sloTtft:c.ttftTarget||0, sloTps:c.tpsTarget||0, sloP95:c.p95Target||0,
-            policy:c.policy==='all'?'all':'running'};
+            policy:c.policy==='all'?'all':'running', cachePct:(c.cachePct||0)/100};
 }
 if(args.resident) wl.resident=+args.resident;
 if(args.out) wl.visibleOut=+args.out;
@@ -196,6 +200,10 @@ if(args.ttft) wl.sloTtft=+args.ttft;
 if(args.tps) wl.sloTps=+args.tps;
 if(args.p95) wl.sloP95=+args.p95;
 if(args.policy) wl.policy=String(args.policy)==='all'?'all':'running';
+// share of the resident sequence that is byte-identical on every call and so is
+// prefilled once and held once per replica. Default 0: size for a full prefill
+// unless the caller states a measured hit rate.
+if(args.cache!=null&&args.cache!==true) wl.cachePct=Math.min(0.95,Math.max(0,+args.cache/100||0));
 
 const base={ model, gpu, wq, kq, ...wl, concurrent:+(args.concurrent||64), perW:+(args.perw||8), extend:true };
 
@@ -266,10 +274,13 @@ open(skill_md, 'w', encoding='utf-8').write(sm)
 ref_md = os.path.join(ROOT, 'skill', 'reference.md')
 rm = open(ref_md, encoding='utf-8').read()
 rm = re.sub(r'## Closed forms \(engine v\d+\)', '## Closed forms (engine v%d)' % engine, rm)
-rm = rm.replace('- KV_per_token = 2 x layers x kv_heads_eff x head_dim_eff x bytes_KV',
-    '- KV_per_token = 2 x layers x kv_heads_eff x head_dim_eff x bytes_KV\n'
-    '  (sliding-window hybrids: kvGlobal layers pay the full context, the other\n'
-    '  layers only a kvWin-token window, so the per-token cost falls with context)')
+# idempotent: this ran unconditionally on every build and stacked one more copy
+# of the note each release (twelve of them by 5.26.0)
+_kv = '- KV_per_token = 2 x layers x kv_heads_eff x head_dim_eff x bytes_KV'
+_note = ('  (sliding-window hybrids: kvGlobal layers pay the full context, the other\n'
+         '  layers only a kvWin-token window, so the per-token cost falls with context)')
+if _note not in rm:
+    rm = rm.replace(_kv, _kv + '\n' + _note)
 rm = re.sub(r'MFU 0\.\d+, MBU 0\.\d+', 'MFU %s, MBU %s' % (defaults['mfu'], defaults['mbu']), rm)
 open(ref_md, 'w', encoding='utf-8').write(rm)
 

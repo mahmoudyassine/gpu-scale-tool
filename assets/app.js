@@ -7,7 +7,7 @@ if(!MODELS.length || !GPUS.length || !QUANTS.length || !CASES.length){
   document.body.innerHTML = '<div style="font-family:system-ui,sans-serif;max-width:560px;margin:80px auto;padding:0 20px;line-height:1.65;color:#1A2536"><h2 style="margin-bottom:10px">Data files not loaded</h2><p>GPUscale.net could not find its library. Keep <code>index.html</code> together with the <code>data/</code> and <code>assets/</code> folders: the four files <code>data/models.js</code>, <code>data/gpus.js</code>, <code>data/quants.js</code> and <code>data/usecases.js</code> must sit next to this page.</p><p>If you need one portable file instead, use <code>dist/gpuscale_standalone.html</code> or rebuild it with <code>python3 tools/build_single_file.py</code>.</p></div>';
   throw new Error('GPUscale.net data missing');
 }
-const STUDIO_VERSION = '5.26.0', ENGINE_VERSION = 26;
+const STUDIO_VERSION = '5.27.0', ENGINE_VERSION = 27;
 function newProjId(){ const L='abcdefghjkmnpqrstuvwxyz', D='0123456789';
   const pick=s=>s[Math.floor(Math.random()*s.length)];
   return 'Project_'+pick(L)+pick(L)+pick(D)+pick(D)+pick(D); }
@@ -47,7 +47,7 @@ const RESIL = {
 };
 Object.values(RESIL).forEach(r=>{ r.extraW = n => r.mult(n)+r.add; });
 
-/* ================= ENGINE (pure · v26: per-replica weight/activation accounting, sliding-window KV, multiGb) ================= */
+/* ================= ENGINE (pure · v27: per-replica weight/activation accounting, sliding-window KV, multiGb) ================= */
 /*ENGINE-START*/
 function compute(s){
   const bw = s.bytesW, bk = s.bytesK;
@@ -68,7 +68,23 @@ function compute(s){
   const replicas = Math.max(1, Math.floor(s.gpus / Math.max(s.tp,1)));
   const active = s.policy === 'all' ? s.concurrent
                : Math.min(s.concurrent, s.batch * replicas);
-  const kvTotal = active * effSeq * kvTok;
+  /* Prefix caching. `cachePct` is the share of the RESIDENT sequence that is
+     byte-identical across concurrent requests: a system prompt, a tool schema,
+     a few-shot block. A server with automatic prefix caching computes those
+     blocks once and reuses them, which has two separate consequences, and the
+     model must keep them separate:
+       prefill  only the uncached remainder is prefilled, so TTFT scales down
+       memory   the shared blocks are stored ONCE per replica, not once per
+                admitted request
+     Decode is deliberately NOT discounted: every request still attends over its
+     whole context each step, so the per-step read stays effSeq. Shared-prefix
+     (cascade) attention kernels can beat that; treating it as free here would
+     make the estimate optimistic, and this tool errs the other way. */
+  const cacheFrac = Math.min(0.95, Math.max(0, s.cachePct || 0));
+  const cachedTok = Math.floor(s.resident * cacheFrac);
+  const uniqueSeq = Math.max(0, effSeq - cachedTok);
+  const kvShared = cachedTok * kvTok;
+  const kvTotal = active * uniqueSeq * kvTok + replicas * kvShared;
   const act = Math.min(effSeq, 8192) * s.hidden * 12 * bw / 1e9;
   /* NCCL buffers live in a communicator, and a communicator is one tensor-parallel
      replica. Charging (poolGPUs - 1) billed independent replicas for talking to
@@ -82,14 +98,16 @@ function compute(s){
   const batchPerRep = Math.max(1, active / replicas);
   const tps = bwEff / (s.active * bw + batchPerRep * effSeq * kvTok);
   const agg = tps * active;
-  const ttft = 2 * s.resident * s.active / (s.gpuTflops * s.tp * s.mfu);
+  const prefillTok = Math.max(0, s.resident - cachedTok);
+  const ttft = 2 * prefillTok * s.active / (s.gpuTflops * s.tp * s.mfu);
   const itl = 1000 / tps;
   const genTok = s.reasonTok + s.visibleOut;
   const latency = (ttft + s.ovh) / 1000 + genTok / tps;
   const p95 = latency * 1.3;
-  const maxBatchMem = Math.max(0, Math.floor((avail - weightsAll - actAll - fixed - multi) / (effSeq * kvTok) / replicas)) || 0;
-  const kvDelta = effSeq * kvTok;
-  const allActiveVram = weightsAll + s.concurrent * effSeq * kvTok + actAll + fixed + multi;
+  // one more admitted call costs only its UNIQUE tokens once the prefix is shared
+  const maxBatchMem = Math.max(0, Math.floor((avail - weightsAll - actAll - fixed - multi - replicas*kvShared) / (uniqueSeq * kvTok || 1e-9) / replicas)) || 0;
+  const kvDelta = uniqueSeq * kvTok;
+  const allActiveVram = weightsAll + s.concurrent * uniqueSeq * kvTok + replicas * kvShared + actAll + fixed + multi;
   const queued = Math.max(0, s.concurrent - active);
   const fits = total <= avail;
   const slo = {
@@ -98,7 +116,8 @@ function compute(s){
     p95:  s.sloP95  > 0 ? {on:true, pass: p95  <= s.sloP95 } : {on:false, pass:true},
   };
   const sloAll = slo.ttft.pass && slo.tps.pass && slo.p95.pass;
-  return {weights,weightsAll,kvTok,effSeq,replicas,active,kvTotal,act,actAll,fixed,multi,total,avail,
+  return {weights,weightsAll,kvTok,effSeq,uniqueSeq,cachedTok,kvShared,prefillTok,
+          replicas,active,kvTotal,act,actAll,fixed,multi,total,avail,
           servingGpus,idleGpus,bwEff,batchPerRep,tps,agg,ttft,itl,latency,p95,genTok,maxBatchMem,kvDelta,
           allActiveVram,queued,fits,slo,sloAll,headroom:avail-total};
 }
@@ -162,6 +181,10 @@ const FIELDS = {
     band:[2048,65536],marks:[[4096,'4K'],[32768,'32K'],[262144,'256K']],disp:fmtTok,
     help:'Prompt + retained history + tool traces + expected output actually held per request, not the model\'s max context. Drives KV size and prefill time.',
     typ:'Chat 4–8K · RAG 16–64K · long-doc 64–128K · agents 32–256K'},
+  inCache:{mount:'m_inCache',label:'Shared cached prefix',unit:'% of resident',scale:'lin',min:0,max:95,snap:5,val:0,
+    band:[20,80],marks:[[0,'off'],[50,'50%'],[90,'90%']],disp:x=>x+'%',
+    help:'How much of the resident sequence is byte-identical on every request: a system prompt, a tool schema, a few-shot block. With automatic prefix caching (vLLM, SGLang, TensorRT-LLM) those blocks are prefilled once and stored once per replica, so this cuts first-token time and KV memory. It does NOT speed up decode here: every request still reads its whole context each step. Leave at 0 if your server has prefix caching off, or if each request is genuinely unique.',
+    typ:'Agent loops 40–80% (tool schemas repeat) · RAG 10–30% · unique documents 0%'},
   inOut:{mount:'m_inOut',label:'Visible output',unit:'tokens',scale:'log',min:16,max:16384,snap:8,val:200,
     band:[200,3000],marks:[[200,'200'],[2500,'2.5K']],disp:fmtTok,
     help:'Tokens the user actually sees per response. Together with reasoning tokens it sets decode time and perceived latency.',
@@ -311,6 +334,7 @@ function readState(){
     kvGlobal:m.kvGlobal, kvWin:m.kvWin, kvgHeads:m.kvgHeads, kvgDim:m.kvgDim, kvgKeyOnly:m.kvgKeyOnly, kvLayers:m.kvLayers,
     bytesW:wq.bytes, bytesK:kq.bytes,
     resident:Math.round(fv('inSeq')),
+    cachePct:fv('inCache')/100,
     visibleOut:Math.round(fv('inOut')),
     reasonMode:$('selReason').value,
     reasonTok:Math.round(fv('inReasonTok')),
@@ -522,6 +546,7 @@ function prjSolveSig(prj){
   return prj.pools.map(p=>[p.state.model.name,geo(p.state),p.state.wq.name,p.state.kq.name,
       Math.round(p.state.concurrent),Math.round(p.state.resident),Math.round(p.state.visibleOut),
       Math.round(p.state.reasonTok),p.state.extend?1:0,p.state.policy,
+      Math.round((p.state.cachePct||0)*100),
       p.state.tp,p.state.gpus,p.sliced? p.sliced.units:0,
       p.members.map(i=>[UC[i].f.selCase,UC[i].f.sloTtft,UC[i].f.sloTps,UC[i].f.sloP95,
         UC[i].f.chkExtend?1:0,(UC[i].supports||[]).map(sp=>sp.kind+':'+sp.model).join('+')].join(',')).join(';')].join('/')).join('|')
@@ -586,11 +611,18 @@ function sloTpsFloor(uc){
 function sloOverride(p, over){
   const ms=(p.state.members&&p.state.members.length? p.state.members : [{name:null,
     conc:p.state.concurrent, resident:p.state.resident, visibleOut:p.state.visibleOut,
-    reasonTok:p.state.reasonTok, extend:p.state.extend,
+    reasonTok:p.state.reasonTok, extend:p.state.extend, cachePct:p.state.cachePct||0,
     sloTtft:p.state.sloTtft, sloTps:p.state.sloTps, sloP95:p.state.sloP95}])
-    .map((m,k)=>{ const o=over[p.members[k]]; return o? Object.assign({}, m, o) : m; });
+    .map((m,k)=>{ const o=over[p.members[k]];
+      if(!o) return m;
+      const mm=Object.assign({}, m, o);
+      // the override speaks in UI field ids; the engine wants a fraction
+      if(o.inCache!=null) mm.cachePct=Math.min(0.95, Math.max(0, (+o.inCache||0)/100));
+      return mm; });
   const nz=v=>{ const n=v.filter(x=>x>0); return n.length? Math.min.apply(null,n) : 0; };
+  const conc=ms.reduce((t,m)=>t+(+m.conc||0),0)||1;
   return {members:ms,
+    cachePct:ms.reduce((t,m)=>t+(m.cachePct||0)*(+m.conc||0),0)/conc,
     sloTps:Math.max.apply(null, ms.map(m=>+m.sloTps||0).concat([0])),
     sloTtft:nz(ms.map(m=>+m.sloTtft||0)),
     sloP95:nz(ms.map(m=>+m.sloP95||0))};
@@ -853,6 +885,81 @@ function sloOptBuild(prj){
             : `First-token target applied: ${cards(base.cards)} → ${cards(pr.cards)}, same ${base.procG}-GPU order`, true)]});
     }catch(e){}
   });
+  /* ---- 2b. prefix caching. Every serious serving stack computes a repeated
+     prefix once (vLLM, SGLang and TensorRT-LLM all ship it), but the studio
+     charges a full prefill on every call until the user says how much of the
+     sequence actually repeats. Offer it where it would pay, price it honestly,
+     and never assume a hit rate on the user's behalf. ---- */
+  const cacheCands=[];
+  prj.pools.forEach((p,pi)=>{
+    try{
+      if((p.state.cachePct||0)>0.001) return;               // already modelled
+      if(p.perUc.some(x=>(x.s.cachePct||0)>0.001)) return;
+      // below 8K a shared prefix is a rounding error; the noise is not worth it
+      if(!(p.state.resident>=8192)) return;
+      const mk=pct=>{ const o={}; p.perUc.forEach(x=>{ o[x.i]={inCache:pct}; }); return o; };
+      /* Rebuild TTFT from the engine's own closed form so the quoted first token
+         is the one the page will show, not a hand-waved percentage. If the
+         reconstruction cannot reproduce today's number (a sliced pool re-solves
+         onto different silicon), quote nothing rather than something plausible. */
+      const solveAt=ov=>{ try{ return solvePool(poolSolveState(p, hw, sloOverride(p, ov))); }catch(e){ return null; } };
+      const ttftOf=(x,tp,f)=>2*(x.s.resident-Math.floor(x.s.resident*f))*x.s.active
+        /(x.s.gpuTflops*Math.max(1,tp)*x.s.mfu);
+      const exact=x=>Math.abs(ttftOf(x, x.s.tp, x.s.cachePct||0)-x.d.ttft) <= 0.02*Math.max(1,x.d.ttft);
+      const level=pct=>{ const ov=mk(pct), pr=sloPrice(prj, ov), r=solveAt(ov);
+        if(!pr) return null;
+        if(pr.cards>base.cards+0.01) return null;            // it would cost more
+        if(pr.stuck&&!base.stuck) return null;               // it would break a promise
+        const tp=(r&&r.ok&&r.mode==='dedicated'&&!p.sliced)? r.tp : 0;
+        return {pct, ov, pr, tp,
+          saves: pr.cards<base.cards-0.01 || pr.procG<base.procG,
+          ttft: tp? x=>(exact(x)? ttftOf(x, tp, pct/100) : null) : ()=>null};
+      };
+      const lv=[level(30), level(60)].filter(Boolean);
+      if(!lv.length) return;
+      /* Two ways this is worth saying. Either it buys hardware back, or it buys
+         headroom on the first-token promise that is closest to breaking - which
+         is the promise that widens TP and buys the hardware in the first place. */
+      const tight=p.perUc.filter(x=>+x.s.sloTtft>0)
+        .sort((a,b)=>b.d.ttft/b.s.sloTtft - a.d.ttft/a.s.sloTtft)[0];
+      const pressure=tight? tight.d.ttft/tight.s.sloTtft : 0;
+      if(!lv.some(q=>q.saves) && pressure<0.5) return;
+      const best=lv.filter(q=>q.saves).sort((a,b)=>a.pr.cards-b.pr.cards)[0] || lv[lv.length-1];
+      cacheCands.push({p, pi, lv, best, tight, pressure,
+        gain: base.cards-Math.min.apply(null, lv.map(q=>q.pr.cards))});
+    }catch(e){}
+  });
+  /* One per project, not one per pool. Three pools with the same shared-prefix
+     opportunity is one insight repeated, and the recommendation list is capped:
+     each repeat evicted something the reader needed more, including the section
+     below that explains the whole order. */
+  if(cacheCands.length){
+    const c=cacheCands.sort((a,b)=>(b.gain-a.gain) || (b.pressure-a.pressure))[0];
+    const {p, pi, lv, best, tight}=c;
+    const ms=v=>`${num(Math.round(v))} ms`;
+    const gain=q=>q.pr.procG<base.procG? `${num(q.pr.procG)} GPUs`
+      : q.saves? `${cards(q.pr.cards)}, same order`
+      : (tight && q.ttft(tight)!=null)? `first token ${ms(q.ttft(tight))}` : 'headroom, same order';
+    const done=q=>q.pr.procG<base.procG
+      ? `Shared prefix set to ${q.pct}%: ${base.procG} → ${q.pr.procG} GPUs procured`
+      : q.saves? `Shared prefix set to ${q.pct}%: ${cards(base.cards)} → ${cards(q.pr.cards)}, same ${base.procG}-GPU order`
+      : `Shared prefix set to ${q.pct}%: same fleet, first-token headroom on the tightest target`;
+    const acts=lv.map(q=>applyBtn(`Assume ${q.pct}% shared → ${gain(q)}`, q.ov, done(q), q===best));
+    const shown=lv[lv.length-1];
+    const ttftLine=(tight && shown.ttft(tight)!=null)
+      ? `At ${shown.pct}% shared, <b>${esc(ucName(tight.uc))}</b>'s first token lands near ${ms(shown.ttft(tight))} against its ${ms(tight.s.sloTtft)} target, instead of ${ms(tight.d.ttft)} today. `
+      : '';
+    const others=cacheCands.length-1;
+    out.push({lv:'ok', t:`${label(pi)}A repeated prefix is being prefilled on every call`,
+      b:`This pool carries ${fmtTok(p.state.resident)} resident tokens per request and the studio charges a full prefill for every one of them, every call. `
+        +`Whatever part of that is byte-identical each time (a system prompt, a tool schema, a few-shot block, a retrieved corpus header) is prefilled once and held once per replica by any server with automatic prefix caching: vLLM, SGLang and TensorRT-LLM all ship it. `
+        +ttftLine
+        +`Decode is deliberately not discounted here: every call still re-reads its whole context on every token, so this moves first-token time and KV memory and nothing else.`
+        +outcome(best.pr)
+        +(others>0? `<br>${others} other pool${others>1?'s have':' has'} the same opportunity; the buttons below set this pool, and the same field sits in each use case's Workload station.` : '')
+        +`<br><i>Set this only if your serving stack has prefix caching enabled and your prompts really do share that prefix. Measure the hit rate before you buy against it.</i>`,
+      acts});
+  }
   /* ---- 3. why the fleet is this size, when the cards look empty and nothing
      above had a saving to offer. A half-empty fleet with no explanation reads
      as a bug; the same sloPrice attribution that prices the suggestions can
@@ -908,7 +1015,10 @@ function sloOptBuild(prj){
       }
     }
   }catch(e){}
-  return out.slice(0,5);
+  /* Six, not five: the prefix-cache class was added after this cap and its one
+     entry silently evicted "why the fleet is this size" on both reference
+     projects - the very explanation a reader with a half-empty fleet needs. */
+  return out.slice(0,6);
 }
 /* Bind a recommendation's abstract actions to concrete use cases. Manual-lever
    actions are only offered where the solver will not immediately overwrite them:
@@ -1046,7 +1156,7 @@ function buildRecs(s,d,m,g,prelaunch){
           .concat(s.reasonTok>0? [{label:'Turn reasoning off', fields:{selReason:'None'}, kind:'safe'}] : [])); }
     else {
       const tpsNeeded=d.genTok/(s.sloP95/1.3-(d.ttft+s.ovh)/1000);
-      const bNeeded=Math.max(1,Math.floor((d.bwEff/tpsNeeded-s.active*s.bytesW)/(d.effSeq*d.kvTok)));
+      const bNeeded=Math.max(1,Math.floor((d.bwEff/tpsNeeded-s.active*s.bytesW)/(d.effSeq*d.kvTok)));  // speed term: full context
       push('warn','P95 latency misses its target',`P95 is ${fmt(d.p95)} s against ${fmt(s.sloP95)} s. Reaching ≈${fmt(tpsNeeded)} tok/s per user would meet it: lower max batch per replica to ≈${bNeeded} (fewer calls admitted per copy), or add speculative decoding (1.5 to 3x decode speed).`,
         s.policy==='all'? [] : [{label:`Cap batch at ${bNeeded}`, fields:{inBatch:bNeeded}, kind:'lever'}]);
     }
@@ -1324,7 +1434,12 @@ function applyCase(i){
   if(c.reasonTok){ $('selReason').value='Custom'; syncReason(); $('inReasonTok').value=c.reasonTok; refreshCtl('inReasonTok'); }
   $('selPolicy').value = c.policy==='all' ? 'all' : 'running';
   $('sloTtft').value=c.ttftTarget; $('sloTps').value=c.tpsTarget; $('sloP95').value=c.p95Target;
-  refreshCtl('inSeq'); refreshCtl('inOut');
+  /* Prefix caching is a property of the SERVING STACK, not of the workload class,
+     so every shipped preset leaves this at 0 and sizes for a full prefill. The
+     schema carries the field so a house preset can state a measured hit rate,
+     and the optimiser offers it with a priced button rather than assuming it. */
+  $('inCache').value=Math.min(95, Math.max(0, +c.cachePct||0));
+  refreshCtl('inSeq'); refreshCtl('inOut'); refreshCtl('inCache');
   if(UC[activeUc]) applyNrmUsers();
 }
 function syncReason(){
@@ -1339,7 +1454,7 @@ function syncReason(){
    captureUc pulls the editor DOM into the active use case; loadUc pushes a card
    back into the editor. Hardware, resilience and tuning stay project-global. */
 const UC_KEYS=['chkCustom','selModel','cusParams','cusActive','cusHidden','cusLayers','cusKvh','cusHdim','cusCtx',
-  'selWQuant','selKQuant','selCase','inSeq','inOut','selReason','inReasonTok','chkExtend',
+  'selWQuant','selKQuant','selCase','inSeq','inCache','inOut','selReason','inReasonTok','chkExtend',
   'inConc','inBatch','selPolicy','sloTtft','sloTps','sloP95',
   'ccSessions','ccTurns','ccShare','ccCalls','ccBurst','ccDur','inWorkers','inTp','nrmUsers'];
 const UC_CHECKS={chkCustom:1,chkExtend:1};
@@ -1471,7 +1586,7 @@ function ucToConfig(u){ const f=u.f;
       : {custom:false, name:((MODELS[+f.selModel||0]||{}).name||'')},
     weightQuant:wq.name, kvQuant:kq.name,
     preset: ci>=0&&CASES[ci]? CASES[ci].name : null,
-    residentSeq:+f.inSeq, visibleOut:+f.inOut,
+    residentSeq:+f.inSeq, visibleOut:+f.inOut, sharedPrefixPct:+f.inCache||0,
     reasoning:{mode:f.selReason, tokens:+f.inReasonTok, extendsKV:!!f.chkExtend},
     concurrentCalls:+f.inConc, maxBatchPerReplica:+f.inBatch, kvPolicy:f.selPolicy,
     hardware:{workers:+f.inWorkers, tensorParallel:+f.inTp},
@@ -1543,7 +1658,7 @@ function cardsKey(u, hw){ const f=u.f||{};
   return [f.chkCustom? 'C'+[f.cusParams,f.cusActive,f.cusHidden,f.cusLayers,f.cusKvh,f.cusHdim,f.cusCtx].join('.') : 'M'+f.selModel,
     f.selWQuant, f.selKQuant, hw.g.name, hw.perW, f.inTp, f.selPolicy, f.chkExtend?1:0,
     Math.round(uv(f,'inConc')), Math.round(uv(f,'inSeq')), Math.round(uv(f,'inOut')),
-    Math.round(uv(f,'inReasonTok')), f.sloTtft, f.sloTps, f.sloP95,
+    Math.round(uv(f,'inReasonTok')), Math.round(uv(f,'inCache')), f.sloTtft, f.sloTps, f.sloP95,
     (($('autoUtil')&&$('autoUtil').value)||80)].join('|'); }
 function ucState(u, hw){
   hw=hw||readHw(); const f=u.f;
@@ -1564,7 +1679,7 @@ function ucState(u, hw){
     kvHeads:m.kvHeads, headDim:m.headDim, ctx:m.ctx,
     kvGlobal:m.kvGlobal, kvWin:m.kvWin, kvgHeads:m.kvgHeads, kvgDim:m.kvgDim, kvgKeyOnly:m.kvgKeyOnly, kvLayers:m.kvLayers,
     bytesW:wq.bytes, bytesK:kq.bytes,
-    resident:Math.round(uv(f,'inSeq')), visibleOut:Math.round(uv(f,'inOut')),
+    resident:Math.round(uv(f,'inSeq')), cachePct:uv(f,'inCache')/100, visibleOut:Math.round(uv(f,'inOut')),
     reasonMode:f.selReason||'None', reasonTok:Math.round(uv(f,'inReasonTok')),
     extend:!!f.chkExtend,
     concurrent:Math.round(uv(f,'inConc')), batch:Math.round(uv(f,'inBatch')),
@@ -1592,6 +1707,7 @@ function poolState(pool, hw){
     gpus, tp:Math.min(base.tp, gpus),
     concurrent:conc,
     resident:Math.round(wavg(s=>s.resident)),
+    cachePct:wavg(s=>s.cachePct||0),
     visibleOut:Math.round(wavg(s=>s.visibleOut)),
     reasonTok:Math.round(wavg(s=>s.extend||s.reasonTok>0? s.reasonTok:0)),
     extend:states.some(s=>s.extend&&s.reasonTok>0),
@@ -1605,6 +1721,7 @@ function poolState(pool, hw){
     // gets priced against another member's long context or thinking budget.
     members: pool.members.map((idx,k)=>{ const s2=states[k];
       return {name:ucName(UC[idx]), conc:s2.concurrent, resident:s2.resident,
+        cachePct:s2.cachePct||0,
         visibleOut:s2.visibleOut, reasonTok:s2.reasonTok, extend:s2.extend,
         sloTtft:+s2.sloTtft||0, sloTps:+s2.sloTps||0, sloP95:+s2.sloP95||0}; }),
   });
@@ -1646,7 +1763,8 @@ function computeProject(){
         && trial.queued<=p.d.queued
         && ms.every(m=>{ if(!(+m.sloP95>0)) return true;
             const gen=(m.reasonTok||0)+(m.visibleOut||0);
-            const ttft=2*m.resident*p.state.active/(p.state.gpuTflops*Math.max(1,p.state.tp)*p.state.mfu);
+            const pf=m.resident-Math.floor(m.resident*Math.min(0.95,Math.max(0,m.cachePct||p.state.cachePct||0)));
+            const ttft=2*pf*p.state.active/(p.state.gpuTflops*Math.max(1,p.state.tp)*p.state.mfu);
             return 1.3*((ttft+p.state.ovh)/1000 + gen/Math.max(1e-6,trial.tps)) <= m.sloP95; });
       if(keepsSlo){ p.capped=p.d.replicas; p.d=trial; }
     }
@@ -2768,6 +2886,7 @@ function serialize(){
       weightQuant:s.wq.name, kvQuant:s.kq.name,
       preset: +$('selCase').value>=0 ? CASES[+$('selCase').value].name : null,
       residentSeq:s.resident, visibleOut:s.visibleOut,
+      sharedPrefixPct: Math.round((s.cachePct||0)*100),
       reasoning:{mode:s.reasonMode, tokens:s.reasonTok, extendsKV:s.extend},
       concurrentCalls:s.concurrent, maxBatchPerReplica:s.batch, kvPolicy:s.policy,
       gpu:s.gpu.name,
@@ -2843,6 +2962,7 @@ function applyUcDom(c, snap, notes){
   else if(c.preset===null) $('selCase').value=-1;
   if(c.residentSeq!=null) $('inSeq').value=c.residentSeq;
   if(c.visibleOut!=null) $('inOut').value=c.visibleOut;
+  $('inCache').value=c.sharedPrefixPct!=null? Math.min(95, Math.max(0, +c.sharedPrefixPct||0)) : 0;
   const rz=c.reasoning||{};
   if(rz.mode){ $('selReason').value=rz.mode; }
   syncReason();
@@ -2944,6 +3064,7 @@ function xlsInputRows(s){
     ['bytesW','Bytes / weight', s.bytesW, 'From weight quantization ('+s.wq.name+')'],
     ['bytesK','Bytes / KV element', s.bytesK, 'From KV quantization ('+s.kq.name+')'],
     ['seq','Resident sequence (tok)', s.resident, 'Prompt + history + tools + expected output'],
+    ['cache','Shared cached prefix (fraction of seq)', +(Math.min(0.95,Math.max(0,s.cachePct||0)).toFixed(4)), 'Prefix caching: prefilled once, stored once per replica. 0 = off'],
     ['reason','Reasoning tokens', s.reasonTok, 'Hidden thinking tokens per call'],
     ['ext','Reasoning extends KV (1/0)', s.extend?1:0, '1 = thinking stays in context'],
     ['out','Visible output (tok)', s.visibleOut, 'Tokens the user sees'],
@@ -2986,9 +3107,12 @@ function buildXls(){
   res('weights','Weights','GB', ()=>`${I('params')}*${I('bytesW')}`);
   res('kvTok','KV per token','GB', ()=>`(${I('kvgE')}+${I('kvlE')}*MIN(1,${I('kvWin')}/MAX(1,${R('effSeq')})))*${I('bytesK')}/1000000000`);
   res('effSeq','Effective sequence','tok', ()=>`${I('seq')}+IF(${I('ext')}=1,${I('reason')},0)`);
+  res('cachedTok','Cached prefix (shared)','tok', ()=>`FLOOR(${I('seq')}*${I('cache')},1)`);
+  res('uniqueSeq','Unique sequence per call','tok', ()=>`MAX(0,${R('effSeq')}-${R('cachedTok')})`);
+  res('kvShared','KV held once per replica','GB', ()=>`${R('cachedTok')}*${R('kvTok')}`);
   res('replicas','Replicas','', ()=>`MAX(1,INT(${R('gpusTotal')}/MAX(${I('tp')},1)))`);
   res('active','Active sequences','', ()=>`IF(${I('policy')}=1,${I('conc')},MIN(${I('conc')},${I('batch')}*${R('replicas')}))`);
-  res('kvTotal','KV cache total','GB', ()=>`${R('active')}*${R('effSeq')}*${R('kvTok')}`);
+  res('kvTotal','KV cache total','GB', ()=>`${R('active')}*${R('uniqueSeq')}*${R('kvTok')}+${R('replicas')}*${R('kvShared')}`);
   res('activ','Activations','GB', ()=>`MIN(${R('effSeq')},8192)*${I('hidden')}*12*${I('bytesW')}/1000000000`);
   res('fixed','Fixed overhead','GB', ()=>`5`);
   res('multi','Multi-GPU overhead','GB', ()=>`${R('replicas')}*MAX(0,${I('tp')}-1)*${I('movh')}`);
@@ -3000,7 +3124,7 @@ function buildXls(){
   res('bpr','Batch per replica','', ()=>`MAX(1,${R('active')}/${R('replicas')})`);
   res('tps','Per-user decode TPS','tok/s', ()=>`${R('bwEff')}/(${I('activeP')}*${I('bytesW')}+${R('bpr')}*${R('effSeq')}*${R('kvTok')})`);
   res('agg','Aggregate throughput','tok/s', ()=>`${R('tps')}*${R('active')}`);
-  res('ttft','TTFT (prefill)','ms', ()=>`2*${I('seq')}*${I('activeP')}/(${I('tflops')}*${I('tp')}*${I('mfu')})`);
+  res('ttft','TTFT (prefill)','ms', ()=>`2*MAX(0,${I('seq')}-${R('cachedTok')})*${I('activeP')}/(${I('tflops')}*${I('tp')}*${I('mfu')})`);
   res('itl','Inter-token latency','ms', ()=>`1000/${R('tps')}`);
   res('lat','User latency (mean)','s', ()=>`(${R('ttft')}+${I('ovh')})/1000+(${I('reason')}+${I('out')})/${R('tps')}`);
   res('p95','P95 latency','s', ()=>`${R('lat')}*1.3`);
@@ -3147,9 +3271,12 @@ async function buildXlsxBytes(){
   res('weights','Weights per replica','GB', ()=>`${I('params')}*${I('bytesW')}`, d.weights);
   res('kvTok','KV per token','GB', ()=>`(${I('kvgE')}+${I('kvlE')}*MIN(1,${I('kvWin')}/MAX(1,${R('effSeq')})))*${I('bytesK')}/1000000000`, d.kvTok);
   res('effSeq','Effective sequence','tok', ()=>`${I('seq')}+IF(${I('ext')}=1,${I('reason')},0)`, d.effSeq);
+  res('cachedTok','Cached prefix (shared)','tok', ()=>`FLOOR(${I('seq')}*${I('cache')},1)`, d.cachedTok);
+  res('uniqueSeq','Unique sequence per call','tok', ()=>`MAX(0,${R('effSeq')}-${R('cachedTok')})`, d.uniqueSeq);
+  res('kvShared','KV held once per replica','GB', ()=>`${R('cachedTok')}*${R('kvTok')}`, d.kvShared);
   res('replicas','Replicas (model copies)','', ()=> multi? `MIN(MAX(1,INT(${R('gpusTotal')}/MAX(${I('tp')},1))),MAX(1,CEILING(${I('conc')}/MAX(${I('batch')},1),1)))` : `MAX(1,INT(${R('gpusTotal')}/MAX(${I('tp')},1)))`, d.replicas);
   res('active','Admitted sequences','', ()=>`IF(${I('policy')}=1,${I('conc')},MIN(${I('conc')},${I('batch')}*${R('replicas')}))`, d.active);
-  res('kvTotal','KV cache total','GB', ()=>`${R('active')}*${R('effSeq')}*${R('kvTok')}`, d.kvTotal);
+  res('kvTotal','KV cache total','GB', ()=>`${R('active')}*${R('uniqueSeq')}*${R('kvTok')}+${R('replicas')}*${R('kvShared')}`, d.kvTotal);
   res('activ','Activations per replica','GB', ()=>`MIN(${R('effSeq')},8192)*${I('hidden')}*12*${I('bytesW')}/1000000000`, d.act);
   res('fixed','Fixed overhead','GB', ()=>`5`, d.fixed);
   res('multi','Multi-GPU overhead','GB', ()=>`${R('replicas')}*MAX(0,${I('tp')}-1)*${I('movh')}`, d.multi);
@@ -3161,7 +3288,7 @@ async function buildXlsxBytes(){
   res('bpr','Batch per replica','', ()=>`MAX(1,${R('active')}/${R('replicas')})`, d.batchPerRep);
   res('tps','Per-user decode TPS','tok/s', ()=>`${R('bwEff')}/(${I('activeP')}*${I('bytesW')}+${R('bpr')}*${R('effSeq')}*${R('kvTok')})`, d.tps);
   res('agg','Aggregate throughput','tok/s', ()=>`${R('tps')}*${R('active')}`, d.agg);
-  res('ttft','TTFT (prefill)','ms', ()=>`2*${I('seq')}*${I('activeP')}/(${I('tflops')}*${I('tp')}*${I('mfu')})`, d.ttft);
+  res('ttft','TTFT (prefill)','ms', ()=>`2*MAX(0,${I('seq')}-${R('cachedTok')})*${I('activeP')}/(${I('tflops')}*${I('tp')}*${I('mfu')})`, d.ttft);
   res('itl','Inter-token latency','ms', ()=>`1000/${R('tps')}`, d.itl);
   res('lat','User latency (mean)','s', ()=>`(${R('ttft')}+${I('ovh')})/1000+(${I('reason')}+${I('out')})/${R('tps')}`, d.latency);
   res('p95','P95 latency','s', ()=>`${R('lat')}*1.3`, d.p95);
@@ -3556,7 +3683,13 @@ function solvePool(s){
      the group - instead of charging the multi-GPU overhead to every card, which
      was stricter than the engine and bought a width nobody needed. */
   const mgb=(s.multiGb!=null? s.multiGb : 15);
-  let tp=[1,2,4,8,16,32,64,72].find(t=>weights+actGB+5+(t-1)*mgb <= pack*s.gpuVram*t);
+  /* the shared prefix is resident once per replica whether or not any call is
+     in flight, so it belongs in the width that must hold one copy */
+  const cacheF=Math.min(0.95,Math.max(0,s.cachePct||0));
+  const kvTokFit=(()=>{ try{ return compute({...s, gpus:Math.max(1,s.tp||1), tp:Math.max(1,s.tp||1),
+    workers:1, batch:1, concurrent:1}).kvTok; }catch(e){ return 0; } })();
+  const sharedGB=Math.floor(s.resident*cacheF)*kvTokFit;
+  let tp=[1,2,4,8,16,32,64,72].find(t=>weights+actGB+sharedGB+5+(t-1)*mgb <= pack*s.gpuVram*t);
   if(!tp) return {ok:false, packPct,
     reason:`No TP up to 64 fits one copy of ${s.model.name} on ${s.gpu.name}: quantize the weights or pick a higher-VRAM GPU`};
   const tpFit=tp;
@@ -3574,7 +3707,9 @@ function solvePool(s){
     : [{name:null, conc:s.concurrent, resident:s.resident, visibleOut:s.visibleOut,
         reasonTok:s.reasonTok, extend:s.extend, sloTtft:s.sloTtft, sloTps:s.sloTps, sloP95:s.sloP95}])
     .map(m=>({...m, gen:(m.reasonTok||0)+(m.visibleOut||0)}));
-  const ttftOf=(m,t,tflops)=>2*m.resident*s.active/((tflops||s.gpuTflops)*t*s.mfu);
+  // prefill skips the member's cached prefix, exactly as the engine does
+  const prefillOf=m=>Math.max(0, m.resident - Math.floor(m.resident*Math.min(0.95,Math.max(0,m.cachePct||0))));
+  const ttftOf=(m,t,tflops)=>2*prefillOf(m)*s.active/((tflops||s.gpuTflops)*t*s.mfu);
   // widen TP while any member's OWN TTFT target is missed at its OWN prefill
   /* Widen for the first-token targets, but never past the width that meets them
      or past the node's own NVLink island: an unreachable TTFT used to run this
@@ -3664,6 +3799,7 @@ function solvePool(s){
               needs.push(room>0? m.gen/room : Infinity); } });
           // replicas that speed needs: batch per replica is concurrent/replicas,
           // and below one batch no replica count can help
+          // decode reads the whole context per step, so the SPEED term keeps effSeq
           const repsFor=T=>{ const bpr=(d.bwEff/T - s.active*s.bytesW)/Math.max(1e-12, d.effSeq*d.kvTok);
             return bpr>=1? Math.max(r0, Math.ceil(s.concurrent/bpr)) : Infinity; };
           // grow to the strictest target the hardware can still reach. One

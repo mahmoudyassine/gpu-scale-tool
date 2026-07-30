@@ -5,7 +5,7 @@ description: LLM/GenAI GPU capacity sizing with the GPUscale engine. Use for any
 
 # GPU sizing with the GPUscale engine
 
-You have the actual GPUscale.net sizing engine (engine v26, library v33: 101
+You have the actual GPUscale.net sizing engine (engine v27, library v33: 101
 models, 37 GPUs) as a CLI in this skill's directory. For ANY numeric sizing
 question, run it; never hand-compute what the CLI can compute.
 
@@ -30,6 +30,9 @@ node ~/.claude/skills/gpu-sizing/sizing.mjs --model "Llama 3.1 70B" --gpu "H100 
 
 Flags: `--quant` FP32|BF16|FP8|NV FP4|MXFP4|INT8|Q4_K_M|... · `--kv` BF16|FP8|INT4 ·
 `--resident/--out/--reasoning` tokens · `--ttft/--tps/--p95` SLO targets ·
+`--cache` percent of the resident sequence that is byte-identical every call
+(prefix caching: prefilled once, held once per replica; default 0 = full prefill
+every call, and only set it if the serving stack has prefix caching on) ·
 `--perw` GPUs per server (8 = HGX, 72 = NVL72 rack) · `--target` auto-size
 memory ceiling percent (default 80) · `--resilience` n|n1|n2|nn|dr|drh|aa|aas|aas1|aass|aan1|nndr.
 

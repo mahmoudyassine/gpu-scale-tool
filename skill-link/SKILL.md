@@ -126,6 +126,8 @@ weights FP8 / KV BF16, SLOs from the preset, resilience `n` (capacity only),
       "kvQuant": "BF16",               // default BF16
       "preset": "Internal GPT / Copilot",  // fills seq/out/reasoning/SLOs/traffic
       "residentSeq": 16384,            // override preset if user specified
+      "sharedPrefixPct": 0,            // leave 0 unless the user gives a measured
+                                       // prefix-cache hit rate (see payload-schema)
       "visibleOut": 800,
       "reasoning": "None",             // None | Light reasoning | Heavy reasoning
                                        // | {"mode":"Custom","tokens":3000,"extendsKV":true}
