@@ -16,6 +16,10 @@
   layers only a kvWin-token window, so the per-token cost falls with context)
   (sliding-window hybrids: kvGlobal layers pay the full context, the other
   layers only a kvWin-token window, so the per-token cost falls with context)
+  (sliding-window hybrids: kvGlobal layers pay the full context, the other
+  layers only a kvWin-token window, so the per-token cost falls with context)
+  (sliding-window hybrids: kvGlobal layers pay the full context, the other
+  layers only a kvWin-token window, so the per-token cost falls with context)
   (MLA models: kv_heads_eff=1, head_dim_eff=288 encodes the 576-dim latent;
   hybrids scale head_dim by the full-attention layer fraction)
 - activations ~= min(effSeq, 8192) x hidden x 12 x bytes_W / 1e9 per replica
@@ -33,23 +37,45 @@
 - Defaults that survive production contact: MFU 0.5, MBU 0.65, interconnect
   0.85 in-island / 0.7 cross-node.
 
-## Auto-size algorithm
+## Auto-size algorithm (current)
 
-1. TP = smallest of [1,2,4,8,16,32,64,72] whose group holds one copy within
-   the memory target (default 80%). A TTFT target widens TP (prefill scales
-   with TP).
-2. Interactive workloads (any SLO set): fewest workers admitting the peak
-   concurrency at batch <= 64, grown until the target is met. No SLOs =
-   offline: minimal workers, largest fitting batch, queueing accepted.
-3. Cross-island TP sets interconnect 0.7 and should be called out; real
-   systems use in-island TP plus pipeline parallelism (not modeled).
+1. **Fitting width.** TP = smallest of [1,2,4,8,16,32,64,72] whose group holds
+   one copy inside the memory target (default 80%), using the same inequality
+   the engine enforces: `weights + activations + 5 + (TP-1) x movh <= target x
+   VRAM x TP`.
+2. **First-token widening.** A TTFT target widens TP further, up to the width
+   that meets it. If no width meets it, the fitting width is kept and the
+   target is reported as out of reach rather than buying cards for nothing.
+   Widening may cross the NVLink island (priced at interconnect 0.7); widening
+   for speed alone may not.
+3. **Candidate sweep.** Every width from the fitting width up to GPUs-per-node
+   is planned, and the cheapest plan meeting every member's targets wins. A
+   wider group holds a bigger batch per replica, so this matters even with no
+   speed target at all.
+4. **Replicas.** Interactive: the fewest replicas admitting the peak, then the
+   count each target needs, in closed form -
+   `batchPerRep = (bwEff/T - activeParams x bytesW) / (effSeq x kvTok)`,
+   `reps = ceil(concurrent / batchPerRep)`. Offline (no SLOs): minimal
+   hardware, largest fitting batch, queueing accepted.
+5. **Give-back.** Replicas that meet no target are returned, and a plan never
+   reports success while missing a target it claims to meet.
+6. A pool owns **cards**, not whole nodes; nodes are packed from the cards of
+   every pool plus the supporting models.
 
-## Workload classes (defaults)
+## Workload classes
 
-chat 4K/400 out, TTFT 500ms, 25 tps, P95 15s · voice 4K/200, 300ms/50/3s ·
-RAG 8-32K/700-1500, 0.6-1.5s/25/20-45s · copilot 16K/800, 1s/25/30s ·
-code agent 64K/2000 +2K reasoning, 2s/30/180s · heavy reasoning 16K/1500
-+8K, 1s/30/240s · deep research 64K/4000 +8K, 3s/25/600s · batch: no SLOs.
+Run `--list-workloads` for the shipped presets with their exact numbers; do not
+quote from memory. The 2026 conventions they follow (per-token intervals turned
+into tok/s):
+
+chat 300ms/20tps · RAG chat 400ms/12.5 · voice (the LLM's share of a 400ms p50
+voice budget) 150-250ms/33 · inline code completion 100ms/40 · panel completion
+300ms/20 · batch 3s/5 · reasoning interactive 1.5-2s/67 (MLPerf v6 TPOT 15ms) ·
+reasoning server 2-3s/12.5 (TPOT 80ms) · frontier dense server 6s/5.7 (TPOT
+175ms). Agentic requests carry 2-5K tokens of tool schema EVERY call and
+retrieval adds 2-10K; whole tasks run 50K (code review) to 500K (multi-agent
+research) tokens across many calls, so size the call, not the task.
+
 Concurrency from headcount: sessions x turns/hr x calls/turn x duration_s
 / 3600 x burst (1.5-3x).
 
@@ -74,5 +100,12 @@ normal-day capacity is real burst but must not carry planned load.
 Method and numbers: https://gpuscale.net (MIT, open source) and the white
 paper "Sizing the Modern GenAI Data Center" (Yassine, 2026). Key research
 anchors: DeepSeek-V2/V3 papers (MLA, MTP), vLLM SOSP 2023 (PagedAttention),
-DistServe/Mooncake (disaggregation), MLPerf Inference SLOs, vendor datasheets
-restated dense.
+DistServe/Mooncake (disaggregation), MLPerf Inference v6.0 latency constraints,
+vendor datasheets restated dense. The per-preset SLO evidence and the July 2026
+review of every workload class are in docs/PRACTICES.md in the repository.
+
+Not modeled, and worth saying out loud when it matters: prefix caching (a large
+shared system prompt is still sized for a full prefill every call), speculative
+decoding (1.3-2x decode when draft acceptance >= 0.7), pipeline parallelism, and
+prefill/decode disaggregation. Each of these makes the real deployment cheaper
+or faster than the estimate, never worse.

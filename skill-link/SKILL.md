@@ -51,10 +51,16 @@ inferable; put all questions in one message; max one round.
 
 | Essential | Accepted forms | If missing, ask like |
 |---|---|---|
-| Model(s) | Library name, family ("the 120B OSS one"), or custom geometry | "Which model? (e.g. GPT-OSS 120B, Llama 3.3 70B, Qwen3 32B - I have 94 in the library)" |
+| Model(s) | Library name, family ("the 120B OSS one"), or custom geometry | "Which model? (e.g. GPT-OSS 120B, Llama 3.3 70B, Qwen3 32B - I have 101 in the library)" |
 | GPU | Library name ("H200 NVL", "L40S", "MI300X", "B200"...) | "Which GPU are we sizing on? I'll assume H100 80GB SXM if you have no preference." |
 | Workload shape | A preset name, a description you map to a preset, or explicit residentSeq/visibleOut | Propose the preset you inferred: "That sounds like 'Internal GPT / Copilot' (16K context, 800-token answers) - good?" |
 | Scale | `concurrentCalls` (peak in-flight) OR `activeUsers` (headcount; concurrency derived Little's-law style from preset traffic) | "How many concurrent calls at peak - or if you only know headcount, how many active users?" |
+
+Once the link is open, the studio itself explains the fleet: which promise is
+buying the cards (a tight P95 on a long generation can demand many times the
+stated tok/s target), what each card is holding, and one-click suggestions that
+re-solve the whole project before quoting a saving. Point the user at the
+Recommendations panel rather than re-deriving that by hand.
 
 Everything else defaults silently (mention notable ones in the recap):
 weights FP8 / KV BF16, SLOs from the preset, resilience `n` (capacity only),

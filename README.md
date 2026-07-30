@@ -42,7 +42,9 @@ static: no backend, no build step, nothing uploaded.
 - 📚 **Library**: 101 models (GQA, MoE, MLA, SSM hybrids, a deep Arabic/GCC sovereign set incl. VLMs and dialect models), 37 GPUs with partitioning profiles, and 54 supporting models (with Arabic-specialized ASR, TTS, OCR, embeddings, rerankers and guards) (embeddings, rerankers, ASR, TTS, OCR, guards from tiny CPU-viable to flagship tiers), one line each
 - 📤 **Exports**: JSON configs, an Excel template with live formulas, and a print-ready PDF report
 - 🪄 **Auto-size**: one click picks the TP that fits one copy of the model and the workers that admit your peak load
-- 🎯 **SLO optimiser**: a card can only hold `bandwidth × interconnect × MBU / target tok/s` GB at the operating point, so an ambitious speed target buys bandwidth you cannot fill. Recommendations suggest the targets that fill the GPU you already chose, keep each use case's P95 promise (and its workload class: a live voice path is never asked to read at 19 tok/s), re-solve the whole project to quote the real card delta, and apply across use cases in one click with a single Undo
+- 🎯 **SLO optimiser**: decode re-reads `bandwidth × interconnect × MBU / target tok/s` GB per card per token, so the speed target sizes the fleet. Recommendations propose the targets that fill the GPU you already chose, bounded by each use case's P95 promise and its workload class (a live voice path is never asked to read at 19 tok/s), priced by re-solving the whole project, and applied across use cases in one click with a single Undo
+- 🧾 **It tells you which promise is buying the hardware**: when a P95 target implies a higher per-user speed than the tok/s target does, lowering the speed target cannot shrink anything, and the tool says so and offers the P95 instead. When the cards look empty it itemises the order: cards held by the speed and P95 promises, by the first-token targets, by the admission and KV floor, by whole-node rounding, and by the resilience pattern
+- 🩺 **Fix-it buttons on the findings**: KV cache to FP8, weights to FP8, a reachable P95, reasoning off, N+1 redundancy, a tensor-parallel width, a batch cap - each one applies across the use cases in scope, re-solves, and offers one Undo
 - 🌓 **Polished**: light and dark themes, mobile friendly, installable, keyboard accessible
 - 🤖 **Claude skill**: download `gpuscale-link.skill` from the footer, hand it to Claude, and it turns plain-language requirements into a ready, verified share link (gpuscale.net + mirror)
 
@@ -111,6 +113,12 @@ TTFT       = 2 x seq x active / (TFLOPS x TP x MFU)
 All figures are peak estimates; production typically achieves 70 to 90 percent.
 Validate with vLLM bench or GenAI-Perf before committing hardware.
 
+The workload presets carry SLO targets grounded in published practice (MLPerf
+Inference v6.0 latency constraints, 2026 TTFT/ITL guidance, voice-agent budget
+decompositions, measured agentic token consumption). The evidence for each one,
+and a July 2026 review of all of them, is in
+**[docs/PRACTICES.md](docs/PRACTICES.md)**.
+
 ## 📋 Example: Llama 3.1 70B on one HGX H100
 
 Internal-copilot workload: FP8 weights and KV, 16K resident context, 64
@@ -136,9 +144,20 @@ data/      models.js gpus.js   the libraries: one entry per line,
            quants.js usecases.js   edit these to maintain the tool
            support.js
 tools/     build_single_file.py    rebuilds the portable one-file version
+           build_skill.py          regenerates skill/sizing.mjs from the live engine
+           build_skill_link.py     regenerates gpuscale-link.skill + its tables
+           check_presets.py        enforces the workload-preset rules
 dist/      gpuscale_standalone.html  the portable build (generated)
-docs/      DATA.md             schemas + effective-KV convention
+skill/     the gpu-sizing CLI skill (generated)
+skill-link/  the gpuscale-link skill sources (share-link builder)
+docs/      DATA.md             schemas, effective-KV convention, solver notes
+           PRACTICES.md        the serving evidence the presets are calibrated on
+           V5-DESIGN.md        the v5 architecture decisions
 ```
+
+Everything generated is rebuilt by running the three `tools/build_*.py`
+scripts; do that on every release so the portable build and both skills cannot
+drift from `assets/app.js` and `data/`.
 
 ## 🧩 Add a model or GPU
 
@@ -181,8 +200,13 @@ models live in the studio).
 ## 🤝 Contributing
 
 Model and GPU library updates are one-line edits (see above). Please keep the
-effective-KV convention and flag undisclosed internals with `est. cfg`. Bug
-reports and fixes are welcome via [issues](https://github.com/mahmoudyassine/gpu-scale-tool/issues).
+effective-KV convention and flag undisclosed internals with `est. cfg`.
+
+Changing a workload preset moves every project that uses it, so treat the
+numbers as evidence-backed: cite the source in [docs/PRACTICES.md](docs/PRACTICES.md)
+and run `python3 tools/check_presets.py`, which fails on any preset demanding a
+P95 its own first-token and speed targets make impossible. Bug reports and fixes
+are welcome via [issues](https://github.com/mahmoudyassine/gpu-scale-tool/issues).
 
 ## 📄 License
 

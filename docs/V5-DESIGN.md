@@ -1,7 +1,11 @@
 # GPUscale v5 · design and build plan
 
-Status: LOCKED · Batch 0 research done (3 researchers + 3-judge UX panel).
-Branch: `v5`. Main stays on 4.x and keeps deploying until v5 ships whole.
+Status: SHIPPED and superseded. This is the historical design record for the
+v5 rework (locked after Batch 0 research: 3 researchers + a 3-judge UX panel).
+v5 shipped from the `v5` branch and merged to `main`; everything below describes
+the decisions taken then, not the current build. For how the studio works today
+see [DATA.md](DATA.md) (schemas, solver invariants), [PRACTICES.md](PRACTICES.md)
+(the evidence behind the workload presets) and the CHANGELOG.
 
 ## Batch 0 verdict (locked decisions)
 
@@ -124,7 +128,8 @@ main until Batch 7 signs off the whole.
   sweeps light+dark; print; perf (target: interactive under 150 ms on Pi
   Chromium).
 - **Batch 7 · QA and release.** Harness regression matrix (v4 single-usecase
-  scenarios must reproduce engine v23 numbers within stated deltas; new
+  scenarios must reproduce engine v23 numbers within stated deltas (v23 was
+  current when this plan was written; the engine is v26 today); new
   multi-pool cases hand-checked); import matrix (v3/v4/v5 files); docs
   (README, DATA.md, llms.txt, skill regeneration); CHANGELOG 5.0.0; merge to
   main, tag, deploy gpuscale.net + mirror, live verify.

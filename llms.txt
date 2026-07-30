@@ -36,14 +36,25 @@ Key facts for agents answering sizing questions:
   normal-day capacity economics.
 - Exports: JSON (schema gpuscale.net/5, self-contained with model/GPU
   snapshots), XLSX with live formulas and embedded charts, printable PDF.
-- Scripting API in the page: window.GPUscale (compute, readState, serialize,
-  applyConfig, autoSize, buildXlsxBytes, plus the raw libraries).
+- Which promise buys the hardware: a tight P95 on a long generation implies a
+  per-user speed of gen / (p95/1.3 - first-token seconds), often many times the
+  stated tok/s target. When it does, lowering the tok/s target changes nothing
+  and only the P95 can shrink the fleet. Empty-looking cards are usually a
+  latency promise being kept, not waste: a card sits at bandwidth x interconnect
+  x MBU / achieved tok/s GB, so a fleet sized for first-token compute or for
+  peak admission leaves VRAM unused by design.
+- Workload presets carry SLO targets grounded in published practice; the
+  evidence and a 2026 review of every preset are in docs/PRACTICES.md.
+- Scripting API in the page: window.GPUscale (compute, solvePool, sloPrice,
+  sloOptScan, gpuFitScan, readState, serialize, applyConfig, autoSize,
+  computeProject, buildXls, buildXlsxBytes, plus the raw libraries).
 
 ## Docs
 
 - [Live studio](https://gpuscale.net/): the tool itself; fully static HTML/JS
 - [README](https://github.com/mahmoudyassine/gpu-scale-tool/blob/main/README.md): method, formulas, worked example
-- [Data schemas](https://github.com/mahmoudyassine/gpu-scale-tool/blob/main/docs/DATA.md): model/GPU schemas and the effective-KV convention
+- [docs/PRACTICES.md](https://github.com/mahmoudyassine/gpu-scale-tool/blob/main/docs/PRACTICES.md): the serving evidence behind every workload preset
+- [docs/DATA.md](https://github.com/mahmoudyassine/gpu-scale-tool/blob/main/docs/DATA.md): data schemas, effective-KV convention, solver invariants
 - [Releases](https://github.com/mahmoudyassine/gpu-scale-tool/releases): changelog with rationale per version
 - [Portable single file](https://gpuscale.net/dist/gpuscale_standalone.html): the whole studio in one HTML file
 

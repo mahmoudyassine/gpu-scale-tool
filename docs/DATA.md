@@ -8,8 +8,20 @@ page: counts, dropdowns and badges update automatically.
 
 When you change anything here:
 
-1. Bump `library` and `updated` in the `meta` line at the top of `data/models.js`.
-2. Rebuild the portable file: `python3 tools/build_single_file.py`.
+1. Bump `library` and `updated` in the `meta` line at the top of `data/models.js`
+   (that line also carries `engine`, which tracks `ENGINE_VERSION` in `app.js`).
+2. Rebuild every generated artifact:
+
+   ```bash
+   python3 tools/build_single_file.py    # dist/gpuscale_standalone.html
+   python3 tools/build_skill.py          # skill/sizing.mjs (engine + solver, verbatim)
+   python3 tools/build_skill_link.py     # gpuscale-link.skill + skill-link/ tables
+   ```
+
+3. If you touched `data/usecases.js`, run `python3 tools/check_presets.py`. It
+   enforces the self-consistency rule and the field ranges, and prints advisory
+   warnings when a target leaves the band its class implies. The evidence behind
+   those bands is in [PRACTICES.md](PRACTICES.md).
 
 ## Model schema (`data/models.js`)
 
@@ -40,7 +52,7 @@ For plain GQA models, use the real config values. For everything else, encode an
   keep per-token KV): scale `headDim` by the full-attention layer fraction.
   Example: 48 layers with 12 full-attention layers of `kvHeads 2, headDim 256`
   becomes `kvHeads: 2, headDim: 64` (256 x 12/48).
-- **Sliding-window mixes** (engine v25): do NOT flatten these into one
+- **Sliding-window mixes** (added in engine v25, current): do NOT flatten these into one
   scalar. Give the entry `kvGlobal` (how many layers use full attention) and
   `kvWin` (the window in tokens); the engine then computes the per-token cost
   as `kvGlobal_layers + window_layers x min(1, kvWin/sequence)`, which is
@@ -80,10 +92,34 @@ quant options are fixed in `app.js` (`KV_QUANTS`).
 
 ## Workload presets (`data/usecases.js`)
 
-`name`, `resident`, `reasoning` (`None` / `Light reasoning` / `Heavy reasoning`),
-`visibleOut`, `ttftTarget`, `tpsTarget`, `p95Target`, `note`. A preset only
-prefills fields; users can edit everything afterwards. A value of `0` leaves the
-corresponding field untouched and `0` SLO targets disable those checks.
+| Field | Meaning |
+|---|---|
+| `name` | Display name in the preset dropdown. |
+| `resident` | Tokens actually held per request: prompt + retained history + tool traces. NOT the model's max context. |
+| `visibleOut` | Tokens the user sees per response. |
+| `reasoning` | `None` / `Light reasoning` (2,000) / `Heavy reasoning` (8,000), or `Custom` when `reasonTok` is present. |
+| `reasonTok` | Exact hidden-thinking budget per request, applied through the Custom class. Overrides `reasoning`. |
+| `ttftTarget` | First-token target in ms. `0` disables the check. |
+| `tpsTarget` | Per-user streaming speed target in tok/s. `0` disables. This is per user, never aggregate. |
+| `p95Target` | End-to-end P95 target in seconds. `0` disables. |
+| `policy` | `"all"` pins per-session KV for the whole session. Only for paths where an idle-turn eviction would break the latency budget. |
+| `supports` | Kind keys that auto-attach: `embed`, `rerank`, `asr`, `tts`, `ocr`, `guard`. |
+| `traffic` | Users-to-concurrency shape. See the `traffic` section below. |
+| `note` | One line shown under the dropdown. |
+
+A preset only prefills fields; users edit everything afterwards. A value of `0`
+leaves the corresponding field untouched, and `0` SLO targets disable those
+checks.
+
+**Every field describes ONE model call.** An agent that makes forty tool calls
+per task is forty of these requests; `traffic` is what converts tasks into
+simultaneous calls. Do not fold a whole task's token budget into `visibleOut`.
+
+Targets must satisfy `p95Target >= 1.3 x (ttftTarget/1000 + (reasonTok +
+visibleOut) / tpsTarget)`, so a preset can never demand a P95 its own targets
+make impossible. `tools/check_presets.py` enforces it; [PRACTICES.md](PRACTICES.md)
+records the published conventions each preset is calibrated against and the
+2026 review of all of them.
 
 ## Adding an entry: worked examples
 
@@ -119,7 +155,7 @@ that auto-attach when the preset is chosen.
 partitions), `frac` (time-slice/MPS, no isolation), `whole` (no partitioning,
 Gaudi). `max` = partitions per GPU, `min` = smallest partition in GB.
 
-Slice model (engine v24): only real profile geometries exist. On 7-slice MIG
+Slice model (added in engine v24, current): only real profile geometries exist. On 7-slice MIG
 parts the profiles are 1g/2g/3g/4g with memory and bandwidth from the
 memory-slice map (1g:1, 2g:2, 3g:4, 4g:4 of 8 memory slices) at 0.93
 delivered bandwidth; on 4-slice parts only 1g/2g (1 or 2 of 4 memory
@@ -179,10 +215,82 @@ budget (real-time voice, contact-center agent assist). v28 also adds five
 presets: medical imaging reports, clinical knowledge assistant, real-time
 video analytics, translation/localization, contact-center agent assist.
 
+## Engine version history
+
+The current engine is **v26**. `ENGINE_VERSION` in `assets/app.js` and the
+`engine` field in `data/models.js` meta must always agree with it.
+
+| Engine | Change |
+|---|---|
+| v23 | Per-replica weight and activation accounting (the workbook v22 model). |
+| v24 | `multiGb` input: per-extra-GPU overhead becomes a parameter (15 GB default, 1.4 for MIG slices). |
+| v25 | Sliding-window KV: `kvGlobal` / `kvWin` (+ `kvgHeads`, `kvgDim`, `kvgKeyOnly`, `kvLayers`) make the per-token cost exact at every context. |
+| v26 | Multi-GPU overhead moves from the pool to the replica: `replicas x (TP-1) x movh`. |
+
 ## Engine v26: multi-GPU overhead
 
 `multi = replicas x (TP - 1) x movh` (default movh 15 GB; 1.4 GB for MIG-sliced
 instances). NCCL buffers belong to one tensor-parallel communicator, so
 independent replicas do not pay for each other: a pool of 40 TP1 replicas
-carries zero multi-GPU overhead, where engine v25 charged it 585 GB. Both XLSX
+carries zero multi-GPU overhead, where the previous rule (engine v25 and
+earlier) charged it 585 GB. Both XLSX
 builders mirror the formula from the `movh` input row.
+
+## Card allocation and its stamp (5.21.1+)
+
+An exact per-pool GPU count is an auto-size OUTPUT, valid only for the inputs it
+was solved against, so it is stamped: `cardsKey(u, hw)` hashes the model (or the
+custom geometry), both quantizations, the GPU, GPUs per worker, TP, KV policy,
+KV extension, concurrency, resident, output and reasoning tokens, all three SLO
+targets, and the auto-size memory target. `ucState` uses `u.cards` only while
+that stamp matches; anything else returns the pool to whole-node sizing rather
+than quietly keeping an allocation that no longer fits.
+
+The stamp belongs to the POOL, not to one member: `poolState` requires every
+member's stamp to be fresh. Reading only the first member meant the same edit
+gave two different fleets depending on which card you typed in.
+
+## Whole-GPU co-residency (5.21)
+
+Separate from MIG slicing: several pools can share one physical card the way
+vLLM memory fractions or Triton multi-model do. `coPack` merges replicas onto a
+card only while all of these hold, and records which one refused a merge:
+
+- **Memory.** The sum of per-GPU footprints stays under the auto-size memory
+  target.
+- **Decode duty.** A pool that reaches `tps` alone but only owes `sloTps`
+  consumes `sloTps/tps` of the card; the tenants' fractions must sum under 0.95.
+- **First token.** Sharing stretches every tenant's prefill by roughly
+  `1/(1 - what the neighbours take)`. Every tenant, incoming included, must
+  still meet its TTFT and its P95 at that inflated prefill.
+- **No pool with no speed target** ever shares, because there is no guaranteed
+  share to hold it to, and no two replicas of one pool land on one card.
+
+## The SLO optimiser (5.22+)
+
+Inverting the same physics: at the bandwidth-limited operating point a card
+re-reads `gpuBw x ic x mbu / target_tps` GB per token, so the speed target sizes
+the fleet. `sloOptScan` proposes the targets that would fill the card, bounded
+per use case by `sloTpsFloor` (its workload class) and by its own P95 promise,
+then prices every proposal by re-solving the whole project with `sloPrice`. A
+suggestion is only shown when that re-solve is strictly cheaper.
+
+Since 5.24 the optimiser also treats the P95 as a lever in its own right. When a
+use case's P95 implies a higher per-user speed than its `tpsTarget` does
+(`gen / (sloP95/1.3 - (ttft+ovh)/1000) > sloTps`), lowering the speed target
+cannot shrink anything and the P95 is the only promise with hardware behind it.
+
+## Solver invariants worth knowing before editing
+
+- A pool owns **cards**, not whole nodes; nodes are packed from cards.
+- The tensor-parallel sweep runs from the fitting width up to `perW` for every
+  pool that needs more than one replica, and the cheapest plan meeting every
+  member's targets wins. TTFT may widen past `perW` (it is priced by the
+  interconnect efficiency); speed alone may not.
+- The replica count a speed target needs is closed form, not a search:
+  `batchPerRep = (bwEff/T - activeParams x bytesW) / (effSeq x kvTok)` and
+  `reps = ceil(concurrent / batchPerRep)`.
+- Growth that fixes no target is given back, and a plan may never report success
+  while missing a target it claims to meet.
+- Every re-solve must hand the solver a real card: a sliced pool carries the
+  slice as its hardware, so `poolSolveState()` restores the physical GPU first.

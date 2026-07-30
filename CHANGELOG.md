@@ -1,5 +1,54 @@
 # Changelog
 
+## Studio 5.25.1 (2026-07-30) · documentation
+
+A review of current serving practice, and a documentation pass over everything
+in the repository. No behaviour changed; the studio, both skills and the
+portable build are byte-for-byte the same tool.
+
+### New: docs/PRACTICES.md
+
+The workload presets carry SLO targets that were grounded in published practice
+when they were written, but the evidence lived in commit messages. It now lives
+in one file: the 2026 conventions per workload class (MLPerf Inference v6.0
+latency constraints, TTFT/ITL guidance, the voice-turn budget decomposition,
+measured agentic token consumption, reasoning budgets, speculative-decoding
+speedups), a verdict for every one of the 20 presets against that evidence, and
+the classes the library does not yet cover. Numbers were NOT silently edited:
+changing a preset moves every project that uses it, so the review is a proposal.
+
+### New: tools/check_presets.py
+
+Enforces what PRACTICES.md documents: the self-consistency rule (a preset may
+never demand a P95 its own first-token and speed targets make impossible),
+field ranges, valid support kinds, complete traffic shapes, and advisory bands
+per workload class. All 20 presets pass.
+
+### Documentation brought current
+
+- **docs/DATA.md** stopped at 5.21. It now documents the full preset schema
+  (`reasonTok`, `policy`, `supports`, `traffic`), the per-request rule, the card
+  stamp and its pool-wide freshness requirement, whole-GPU co-residency and its
+  four merge gates, the SLO optimiser including P95-as-a-lever, the solver
+  invariants, and an engine version history table.
+- **README.md** gains the two newest capabilities, the full generated-artifact
+  list (three build scripts, not one), the docs index, and contribution rules
+  for preset changes.
+- **llms.txt** explains which promise buys the hardware and why an empty-looking
+  card is usually correct, so an agent reading it does not repeat the mistake.
+- **skill/SKILL.md** and **skill/reference.md**: the auto-size description was
+  the pre-5.21 algorithm; it now matches the shipped solver (fitting width,
+  first-token widening with its feasibility guard, the candidate sweep, the
+  closed-form replica count, give-back). Workload defaults now point at
+  `--list-workloads` instead of quoting stale numbers, and the reference names
+  what the engine does not model (prefix caching, speculative decoding,
+  pipeline parallelism, prefill/decode disaggregation).
+- **skill-link/**: corrected model count and the engine version in the payload
+  schema.
+- **docs/V5-DESIGN.md** is labelled as the historical design record it is.
+- The white paper source states the per-replica overhead rule (rebuild with
+  `python3 src/build_docx.py`).
+
 ## Studio 5.25.0 (2026-07-29) · engine v26
 
 **The multi-GPU overhead is charged per replica, not per pool.** Every number in

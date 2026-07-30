@@ -56,17 +56,34 @@ memory ceiling percent (default 80) · `--resilience` n|n1|n2|nn|dr|drh|aa|aas|a
 6. **Peak vs achieved.** All outputs are peak closed-form estimates;
    production reaches 70 to 90 percent. Say so, and recommend vLLM bench /
    GenAI-Perf before purchase decisions.
+7. **Which promise buys the hardware.** A P95 target on a long generation
+   implies a per-user speed of `gen / (p95/1.3 - firstTokenSeconds)`. When that
+   exceeds the stated tok/s target, the tok/s target is not the lever: no
+   reduction of it changes the fleet, and only the P95 (or shorter output) can.
+   Check this before suggesting a speed change; it is the single most common
+   reason a fleet is larger than the user expects.
+8. **An empty-looking card is usually correct.** At the operating point a card
+   carries `bandwidth x interconnect x MBU / achieved tok/s` GB, independent of
+   TP. It sits emptier than that whenever the replica count is set by something
+   other than decode bandwidth: a first-token target that widened the group, or
+   one replica already admitting the peak. Low memory percent is rarely the
+   problem; a high card count is the thing to question.
 
 ## Answer style
 
-- Lead with the fleet in one sentence: workers x GPUs, replicas x TP, batch,
-  admitted calls, fits or not, headline latency and speed.
+- Lead with the fleet in one sentence: serving cards on N nodes, replicas x TP,
+  batch, admitted calls, fits or not, headline latency and speed. The CLI counts
+  CARDS (a pool owns cards; nodes are packed from them), and reports procured
+  nodes separately once resilience is applied.
 - Then walk the arithmetic the way the CLI's story lines do: copy weight at
   the chosen quant, GPUs for one copy, copies for concurrency, KV, envelope,
   procurement. Use the story lines directly; they are written for this.
 - Flag workload contradictions honestly: generated tokens divided by
   achievable tok/s is a latency floor no hardware removes (8K reasoning
-  tokens can never meet a 3 s P95).
+  tokens can never meet a 3 s P95). When the CLI prints an `sloStuck` note, say
+  which target is out of reach and whether it fails alone at batch 1 (no fleet
+  can meet it) or only at this concurrency (it would need more replicas than the
+  hardware allows).
 - Never quote sparsity TFLOPS; the library is dense-only by design.
 - No em-dashes in any output.
 - For interactive exploration, point at https://gpuscale.net (free, static,

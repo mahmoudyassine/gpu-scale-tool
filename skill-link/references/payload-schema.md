@@ -32,7 +32,7 @@ https://mahmoudyassine.github.io/gpuscale/#p=z:<fragment>
 ```jsonc
 {
   "schema": "gpuscale.net/5",
-  "engine": 24,                 // sizing engine version
+  "engine": 26,                 // sizing engine version
   "studio": "5.14.0",            // UI version that saved the file
   "name": "Project name",
   "projectId": "Project_ab123", // autosave key in the viewer's browser
