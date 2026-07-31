@@ -141,7 +141,11 @@ def build_usecase(u, gl, idx, warnings):
         snap_model['arch'] = m.get('arch', ''); snap_model['dev'] = m.get('dev', '')
     # --- quants
     wq = resolve(u.get('weightQuant', 'FP8'), LIB['quants'], 'weight quant')
-    kq = resolve(u.get('kvQuant', 'BF16'), LIB['kv_quants'], 'KV quant')
+    # FP8 is the production default for the KV cache: it halves the cache against
+    # BF16 with negligible quality loss. The readable-link parser and the docs
+    # already default to it; this encoder defaulted to BF16 and quietly doubled
+    # the KV bill of every configuration it produced.
+    kq = resolve(u.get('kvQuant', 'FP8'), LIB['kv_quants'], 'KV quant')
     # --- preset
     preset = None
     case = None
@@ -291,6 +295,152 @@ def build_usecase(u, gl, idx, warnings):
             'activeUsers': (int(users) if users is not None else None),
             'config': config, 'snapshot': snapshot}
 
+# ---------------------------------------------------------------------------
+# Physics audit. Name resolution and range clamping catch a typo; they do not
+# catch a configuration that is arithmetically impossible or that will open red
+# in the studio. Everything below is checked against the same libraries and the
+# same closed forms the engine uses, BEFORE a link is printed, because a link
+# that opens on a broken fleet is worse than no link at all.
+# ---------------------------------------------------------------------------
+KV_BYTES = {q['name']: q['bytes'] for q in LIB['kv_quants']}
+W_BYTES  = {q['name']: q['bytes'] for q in LIB['quants']}
+TP_WIDTHS = [1, 2, 4, 8, 16, 32, 64, 72]
+
+def _kv_per_token(m, bytes_kv, eff_seq):
+    """Engine v27 KV per token, including the sliding-window hybrid form."""
+    kv_layers = max(1, m.get('kvLayers') or m['layers'])
+    kv_global = min(kv_layers, max(0, m.get('kvGlobal') or 0))
+    kv_win = max(0, m.get('kvWin') or 0)
+    if kv_global > 0 and kv_win > 0:
+        per = (kv_global * (1 if m.get('kvgKeyOnly') else 2)
+               * (m.get('kvgHeads') or m['kvHeads']) * (m.get('kvgDim') or m['headDim'])
+               + (kv_layers - kv_global) * 2 * m['kvHeads'] * m['headDim']
+               * min(1.0, kv_win / max(1, eff_seq)))
+    else:
+        per = 2 * kv_layers * m['kvHeads'] * m['headDim']
+    return per * bytes_kv / 1e9
+
+def _model_of(uc):
+    """The geometry actually in force: a library entry or the custom snapshot."""
+    return uc['snapshot']['model']
+
+def audit_payload(payload):
+    """Returns (errors, notes). Errors mean: do not deliver this link."""
+    errs, notes = [], []
+    gpu = resolve(payload['config']['gpu'], LIB['gpus'], 'GPU')
+    per_w = payload['config']['hardware']['gpusPerWorker']
+    tun = payload['config'].get('tuning', {})
+    mfu = tun.get('prefillMFU', 0.5); mbu = tun.get('decodeMBU', 0.65)
+    ic  = tun.get('interconnectEff', 0.85); ovh = tun.get('frameworkOverheadMs', 30)
+
+    # quantization the card cannot run
+    for uc in payload['project']['usecases']:
+        c = uc['config']; who = uc['name']
+        q = next((x for x in LIB['quants'] if x['name'] == c['weightQuant']), None)
+        hw = (q or {}).get('hw', '')
+        if 'Blackwell only' in hw and 'Blackwell' not in (gpu.get('arch') or ''):
+            errs.append(f'{who}: {c["weightQuant"]} weights are {hw}, and {gpu["name"]} is '
+                        f'{gpu.get("arch")}. Pick FP8 or BF16.')
+        elif 'Hopper+' in hw and (gpu.get('arch') or '') in ('Ampere', 'Ada Lovelace', 'Turing', 'Volta'):
+            notes.append(f'{who}: {c["weightQuant"]} is {hw}; {gpu["name"]} is {gpu.get("arch")}, '
+                         f'so expect emulation rather than native throughput.')
+
+    for uc in payload['project']['usecases']:
+        c = uc['config']; who = uc['name']
+        m = _model_of(uc)
+        bw_w = uc['snapshot']['weightBytes']; bk = uc['snapshot']['kvBytes']
+        rz = c['reasoning']; reason = rz['tokens'] if rz.get('extendsKV') else 0
+        eff_seq = c['residentSeq'] + reason
+        slo = c['sloTargets']; gen = rz['tokens'] + c['visibleOut']
+
+        # --- errors -------------------------------------------------------
+        if c['residentSeq'] < 1 or c['visibleOut'] < 1:
+            errs.append(f'{who}: residentSeq and visibleOut must both be at least 1 token.')
+        if eff_seq > m['ctx']:
+            errs.append(f'{who}: {fmt_i(c["residentSeq"])} resident + {fmt_i(reason)} reasoning tokens '
+                        f'exceed {m["name"]}\'s {fmt_i(m["ctx"])}-token context. Trim the sequence or '
+                        f'pick a longer-context model.')
+        if m['active'] > m['params'] + 1e-9:
+            errs.append(f'{who}: active parameters ({m["active"]}B) exceed total ({m["params"]}B).')
+        weights = m['params'] * bw_w
+        if weights > 72 * gpu['vram']:
+            errs.append(f'{who}: one {weights:,.0f} GB copy of {m["name"]} at {c["weightQuant"]} does not '
+                        f'fit even across 72x {gpu["name"]} ({72 * gpu["vram"]:,.0f} GB). Quantize further '
+                        f'or pick a smaller model.')
+        if slo['p95s'] > 0 and slo['tps'] > 0:
+            need = 1.3 * (slo['ttftMs'] / 1000 + gen / slo['tps'])
+            if need > slo['p95s'] + 1e-9:
+                errs.append(f'{who}: the three targets contradict each other. {fmt_i(gen)} generated tokens '
+                            f'at {slo["tps"]} tok/s after a {slo["ttftMs"]} ms first token is {need:.1f} s at '
+                            f'P95, above the {slo["p95s"]} s promise. Raise p95s to >= {need:.1f}, raise tps, '
+                            f'or cut the output.')
+
+        # --- the two that quietly over-order hardware ---------------------
+        if c['residentSeq'] >= 0.9 * m['ctx'] and m['ctx'] >= 32768:
+            notes.append(f'{who}: residentSeq {fmt_i(c["residentSeq"])} is ~the whole {fmt_i(m["ctx"])}-token '
+                         f'context window. residentSeq is what one request HOLDS, not what the model can '
+                         f'hold. If conversations are 8K, say 8192.')
+        if c['sharedPrefixPct'] > 0:
+            notes.append(f'{who}: sharedPrefixPct {c["sharedPrefixPct"]}% assumes the serving stack has '
+                         f'automatic prefix caching ON and that the prompts really share that prefix. '
+                         f'Only keep it if the user said so.')
+
+        # --- workload-class sanity ---------------------------------------
+        live = c['kvPolicy'] == 'all' or (0 < slo['p95s'] <= 6)
+        if live and 0 < slo['tps'] < 30:
+            notes.append(f'{who}: a live path at {slo["tps"]} tok/s. Speech and interactive paths need >= 30 '
+                         f'tok/s to stay ahead of the listener.')
+        if c.get('session') and c['kvPolicy'] != 'all':
+            notes.append(f'{who}: a call length is set but KV is freed between turns, so the call length '
+                         f'barely matters. Live voice paths usually want kvPolicy "all".')
+        case = next((x for x in LIB['cases'] if x['name'] == c.get('preset')), None)
+        if case and case.get('supports'):
+            have = {sp['kind'] for sp in uc.get('supports') or []}
+            missing = [k for k in case['supports'] if k not in have]
+            if missing:
+                notes.append(f'{who}: the {case["name"]} preset normally attaches {", ".join(missing)}. '
+                             f'Leaving them off under-sizes the fleet.')
+        if uc.get('activeUsers') and uc.get('concManual') and c['concurrentCalls'] > uc['activeUsers']:
+            notes.append(f'{who}: {c["concurrentCalls"]} concurrent calls from {uc["activeUsers"]} active '
+                         f'users means every user is mid-request at once. Check the concurrency.')
+
+        # --- reachability: is the speed target physically possible here? ---
+        kv_tok = _kv_per_token(m, bk, eff_seq)
+        if slo['tps'] > 0:
+            best_tp = min(72, per_w if per_w > 1 else 8)
+            ic_eff = ic if best_tp <= per_w else min(ic, 0.7)
+            bw_eff = gpu['bw'] * best_tp * ic_eff * mbu * 1000
+            best = bw_eff / (m['active'] * bw_w + 1 * eff_seq * kv_tok)   # batch 1: the ceiling
+            if best < slo['tps']:
+                errs.append(f'{who}: {slo["tps"]} tok/s per user is unreachable on {gpu["name"]}. Even one '
+                            f'request alone at TP{best_tp} tops out at {best:.0f} tok/s for {m["name"]} at '
+                            f'{eff_seq:,} tokens. Lower the target, shorten the sequence, quantize the KV '
+                            f'cache, or pick a faster card.')
+            elif best < slo['tps'] * 1.35:
+                notes.append(f'{who}: {slo["tps"]} tok/s is close to the {best:.0f} tok/s ceiling at TP{best_tp} '
+                             f'and batch 1, so this pool will buy a replica per request or two.')
+        if slo['ttftMs'] > 0:
+            cached = int(c['residentSeq'] * min(0.95, c['sharedPrefixPct'] / 100))
+            best_tp = min(72, per_w if per_w > 1 else 8)
+            ttft = 2 * max(0, c['residentSeq'] - cached) * m['active'] / (gpu['tflops'] * best_tp * mfu)
+            if ttft > slo['ttftMs']:
+                errs.append(f'{who}: a {slo["ttftMs"]} ms first token is unreachable. Prefilling '
+                            f'{fmt_i(c["residentSeq"] - cached)} tokens of {m["name"]} at TP{best_tp} on '
+                            f'{gpu["name"]} takes {ttft:.0f} ms. Raise the target, shorten the prompt, or '
+                            f'widen the node.')
+
+        # --- KV precision left on the table -------------------------------
+        admitted = min(c['concurrentCalls'], c['maxBatchPerReplica'])
+        kv_total = admitted * eff_seq * kv_tok
+        if bk >= 2 and kv_total > weights:
+            notes.append(f'{who}: KV cache ({kv_total:,.0f} GB) outweighs the weights ({weights:,.0f} GB) at '
+                         f'{c["kvQuant"]}. FP8 KV halves it with negligible quality loss and is the '
+                         f'production default.')
+    return errs, notes
+
+def fmt_i(n):
+    return f'{int(round(n)):,}'
+
 def build_payload(spec):
     warnings = []
     gpu = resolve(spec.get('gpu'), LIB['gpus'], 'GPU') if spec.get('gpu') else die('"gpu" is required - ask the user which GPU to size on (see `gpuscale_url.py list gpus`).')
@@ -358,6 +508,26 @@ def cmd_encode(args):
         payload, warnings = spec, []
     else:
         payload, warnings = build_payload(spec)
+
+    # A link that opens on a broken fleet is worse than no link. Audit the
+    # physics before encoding anything, and refuse on a hard contradiction.
+    errs, notes = ([], [])
+    if not args.no_audit:
+        try:
+            errs, notes = audit_payload(payload)
+        except Exception as e:                      # never let the audit itself block a link
+            notes.append(f'audit could not run ({e})')
+    if errs and not args.force:
+        sys.stderr.write('\nThis configuration is wrong, so no link was produced:\n\n')
+        for e in errs:
+            sys.stderr.write(f'  ERROR  {e}\n')
+        if notes:
+            sys.stderr.write('\n')
+            for n in notes: sys.stderr.write(f'  note   {n}\n')
+        sys.stderr.write('\nFix the spec and run again. Use --force only if you have a reason to '
+                         'deliver a knowingly broken configuration.\n')
+        sys.exit(2)
+
     url = payload_to_url(payload, args.base)
     url2 = payload_to_url(payload, BACKUP_BASE) if args.base != BACKUP_BASE else None
     for u_ in filter(None, [url, url2]):
@@ -365,8 +535,15 @@ def cmd_encode(args):
             die('self-verification failed: decoded URL does not match the payload. Do not deliver this link.')
     if args.out: json.dump(payload, open(args.out, 'w'), indent=1)
     for w in warnings: warn(w)
+    for e in errs: warn('FORCED PAST AN ERROR: ' + e)
+    if notes:
+        sys.stderr.write('\nCheck these before you hand the link over:\n')
+        for n in notes: sys.stderr.write(f'  note   {n}\n')
+        sys.stderr.write('\n')
     if not args.quiet:
-        print(summarize(payload, url)); print('round-trip : verified OK (both links)\n')
+        print(summarize(payload, url))
+        print(f'audit      : {"clean" if not errs and not notes else f"{len(errs)} error(s), {len(notes)} note(s)"}')
+        print('round-trip : verified OK (both links)\n')
     print(url)
     if url2:
         print()
@@ -412,7 +589,11 @@ def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest='cmd', required=True)
     e = sub.add_parser('encode'); e.add_argument('spec'); e.add_argument('--base', default=DEFAULT_BASE)
-    e.add_argument('--out'); e.add_argument('--quiet', action='store_true'); e.set_defaults(fn=cmd_encode)
+    e.add_argument('--out'); e.add_argument('--quiet', action='store_true')
+    e.add_argument('--no-audit', action='store_true',
+                   help='skip the physics audit (not recommended)')
+    e.add_argument('--force', action='store_true',
+                   help='emit the link even when the audit found a hard error'); e.set_defaults(fn=cmd_encode)
     d = sub.add_parser('decode'); d.add_argument('link'); d.add_argument('--out'); d.set_defaults(fn=cmd_decode)
     l = sub.add_parser('list'); l.add_argument('what', choices=['models', 'gpus', 'quants', 'kvquants', 'presets', 'resilience', 'supports'])
     l.add_argument('filter', nargs='?'); l.set_defaults(fn=cmd_list)

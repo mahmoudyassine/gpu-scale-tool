@@ -52,7 +52,7 @@ https://mahmoudyassine.github.io/gpuscale/#p=z:<fragment>
     //        or {"custom": true, "params":117,"active":5.1,"hidden":2880,
     //            "layers":36,"kvHeads":8,"headDim":64,"ctx":131072}
     "weightQuant": "FP8",
-    "kvQuant": "BF16",
+    "kvQuant": "FP8",              // FP8 is the production default
     "preset": "Internal GPT / Copilot",   // CASES name, or null for manual
     "residentSeq": 16384,
     "visibleOut": 800,

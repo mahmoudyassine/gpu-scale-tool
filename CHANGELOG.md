@@ -1,5 +1,69 @@
 # Changelog
 
+## Studio 5.32.0 (2026-07-31) · engine v27
+
+The `gpuscale-link` skill now **refuses to produce a link for a configuration
+that cannot work**. It resolved names and clamped ranges, which catches a typo;
+it did nothing about a configuration that is arithmetically impossible, and the
+resulting link opened red with no warning to whoever sent it.
+
+### The audit
+
+`gpuscale_url.py encode` audits the physics against the same libraries and the
+same closed forms the engine uses, before anything is encoded. Seven checks stop
+the link outright (exit 2, nothing printed):
+
+| Rejected | Meaning |
+|---|---|
+| Context overflow | `residentSeq + reasoning` exceeds the model's window. Unservable. |
+| Contradictory targets | `1.3 × (ttft/1000 + gen/tps) > p95`. The three promises cannot all hold, whatever hardware you buy. |
+| Unreachable speed | The tok/s target is above what one request alone reaches on that card. More hardware cannot fix it. |
+| Unreachable first token | Prefill alone already exceeds the TTFT target at batch 1. |
+| Fits nowhere | One copy of the weights exceeds 72 of the chosen GPU. |
+| Quantization the card cannot run | NV FP4 on pre-Blackwell, and so on. |
+| Incoherent custom geometry | Active parameters above total, non-positive sequence or output. |
+
+Seven more are notes: the link is still produced, but the caller is told. They
+are the ones that quietly cost money rather than failing loudly, led by
+**`residentSeq` set to the model's whole context window**, which is the single
+most common way to over-order hardware by an order of magnitude.
+
+Errors and notes both go to stderr, so a caller piping stdout to grab the URL
+still sees them. `--force` and `--no-audit` exist and the skill is told never to
+use them.
+
+### A default that was quietly wrong
+
+The encoder defaulted `kvQuant` to **BF16**, while the readable-link parser, the
+URL format document and the practice guidance all default to **FP8**. Every
+configuration the skill produced without an explicit KV precision therefore
+carried twice the KV cache it should have. It defaults to FP8 now, and the two
+link builders agree.
+
+### Instructions rewritten around getting it right
+
+`SKILL.md` gains the audit tables, a step that says read the audit before
+delivering anything, and a **Getting every field right** section covering the
+judgement calls the audit cannot make: `residentSeq` is tokens held per request
+and not the context window; every field describes one model call; prefer
+`activeUsers` over `concurrentCalls` when the user described people; ask how long
+a call runs for voice workloads and set `session.callMinutes`; leave
+`sharedPrefixPct` at zero unless a hit rate was measured; never substitute a
+model silently; do not pin a topology the studio is about to re-solve. The
+worked example now shows a rejection and the exact text it prints.
+
+`docs/URL-FORMAT.md` gains the same checks as a hand-verifiable table, because an
+assistant writing a readable `#p=t:` link has no shell to run the audit in.
+
+### Verified
+
+A corpus of thirteen deliberately-broken specs: eight rejected with the right
+error, four flagged with the right notes, one clean. All thirteen behave as
+expected. The clean one encodes, round-trips, and opens on a fleet that fits with
+every SLO met (Llama 3.3 70B FP8/FP8, TP8, 3 nodes / 24 GPUs). While writing the
+worked example I quoted a stale ceiling of 41 tok/s; the audit's real output is
+115, and the example now carries the real text.
+
 ## Studio 5.31.0 (2026-07-31) · engine v27
 
 Two bug reports, both about things the studio would not let you say.

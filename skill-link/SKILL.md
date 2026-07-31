@@ -42,9 +42,20 @@ the link before printing it.
    state every assumption in the recap.
 4. **Write the spec JSON** (format below) to a temp file.
 5. **Encode**: `python3 scripts/gpuscale_url.py encode spec.json`.
-   The script validates, fills defaults, clamps out-of-range values (with
-   notes), self-verifies the round trip, and prints a summary + the URL.
-6. **Deliver BOTH URLs** the script prints: the primary
+   The script resolves names, fills defaults, clamps out-of-range values,
+   **audits the physics**, self-verifies the round trip, and prints a summary
+   plus the URL.
+6. **Read the audit before you deliver anything.** It is the difference between
+   a link and a correct link.
+   - **Exit code 2 and no URL** means the configuration is arithmetically
+     impossible or will open red. The errors say exactly what to change. Fix
+     the spec and encode again. Do not use `--force`, and do not hand over a
+     link built with `--no-audit`.
+   - **`note` lines on stderr** are things that are legal but usually wrong.
+     Either fix them or repeat them to the user in your recap. Never drop them
+     silently: several of them are the difference between a right-sized fleet
+     and one that is out by a factor.
+7. **Deliver BOTH URLs** the script prints: the primary
    (https://gpuscale.net/#p=z:...) and the mirror backup
    (https://mahmoudyassine.github.io/gpuscale/#p=z:...), the same project on a
    second host for corporate networks that block gpuscale.net. Paste each on
@@ -52,6 +63,36 @@ the link before printing it.
    assumptions made) so the user can spot a wrong input at a glance. If the
    URL exceeds ~8000 chars, warn that some chat/email tools truncate long
    links and offer the payload JSON file as a backup (`--out payload.json`).
+
+## The audit, and how not to trip it
+
+The encoder refuses to produce a link for a configuration that cannot work. Each
+check below exists because it is a mistake that is easy to make from a plain
+English brief and impossible to see in the resulting URL.
+
+**Rejected outright (exit 2, no link):**
+
+| Check | What it means |
+|---|---|
+| Context overflow | `residentSeq + reasoning` exceeds the model's context window. Unservable. |
+| Contradictory targets | `1.3 x (ttftMs/1000 + (reasoning+visibleOut)/tps) > p95s`. The three promises cannot all hold at once, whatever hardware you buy. |
+| Unreachable speed | The tok/s target is above what one request alone can reach on that card, at the widest sensible width. More hardware cannot fix it. |
+| Unreachable first token | Prefilling that many tokens of that model on that card already exceeds the TTFT target at batch 1. |
+| Does not fit anywhere | One copy of the weights exceeds 72 of the chosen GPU. |
+| Quantization the card cannot run | NV FP4 on pre-Blackwell, for example. |
+| Incoherent custom geometry | Active parameters above total, or a non-positive sequence or output. |
+
+**Flagged as notes (link still produced):**
+
+| Note | Why it usually matters |
+|---|---|
+| `residentSeq` is ~the whole context window | The single most common way to over-order hardware by 10x. `residentSeq` is what one request HOLDS, not what the model CAN hold. |
+| KV cache outweighs the weights at BF16 | FP8 KV halves it with negligible quality loss and is the production default. |
+| `sharedPrefixPct` above zero | It assumes the serving stack has automatic prefix caching on. Only keep it if the user told you their hit rate. |
+| Live path below 30 tok/s | Speech and interactive paths have to stay ahead of the listener. |
+| Preset supports left off | A RAG preset without its embedder and reranker under-sizes the fleet. |
+| Call length set with `kvPolicy: "running"` | Call length barely matters unless the KV is pinned for the session. |
+| Concurrency above the user count | Every user mid-request at once is almost never what was meant. |
 
 ## What to collect - and when to ask
 
@@ -132,7 +173,7 @@ weights FP8 / KV BF16, SLOs from the preset, resilience `n` (capacity only),
                                        //     "hidden":..,"layers":..,"kvHeads":..,
                                        //     "headDim":..,"ctx":..}
       "weightQuant": "FP8",            // default FP8
-      "kvQuant": "BF16",               // default BF16
+      "kvQuant": "FP8",                // default FP8 (production default)
       "preset": "Internal GPT / Copilot",  // fills seq/out/reasoning/SLOs/traffic
       "residentSeq": 16384,            // override preset if user specified
       "sharedPrefixPct": 0,            // leave 0 unless the user gives a measured
@@ -148,6 +189,10 @@ weights FP8 / KV BF16, SLOs from the preset, resilience `n` (capacity only),
       "kvPolicy": "running",           // "running" | "all" (KV for queued too)
       "supports": "auto",              // "auto" (preset defaults) | [] |
                                        // ["embed","rerank"] | [{"kind":"embed","model":"BGE-M3"}]
+      "session": {"callMinutes":5},    // conversations only. Sets residentSeq from
+                                       // the call length: base + tok/min x minutes.
+                                       // A named preset supplies the rate and base,
+                                       // so callMinutes alone is usually enough
       "isolate": false,                // true = own pool even if model matches
       "workers": 1, "tensorParallel": 2, "maxBatchPerReplica": 15  // optional seeds;
                                        // the app re-auto-sizes these on load
@@ -155,6 +200,52 @@ weights FP8 / KV BF16, SLOs from the preset, resilience `n` (capacity only),
   ]
 }
 ```
+
+## Getting every field right
+
+The audit catches contradictions. These are the judgement calls it cannot make
+for you, in the order they go wrong most often.
+
+**`residentSeq` is tokens held per request.** Not the context window, not the
+whole task. A model with a 1M window serving 8K conversations is `8192`. Count
+the system prompt, the retrieved passages, the conversation so far and the tool
+traces. If the user talks about a task with many steps, that is many requests of
+this size, not one enormous one.
+
+**Every field describes ONE model call.** An agent that makes forty tool calls
+per task is forty requests. Do not fold a task's token budget into `visibleOut`;
+use `activeUsers` plus the preset's traffic shape, or `concurrentCalls` directly.
+
+**Prefer `activeUsers` to `concurrentCalls`** whenever the user described people
+rather than in-flight requests. Turning headcount into concurrency is exactly
+what the studio's estimator is for. Use `concurrentCalls` when they gave you a
+measured concurrency, or for a live path where every caller is a session.
+
+**Say what a conversation costs.** For voice, telephony and contact-centre
+workloads, ask how long a call runs and set `session.callMinutes`. A conversation
+holds its own transcript, and those presets pin KV for the whole session, so a
+twenty-minute call is not a two-minute one. Naming the preset supplies the token
+rate and the system-prompt base.
+
+**Leave `sharedPrefixPct` at 0** unless the user states a measured prefix-cache
+hit rate AND confirms their stack has automatic prefix caching enabled. It is
+the one field that makes the estimate less conservative.
+
+**KV precision: FP8 unless told otherwise.** It halves the cache against BF16
+with negligible quality impact. Weight precision is the user's call; FP8 is a
+safe default, BF16 when they want maximum quality, NV FP4 only on Blackwell.
+
+**Do not invent a model or GPU.** They must exist in the library. If what the
+user named is genuinely absent, use a custom geometry and say that you did, with
+the published figures you used. Never substitute a similar model silently.
+
+**Do not pin `workers`, `tensorParallel` or `maxBatchPerReplica`** unless the
+user asked for that exact topology. The studio re-solves them on load, so a
+guess is at best ignored and at worst confusing.
+
+**State your assumptions.** GPU, quantization, resilience pattern and traffic
+shape are usually your choices, not theirs. List them under the link in one
+line each so a wrong one is obvious at a glance.
 
 Single-scenario shorthand: omit `"usecases"` and put the use-case fields at
 the top level next to `gpu`. A spec containing `"schema": "gpuscale.net/5"`
@@ -195,7 +286,10 @@ python3 scripts/gpuscale_url.py list models|gpus|quants|kvquants|presets|resilie
 ## Delivery rules
 
 - Always run `encode` (never hand-assemble a fragment) - it is the only
-  path with round-trip self-verification.
+  path with round-trip self-verification AND the physics audit.
+- Never deliver a link the audit refused, and never reach for `--force` or
+  `--no-audit` to get past it. An error means the configuration cannot work;
+  the fix is the spec, not the flag.
 - Recap the key inputs and every assumption next to the URL. A wrong quant
   or concurrency silently baked into a link wastes a customer meeting; the
   recap is how the user catches it in five seconds.
@@ -217,5 +311,21 @@ follow-up needed - build:
 ```
 
 `encode` derives concurrency from the preset traffic, attaches the default
-embed+rerank supports, seeds topology, verifies, and prints the URL. Recap
-the FP8/BF16 default quants and derived concurrency when delivering.
+embed and rerank supports, seeds the topology, audits the physics, verifies the
+round trip and prints the URL. Recap the FP8 weight and KV defaults, the derived
+concurrency and the resilience pattern when delivering.
+
+If the audit had objected, it would have said so instead of printing a link. For
+example, asking for the same assistant at 300 tok/s per user gets:
+
+```
+This configuration is wrong, so no link was produced:
+
+  ERROR  Staff RAG assistant: 300 tok/s per user is unreachable on L40S 48GB.
+         Even one request alone at TP8 tops out at 115 tok/s for Qwen3 32B at
+         8,192 tokens. Lower the target, shorten the sequence, quantize the KV
+         cache, or pick a faster card.
+```
+
+Take the fix it names back to the user rather than quietly lowering the target
+yourself.

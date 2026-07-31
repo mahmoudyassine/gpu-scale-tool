@@ -190,6 +190,24 @@ Follow these or the link will be wrong in a way the user cannot see.
   your choices, not theirs. List them in one line under the link so they can
   correct you.
 
+### Before you send a readable link
+
+The `gpuscale-link` skill runs a physics audit and refuses to emit a link that
+cannot work. Writing a `#p=t:` link by hand skips that, so check these yourself.
+Each one is a mistake that is invisible in the URL and expensive in the answer.
+
+| Check | Rule |
+|---|---|
+| Context | `seq + reason` must be under the model's context window. |
+| Targets agree | `1.3 x (ttft/1000 + (reason + out) / tps)` must be **at or below** `p95`. If it is not, the three promises contradict each other and no hardware fixes it. |
+| Speed is reachable | A single request cannot exceed `BW x TP x 0.85 x 0.65 x 1000 / (active_B x bytes_W + seq x KV_per_token)` tok/s. If your `tps` is above that, lower it. |
+| First token is reachable | `2 x seq x active_B / (TFLOPS x TP x 0.5)` ms is the floor for `ttft` at that width. |
+| It fits somewhere | One copy of the weights (`params x bytes_W`) must fit in 72 of the chosen GPU. |
+| Quantization suits the card | NV FP4 is Blackwell-only; FP8 is native on Hopper and later. |
+| `seq` is not the context window | If it equals the model's maximum context, you almost certainly meant the tokens one request holds. |
+| Live paths are fast enough | Voice and interactive paths want `tps` at 30 or above. |
+| KV precision | Default to `kv=FP8`. It halves the cache against BF16 with negligible quality loss. |
+
 ### Checking your own work
 
 If you can browse, open the link and read the header: it shows nodes, GPUs,
