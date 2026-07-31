@@ -7,7 +7,7 @@ if(!MODELS.length || !GPUS.length || !QUANTS.length || !CASES.length){
   document.body.innerHTML = '<div style="font-family:system-ui,sans-serif;max-width:560px;margin:80px auto;padding:0 20px;line-height:1.65;color:#1A2536"><h2 style="margin-bottom:10px">Data files not loaded</h2><p>GPUscale.net could not find its library. Keep <code>index.html</code> together with the <code>data/</code> and <code>assets/</code> folders: the four files <code>data/models.js</code>, <code>data/gpus.js</code>, <code>data/quants.js</code> and <code>data/usecases.js</code> must sit next to this page.</p><p>If you need one portable file instead, use <code>dist/gpuscale_standalone.html</code> or rebuild it with <code>python3 tools/build_single_file.py</code>.</p></div>';
   throw new Error('GPUscale.net data missing');
 }
-const STUDIO_VERSION = '5.32.1', ENGINE_VERSION = 27;
+const STUDIO_VERSION = '5.33.0', ENGINE_VERSION = 27;
 function newProjId(){ const L='abcdefghjkmnpqrstuvwxyz', D='0123456789';
   const pick=s=>s[Math.floor(Math.random()*s.length)];
   return 'Project_'+pick(L)+pick(L)+pick(D)+pick(D)+pick(D); }
@@ -1444,6 +1444,16 @@ function applyCase(i){
   /* A preset that describes a session prefills the conversation-length estimator
      with the shape its own resident figure was built from, so changing the call
      length starts from the preset's assumption rather than from nothing. */
+  /* A preset describes a workload, and leaving whatever model happened to be
+     selected next to it reads as a recommendation. Each preset names a model
+     that can actually keep its own targets (enforced by check_presets.py), and
+     it is applied only until the reader picks one themselves: after that the
+     card keeps their choice through every later preset change. */
+  const uSel=UC[activeUc];
+  if(c.model && uSel && !uSel.modelManual && !$('chkCustom').checked){
+    const o=findOption($('selModel'), c.model);
+    if(o){ $('selModel').value=o.value; uSel.suggestedModel=c.model; }
+  }
   const sh=c.session;
   $('slMin').value  = sh? sh.min  : 5;
   $('slRate').value = sh? sh.tokMin : 200;
@@ -1557,6 +1567,9 @@ function renderUcCards(){ const box=$('ucCards'); if(!box||!UC.length) return; c
   if(renamingUc!=null){ const inp=box.querySelector('[data-ren-input]'); if(inp){ inp.focus(); inp.select(); } }
   const tag=ucName(UC[activeUc]);
   ['ctxModel','ctxPrec','ctxWork'].forEach(id=>{ const el=$(id); if(el) el.textContent = UC.length>1? tag : ''; });
+  { const u0=UC[activeUc], el=$('ctxModel');
+    if(el && u0 && u0.suggestedModel && !u0.modelManual && !u0.f.chkCustom)
+      el.textContent = (UC.length>1? tag+' · ' : '') + 'suggested for this preset'; }
   ['stWork','stModel','stPrec'].forEach(id=>{ const el=$(id);
     if(el) el.style.setProperty('--uccol', UC.length>1? UCCOL(activeUc) : 'var(--line-soft)'); });
   const hwc=$('ctxHw'); if(hwc) hwc.textContent = UC.length>1? 'project-wide · all use cases' : ''; }
@@ -3221,7 +3234,7 @@ function serialize(){
     // v5: the full use-case list. config/snapshot above stay v4-shaped (the active
     // card) so older importers still read this file as a single-scenario config.
     project:{active:activeUc, usecases:UC.map(u=>({id:u.id, name:u.name||null,
-      isolate:!!u.isolate, supports:u.supports||[], concManual:!!u.concManual, sliceU:+u.sliceU||0, cards:+u.cards||0, cardsKey:u.cardsKey||'',
+      isolate:!!u.isolate, supports:u.supports||[], concManual:!!u.concManual, modelManual:!!u.modelManual, sliceU:+u.sliceU||0, cards:+u.cards||0, cardsKey:u.cardsKey||'',
       activeUsers:+u.f.nrmUsers||null,
       config:ucToConfig(u), snapshot:ucSnapshot(u)})),
       results:(()=>{ const prj=computeProject(); const F=prj.fleet;
@@ -3331,7 +3344,8 @@ function applyConfig(raw){
   if(proj && Array.isArray(proj.usecases) && proj.usecases.length){
     UC.length=0;
     proj.usecases.forEach(pu=>UC.push({id:'uc'+(++ucSeq), name:pu.name||'',
-      supports:Array.isArray(pu.supports)?pu.supports:[], isolate:!!pu.isolate, concManual:!!pu.concManual, sliceU:+pu.sliceU||0, cards:+pu.cards||0, cardsKey:pu.cardsKey||'', f:{}}));
+      supports:Array.isArray(pu.supports)?pu.supports:[], isolate:!!pu.isolate, concManual:!!pu.concManual,
+      modelManual: pu.modelManual!==undefined? !!pu.modelManual : true, sliceU:+pu.sliceU||0, cards:+pu.cards||0, cardsKey:pu.cardsKey||'', f:{}}));
     UC.forEach((u,idx)=>{ activeUc=idx; const pu=proj.usecases[idx];
       applyUcDom(pu.config||{}, pu.snapshot||{}, notes); captureUc();
       UC[idx].f.nrmUsers = pu.activeUsers || +((pu.config||{}).estimator||{}).sessions || UC[idx].f.nrmUsers;
@@ -4014,6 +4028,8 @@ document.querySelectorAll('input,select').forEach(el=>{
     if(el.id==='selCase') applyCase(+el.value);
     if(el.id==='selReason') syncReason();
     if(el.id==='chkCustom'||/^cus(Params|Active|Layers)$/.test(el.id)) syncCustomUI();
+    if((el.id==='selModel'||el.id==='chkCustom') && UC[activeUc]){
+      UC[activeUc].modelManual=true; UC[activeUc].suggestedModel=null; }
     if(el.id==='nrmUsers'||el.id==='ccTurns'||el.id==='ccShare'||el.id==='ccCalls'||el.id==='ccBurst'||el.id==='ccDur') applyNrmUsers();
     if(/^(slMin|slRate|slBase|slBasis|selPolicy|selCase)$/.test(el.id)) renderSession();
     if((el.id==='inConc'||el.id==='inConc_r')&&UC[activeUc]) UC[activeUc].concManual=true;
@@ -4536,7 +4552,6 @@ window.GPUscale = {compute, gpuFitScan, sloOptScan, sloPrice, readState, seriali
 window.SizingConsole = window.GPUscale;
 (function boot(){
   UC.push({id:'uc'+(++ucSeq), name:'', f:{}, supports:[], isolate:false});
-  const mi=MODELS.findIndex(m=>/Kimi K2\.5/.test(m.name)); if(mi>=0)$('selModel').value=mi;
   const wi=QUANTS.findIndex(q=>q.name==='BF16'); if(wi>=0)$('selWQuant').value=wi;
   const gi=GPUS.findIndex(g2=>/B300/.test(g2.name)); if(gi>=0)$('selGpu').value=gi;
   const ci=CASES.findIndex(c=>/Voice agent/.test(c.name)); if(ci>=0){ $('selCase').value=ci; applyCase(ci); }

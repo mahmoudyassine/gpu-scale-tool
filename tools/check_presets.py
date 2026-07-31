@@ -25,6 +25,26 @@ REASON_TOK = {'None': 0, 'Light reasoning': 2000, 'Heavy reasoning': 8000, 'Cust
 cases = load('usecases.js')
 fail, warn = [], []
 
+MODELS_BY_NAME = {}
+REF_GPU = {'name': 'H200 141GB NVL', 'tflops': 989, 'bw': 4.8}
+try:
+    import re as _re
+    _src = open(os.path.join(ROOT, 'data', 'models.js'), encoding='utf-8').read() \
+        if 'ROOT' in dir() else open('data/models.js', encoding='utf-8').read()
+    for _line in _src.splitlines():
+        _line = _line.strip().rstrip(',')
+        if _line.startswith('{') and '"name"' in _line:
+            try:
+                _m = json.loads(_line)
+                MODELS_BY_NAME[_m['name']] = _m
+            except Exception:
+                pass
+except Exception:
+    pass
+
+def ttft_target_or_inf(c):
+    return c['ttftTarget'] if c.get('ttftTarget') else float('inf')
+
 for c in cases:
     n = c['name']
     if n.startswith('Custom'):
@@ -56,6 +76,34 @@ for c in cases:
     elif cache > 0:
         warn.append(f'{n}: ships a {cache}% shared-prefix default, so it sizes for '
                     'prefix caching being enabled; every stock preset leaves this at 0')
+    # A suggested model is a recommendation the tool makes, so it has to be one
+    # that can actually keep the preset's own promises. Checked on a reference
+    # H200 at TP8: if the pick cannot hit the preset's TTFT or tok/s target even
+    # at batch 1 there, selecting the preset would immediately show red.
+    mdl = c.get('model')
+    if mdl is not None:
+        m = MODELS_BY_NAME.get(mdl)
+        if m is None:
+            fail.append(f'{n}: suggested model "{mdl}" is not in the library')
+        else:
+            eff = c['resident'] + (rt if c.get('extend', True) else 0)
+            if eff > m['ctx']:
+                fail.append(f'{n}: suggested model {mdl} has a {m["ctx"]:,}-token context, '
+                            f'below the preset\'s {eff:,}-token working set')
+            TP, MFU, MBU, IC = 8, 0.5, 0.65, 0.85
+            ttft = 2 * c['resident'] * m['active'] / (REF_GPU['tflops'] * TP * MFU)
+            if ttft > ttft_target_or_inf(c):
+                fail.append(f'{n}: suggested model {mdl} needs {ttft:.0f} ms to prefill '
+                            f'{c["resident"]:,} tokens at TP8 on {REF_GPU["name"]}, above the '
+                            f'preset\'s own {c["ttftTarget"]} ms target')
+            kv_layers = max(1, m.get('kvLayers') or m['layers'])
+            kv_tok = 2 * kv_layers * m['kvHeads'] * m['headDim'] * 1 / 1e9   # FP8 KV
+            bw_eff = REF_GPU['bw'] * TP * IC * MBU * 1000
+            best = bw_eff / (m['active'] * 1 + eff * kv_tok)                 # FP8 weights, batch 1
+            if tps and best < tps:
+                fail.append(f'{n}: suggested model {mdl} tops out at {best:.0f} tok/s at TP8 on '
+                            f'{REF_GPU["name"]}, below the preset\'s own {tps} tok/s target')
+
     # a declared session shape must reproduce the preset's own resident figure,
     # or one of the two numbers is wrong and the tool would contradict itself
     sess = c.get('session')

@@ -75,7 +75,7 @@ Rules, all of them:
 | `model` | Model name from the library, **required**, or `custom:...` (below) | |
 | `quant` | Weight quantization: `FP8` `BF16` `NV+FP4` `MXFP4` `INT8` `Q4_K_M` ... (19 of them) | `FP8` |
 | `kv` | KV cache quantization: `BF16` `FP16` `FP8` `INT8` `INT4` | `FP8` |
-| `preset` | Workload preset name. Fills every workload field below | none |
+| `preset` | Workload preset name. Fills every workload field below, and suggests a model when `model=` is omitted | none |
 | `seq` | Resident tokens per request: prompt + retained history + tool traces. **Not** the model's max context | preset, else 4096 |
 | `out` | Visible output tokens per response | preset, else 400 |
 | `reason` | Hidden thinking tokens per request: a number, or `None` / `Light` / `Heavy` | preset, else 0 |

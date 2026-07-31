@@ -59,8 +59,8 @@ section&nbsp;1 to get a fleet on screen in five minutes; read section&nbsp;5 if 
 number to somebody who signs the purchase order.</p>
 
 <div class="chips">
-  <span class="chip t">Studio 5.32</span><span class="chip">Engine v27</span>
-  <span class="chip">Library v34</span><span class="chip">101 models · 37 GPUs · 24 presets</span>
+  <span class="chip t">Studio 5.33</span><span class="chip">Engine v27</span>
+  <span class="chip">Library v35</span><span class="chip">101 models · 37 GPUs · 24 presets</span>
   <span class="chip">MIT licensed</span><span class="chip">Nothing leaves your browser</span>
 </div>
 
@@ -345,6 +345,12 @@ its model, precision, derived concurrency, and chips for any supporting models a
 <div>
 <p>Start from a preset: 24 of them, each with SLO targets traced to published production guidance
 (<a href="#presets">section 11</a>). A preset only prefills the fields; edit anything afterwards.</p>
+<p>Each preset also <b>suggests a model</b>, marked <i>suggested for this preset</i> next to the model
+dropdown. It is a starting point of the right size class and modality for that workload, not a ranking,
+and every one is checked at build time against the preset's own first-token and speed targets so
+selecting a preset can never leave you looking at a configuration that is red on arrival. The moment
+you pick a model yourself the suggesting stops for that card, and later preset changes leave your
+choice alone.</p>
 </div>
 </div>
 
@@ -1436,7 +1442,7 @@ peak</b>. Scope with this tool; verify with a benchmark; sign with margin.</p>
 </div>
 
 <div class="footdoc">
-  <p>GPUscale manual · studio 5.32 · engine v27 · library v34. Written against the code, with every
+  <p>GPUscale manual · studio 5.33 · engine v27 · library v34. Written against the code, with every
   figure captured from the running application and every formula checked against the engine.
   © 2026 GPUscale.net, MIT licensed.</p>
 </div>

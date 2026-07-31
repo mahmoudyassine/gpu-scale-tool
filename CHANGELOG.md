@@ -1,5 +1,60 @@
 # Changelog
 
+## Studio 5.33.0 (2026-07-31) · library v35 · engine v27
+
+**Presets suggest a model.** Selecting *Voice agent* used to leave whatever model
+happened to be selected sitting next to it, which on a fresh page was a 1T MoE.
+Nothing said it was a recommendation, and it read exactly like one.
+
+Each of the 24 presets now names a model of the right size class and modality for
+that workload, shown with *suggested for this preset* beside the dropdown. It is
+a starting point, not a ranking.
+
+### Every suggestion has to survive its own preset
+
+`tools/check_presets.py` fails the build unless the suggested model can meet the
+preset's own targets: prefill within `ttftTarget`, and a batch-1 decode ceiling
+above `tpsTarget`, both at TP8 on a reference H200, plus a context window that
+holds the preset's working set. Selecting a preset can therefore never leave you
+looking at a configuration that is red on arrival.
+
+The gate earned itself immediately. The first pick for **Code agent** was
+Qwen3-Coder 480B-A35B, the library's dedicated coding model. Its 35B active
+parameters need 1,160 ms to prefill the preset's 64K context, above the preset's
+own 1,000 ms promise. It is now Qwen3-Next 80B-A3B, whose 3.9B active parameters
+do the same prefill in 129 ms: for a long-context agent with a first-token
+promise, a sparse MoE is the architecture that fits, and the check made that
+argument rather than a preference.
+
+The full set spans small dense models for inline completion and voice, mid-size
+for RAG and assist, multimodal Gemma 3 and Llama 4 Scout for the vision and
+computer-use classes, Magistral and DeepSeek-R1 for the reasoning classes, and
+Aya Expanse for translation.
+
+### It never overrides a choice
+
+The suggestion applies only while the reader has not picked a model for that
+card. Choosing one, or switching to a custom geometry, ends it permanently for
+that card: later preset changes leave it alone, and the *suggested* marker
+disappears. Projects saved before this release import with the flag set, so an
+existing project's model can never be replaced by a suggestion.
+
+A new use case starts fresh and does take the suggestion, which is what "add a
+use case, pick its type" already meant.
+
+### Also
+
+The studio no longer hardcodes a boot model. The landing page opens on the Voice
+agent preset with Qwen3 8B, which is a configuration that makes sense, rather
+than a 1T mixture of experts serving a phone call.
+
+### Verified
+
+All 24 suggestions clear their own preset's targets with headroom, printed as a
+table during the build. Both reference projects render identically to 5.32.1.
+The custom-model fuzz survives 26 steps. The link skill's 13-spec corpus is
+unchanged at 13/13, and the manual's 41 claims still re-derive.
+
 ## Studio 5.32.1 (2026-07-31) · engine v27
 
 A correction to the audit shipped an hour earlier in 5.32.0, found by running a

@@ -248,6 +248,12 @@ the one field that makes the estimate less conservative.
 with negligible quality impact. Weight precision is the user's call; FP8 is a
 safe default, BF16 when they want maximum quality, NV FP4 only on Blackwell.
 
+**A preset carries a suggested model, and naming one overrides it.** If the user
+told you which model they run, always set `model` explicitly. If they described a
+workload but never named a model, you may omit `model` and let the preset's
+suggestion stand, but say in your recap which model that turned out to be so they
+can correct it.
+
 **Do not invent a model or GPU.** They must exist in the library. If what the
 user named is genuinely absent, use a custom geometry and say that you did, with
 the published figures you used. Never substitute a similar model silently.

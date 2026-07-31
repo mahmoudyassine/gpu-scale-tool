@@ -2343,6 +2343,7 @@
    "ttftTarget": 300,
    "tpsTarget": 20,
    "p95Target": 18,
+   "model": "Llama 3.1 8B",
    "note": "Short support chat. 20 tok/s outruns reading speed; a 250-tok reply streams in ~13 s.",
    "supports": [
     "guard"
@@ -2363,6 +2364,7 @@
    "ttftTarget": 400,
    "tpsTarget": 25,
    "p95Target": 18,
+   "model": "Qwen3 8B",
    "note": "Single-pass RAG. TTFT budget includes retrieval + rerank (~400 ms) ahead of prefill.",
    "supports": [
     "embed",
@@ -2385,6 +2387,7 @@
    "ttftTarget": 1200,
    "tpsTarget": 40,
    "p95Target": 45,
+   "model": "Qwen3 32B",
    "note": "Multi-hop agentic RAG: 16-32K context, ~800 thinking/tool-plan tokens per call on reasoning models, ~6 LLM calls per answer.",
    "supports": [
     "embed",
@@ -2406,6 +2409,7 @@
    "ttftTarget": 600,
    "tpsTarget": 25,
    "p95Target": 18,
+   "model": "Llama 3.3 70B Instruct",
    "note": "Enterprise assistant with doc retrieval, multi-turn; prefix caching assumed for history.",
    "supports": [
     "embed",
@@ -2428,6 +2432,7 @@
    "ttftTarget": 2500,
    "tpsTarget": 30,
    "p95Target": 40,
+   "model": "Qwen3 32B",
    "note": "Long doc in context with a light grounded-verification budget (~500 thinking tokens); TTFT is dominated by the 32K prefill.",
    "supports": [
     "ocr",
@@ -2450,6 +2455,7 @@
    "ttftTarget": 1000,
    "tpsTarget": 40,
    "p95Target": 70,
+   "model": "Llama 3.3 70B Instruct",
    "note": "Long-form drafting. Users skim, not read along: 40 tok/s, a 2K draft streams in ~50 s.",
    "supports": [],
    "traffic": {
@@ -2468,6 +2474,7 @@
    "ttftTarget": 100,
    "tpsTarget": 60,
    "p95Target": 2,
+   "model": "Qwen3 4B",
    "note": "IDE completion / small edits: 10-100 token suggestions; anything slower than ~2 s gets discarded, so P95 is tight.",
    "supports": [
     "embed"
@@ -2489,6 +2496,7 @@
    "ttftTarget": 1000,
    "tpsTarget": 50,
    "p95Target": 60,
+   "model": "Qwen3-Next 80B-A3B (MoE, hybrid)",
    "note": "Repo-aware coding agent: 32-64K append-only context, ~2K tokens per tool step (thinking + diff), ~30 steps per 20-30 min task.",
    "supports": [
     "embed"
@@ -2514,6 +2522,7 @@
     "tokMin": 200,
     "base": 3100
    },
+   "model": "Qwen3 8B",
    "note": "Telephony/IVR. Voice-to-voice budget needs LLM TTFT under ~300 ms; 50 tok/s feeds sentence-chunked TTS without gaps.",
    "supports": [
     "asr",
@@ -2533,6 +2542,7 @@
    "ttftTarget": 600,
    "tpsTarget": 60,
    "p95Target": 55,
+   "model": "Magistral Small 1.2 24B (reasoning)",
    "note": "~2K hidden CoT + short answer. Nobody reads CoT: decode speed is the latency lever, so target 60 tok/s.",
    "supports": [],
    "traffic": {
@@ -2551,6 +2561,7 @@
    "ttftTarget": 800,
    "tpsTarget": 60,
    "p95Target": 200,
+   "model": "DeepSeek-R1 671B (MoE)",
    "note": "~8K CoT budget (math/coding/research). 8.5K tokens at 60 tok/s is a ~142 s physical floor.",
    "supports": [],
    "traffic": {
@@ -2570,6 +2581,7 @@
    "ttftTarget": 3000,
    "tpsTarget": 40,
    "p95Target": 90,
+   "model": "Gemma 3 27B",
    "note": "Chunked VLM captioning then aggregate; ~30-47K vision tokens per minute of video at native sampling.",
    "supports": [
     "asr"
@@ -2591,6 +2603,7 @@
    "ttftTarget": 5000,
    "tpsTarget": 30,
    "p95Target": 90,
+   "model": "Qwen3 32B",
    "note": "64-128K contracts/filings. TTFT is the long prefill (~5 s at 64K tuned); prefix caching helps repeat queries.",
    "supports": [
     "ocr"
@@ -2611,6 +2624,7 @@
    "ttftTarget": 0,
    "tpsTarget": 0,
    "p95Target": 0,
+   "model": "Qwen3 30B-A3B (MoE)",
    "note": "Batch jobs (extraction, classification): 24 h job SLA, no interactive SLOs; size for throughput at max batch.",
    "supports": [
     "ocr"
@@ -2629,6 +2643,7 @@
    "ttftTarget": 1000,
    "tpsTarget": 50,
    "p95Target": 75,
+   "model": "Qwen3 235B-A22B (MoE)",
    "note": "Multi-step autonomous research: ~2K thinking tokens per call across ~40 calls (~35 min per task, ~100K output tokens total).",
    "supports": [
     "embed",
@@ -2650,6 +2665,7 @@
    "ttftTarget": 1500,
    "tpsTarget": 50,
    "p95Target": 15,
+   "model": "Gemma 3 27B",
    "note": "VLM reads a study (1-3K image tokens in context) and drafts findings/impression. Clinician-interactive.",
    "supports": [
     "ocr",
@@ -2672,6 +2688,7 @@
    "ttftTarget": 800,
    "tpsTarget": 40,
    "p95Target": 50,
+   "model": "Llama 3.3 70B Instruct",
    "note": "Grounded medical Q&A with a real verification budget (~1K thinking tokens); guardrails on both directions.",
    "supports": [
     "embed",
@@ -2694,6 +2711,7 @@
    "ttftTarget": 700,
    "tpsTarget": 40,
    "p95Target": 4,
+   "model": "Gemma 3 4B",
    "note": "VLM monitors streams in ~10 s clips (~8K vision tokens each); alert within seconds. Concurrency = camera streams.",
    "supports": [],
    "traffic": {
@@ -2709,6 +2727,7 @@
    "ttftTarget": 500,
    "tpsTarget": 40,
    "p95Target": 18,
+   "model": "Aya Expanse 32B (multilingual)",
    "note": "Segment/page translation, roughly symmetric input and output. Subtitle mode needs segments under ~2 s.",
    "supports": [],
    "traffic": {
@@ -2732,6 +2751,7 @@
     "tokMin": 200,
     "base": 14784
    },
+   "model": "Qwen3 14B",
    "note": "Live suggestions while a human talks: transcript + KB in context, tiny outputs, utterance-to-suggestion under ~2.5 s.",
    "supports": [
     "asr",
@@ -2753,6 +2773,7 @@
    "ttftTarget": 2000,
    "tpsTarget": 30,
    "p95Target": 60,
+   "model": "Llama 4 Scout 109B (MoE)",
    "note": "One STEP of an autonomous browser or desktop agent. A whole task runs about 200K tokens across many steps; each step re-sends the accumulated transcript plus 2-5K tokens of tool schema, and answers with a short tool call.",
    "supports": [
     "guard"
@@ -2779,6 +2800,7 @@
     "tokMin": 750,
     "base": 346
    },
+   "model": "Gemma 4 E4B",
    "note": "A model that takes audio in and emits audio out, with no separate ASR or TTS. Native stacks reach 160-400 ms voice-to-voice against 1-2 s for a pipeline, so the whole budget sits on this one model.",
    "supports": [
     "guard"
@@ -2797,6 +2819,7 @@
    "ttftTarget": 3000,
    "tpsTarget": 30,
    "p95Target": 110,
+   "model": "Qwen3-Coder 480B-A35B (MoE)",
    "note": "A whole diff reviewed in one pass: about 50K tokens of prefill for a 2,000-line pull request, a long think, and a page of review comments. Prefill dominates.",
    "supports": [
     "embed"
@@ -2817,6 +2840,7 @@
    "ttftTarget": 300,
    "tpsTarget": 20,
    "p95Target": 18,
+   "model": "Qwen3 4B",
    "note": "Sidebar or chat-panel completion, where the answer is read rather than accepted inline. The relaxed half of the completion class: 300 ms first token and reading-speed streaming.",
    "supports": [
     "embed"
@@ -3359,7 +3383,7 @@
   ]
  },
  "meta": {
-  "library": "v34",
+  "library": "v35",
   "engine": 27,
   "updated": "2026-07-31"
  },
@@ -3535,7 +3559,7 @@
  "versions": {
   "schema": "gpuscale.net/5",
   "engine": 27,
-  "studio": "5.32.1"
+  "studio": "5.33.0"
  },
  "kv_policies": [
   "running",
