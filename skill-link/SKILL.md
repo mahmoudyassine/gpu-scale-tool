@@ -51,6 +51,10 @@ the link before printing it.
      impossible or will open red. The errors say exactly what to change. Fix
      the spec and encode again. Do not use `--force`, and do not hand over a
      link built with `--no-audit`.
+   - **`WARN` lines** mean the fleet will be built but will miss a target the
+     user asked for. Deliver the link and say so plainly, with the number the
+     studio will show. Do not quietly lower the target to make the warning go
+     away: take the choice back to the user.
    - **`note` lines on stderr** are things that are legal but usually wrong.
      Either fix them or repeat them to the user in your recap. Never drop them
      silently: several of them are the difference between a right-sized fleet
@@ -70,19 +74,28 @@ The encoder refuses to produce a link for a configuration that cannot work. Each
 check below exists because it is a mistake that is easy to make from a plain
 English brief and impossible to see in the resulting URL.
 
-**Rejected outright (exit 2, no link):**
+**ERROR, no link produced (exit 2).** These cannot be fixed by choosing
+different hardware, so there is nothing to show the user.
 
 | Check | What it means |
 |---|---|
 | Context overflow | `residentSeq + reasoning` exceeds the model's context window. Unservable. |
 | Contradictory targets | `1.3 x (ttftMs/1000 + (reasoning+visibleOut)/tps) > p95s`. The three promises cannot all hold at once, whatever hardware you buy. |
-| Unreachable speed | The tok/s target is above what one request alone can reach on that card, at the widest sensible width. More hardware cannot fix it. |
-| Unreachable first token | Prefilling that many tokens of that model on that card already exceeds the TTFT target at batch 1. |
 | Does not fit anywhere | One copy of the weights exceeds 72 of the chosen GPU. |
 | Quantization the card cannot run | NV FP4 on pre-Blackwell, for example. |
 | Incoherent custom geometry | Active parameters above total, or a non-positive sequence or output. |
 
-**Flagged as notes (link still produced):**
+**WARN, link still produced.** The fleet is buildable but **will miss a target
+the user asked for**, and the studio will show it red. That is often the most
+useful thing you can send: it shows *why* the ask is impossible on that card. You
+must repeat the warning in your recap. Never present the fleet as if it complied.
+
+| Check | What it means |
+|---|---|
+| Unreachable speed | The tok/s target is above what one request alone reaches on that card at the widest sensible width. Replicas cannot fix it. |
+| Unreachable first token | Prefill alone already exceeds the TTFT target at batch 1. |
+
+**note, link still produced.** Legal, but usually a mistake:
 
 | Note | Why it usually matters |
 |---|---|
@@ -315,17 +328,19 @@ embed and rerank supports, seeds the topology, audits the physics, verifies the
 round trip and prints the URL. Recap the FP8 weight and KV defaults, the derived
 concurrency and the resilience pattern when delivering.
 
-If the audit had objected, it would have said so instead of printing a link. For
-example, asking for the same assistant at 300 tok/s per user gets:
+Asking for the same assistant at 300 tok/s per user still produces a link, with
+a warning you must pass on:
 
 ```
-This configuration is wrong, so no link was produced:
+This fleet will MISS a target you asked for. Say so when you deliver it:
 
-  ERROR  Staff RAG assistant: 300 tok/s per user is unreachable on L40S 48GB.
+  WARN   Staff RAG assistant: 300 tok/s per user is unreachable on L40S 48GB.
          Even one request alone at TP8 tops out at 115 tok/s for Qwen3 32B at
          8,192 tokens. Lower the target, shorten the sequence, quantize the KV
          cache, or pick a faster card.
 ```
 
-Take the fix it names back to the user rather than quietly lowering the target
+Asking for a 4-second P95 on a 2,000-token answer at 20 tok/s produces no link at
+all, because those three numbers contradict each other on any hardware. Take the
+fix the audit names back to the user rather than quietly changing a target
 yourself.

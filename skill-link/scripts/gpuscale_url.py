@@ -325,8 +325,14 @@ def _model_of(uc):
     return uc['snapshot']['model']
 
 def audit_payload(payload):
-    """Returns (errors, notes). Errors mean: do not deliver this link."""
-    errs, notes = [], []
+    """Returns (errors, warns, notes).
+
+    errors  no hardware choice can fix this, so no link is produced
+    warns   the fleet will be built but will MISS a stated target; the link is
+            still the best way to show the user why, and the caller must repeat
+            the warning rather than presenting the fleet as if it complied
+    notes   legal, but usually a mistake"""
+    errs, warns, notes = [], [], []
     gpu = resolve(payload['config']['gpu'], LIB['gpus'], 'GPU')
     per_w = payload['config']['hardware']['gpusPerWorker']
     tun = payload['config'].get('tuning', {})
@@ -412,7 +418,7 @@ def audit_payload(payload):
             bw_eff = gpu['bw'] * best_tp * ic_eff * mbu * 1000
             best = bw_eff / (m['active'] * bw_w + 1 * eff_seq * kv_tok)   # batch 1: the ceiling
             if best < slo['tps']:
-                errs.append(f'{who}: {slo["tps"]} tok/s per user is unreachable on {gpu["name"]}. Even one '
+                warns.append(f'{who}: {slo["tps"]} tok/s per user is unreachable on {gpu["name"]}. Even one '
                             f'request alone at TP{best_tp} tops out at {best:.0f} tok/s for {m["name"]} at '
                             f'{eff_seq:,} tokens. Lower the target, shorten the sequence, quantize the KV '
                             f'cache, or pick a faster card.')
@@ -424,10 +430,10 @@ def audit_payload(payload):
             best_tp = min(72, per_w if per_w > 1 else 8)
             ttft = 2 * max(0, c['residentSeq'] - cached) * m['active'] / (gpu['tflops'] * best_tp * mfu)
             if ttft > slo['ttftMs']:
-                errs.append(f'{who}: a {slo["ttftMs"]} ms first token is unreachable. Prefilling '
+                warns.append(f'{who}: the {slo["ttftMs"]} ms first-token target will be missed. Prefilling '
                             f'{fmt_i(c["residentSeq"] - cached)} tokens of {m["name"]} at TP{best_tp} on '
-                            f'{gpu["name"]} takes {ttft:.0f} ms. Raise the target, shorten the prompt, or '
-                            f'widen the node.')
+                            f'{gpu["name"]} takes {ttft:.0f} ms, so the studio will show this red. Raise the '
+                            f'target, shorten the prompt, widen the node, or pick a smaller model.')
 
         # --- KV precision left on the table -------------------------------
         admitted = min(c['concurrentCalls'], c['maxBatchPerReplica'])
@@ -436,7 +442,7 @@ def audit_payload(payload):
             notes.append(f'{who}: KV cache ({kv_total:,.0f} GB) outweighs the weights ({weights:,.0f} GB) at '
                          f'{c["kvQuant"]}. FP8 KV halves it with negligible quality loss and is the '
                          f'production default.')
-    return errs, notes
+    return errs, warns, notes
 
 def fmt_i(n):
     return f'{int(round(n)):,}'
@@ -511,16 +517,17 @@ def cmd_encode(args):
 
     # A link that opens on a broken fleet is worse than no link. Audit the
     # physics before encoding anything, and refuse on a hard contradiction.
-    errs, notes = ([], [])
+    errs, warns, notes = ([], [], [])
     if not args.no_audit:
         try:
-            errs, notes = audit_payload(payload)
+            errs, warns, notes = audit_payload(payload)
         except Exception as e:                      # never let the audit itself block a link
             notes.append(f'audit could not run ({e})')
     if errs and not args.force:
         sys.stderr.write('\nThis configuration is wrong, so no link was produced:\n\n')
         for e in errs:
             sys.stderr.write(f'  ERROR  {e}\n')
+        for w in warns: sys.stderr.write(f'  WARN   {w}\n')
         if notes:
             sys.stderr.write('\n')
             for n in notes: sys.stderr.write(f'  note   {n}\n')
@@ -536,13 +543,17 @@ def cmd_encode(args):
     if args.out: json.dump(payload, open(args.out, 'w'), indent=1)
     for w in warnings: warn(w)
     for e in errs: warn('FORCED PAST AN ERROR: ' + e)
+    if warns:
+        sys.stderr.write('\nThis fleet will MISS a target you asked for. Say so when you deliver it:\n')
+        for w in warns: sys.stderr.write(f'  WARN   {w}\n')
+        sys.stderr.write('\n')
     if notes:
-        sys.stderr.write('\nCheck these before you hand the link over:\n')
+        sys.stderr.write('Check these before you hand the link over:\n')
         for n in notes: sys.stderr.write(f'  note   {n}\n')
         sys.stderr.write('\n')
     if not args.quiet:
         print(summarize(payload, url))
-        print(f'audit      : {"clean" if not errs and not notes else f"{len(errs)} error(s), {len(notes)} note(s)"}')
+        print(f'audit      : {"clean" if not (errs or warns or notes) else f"{len(errs)} error(s), {len(warns)} warning(s), {len(notes)} note(s)"}')
         print('round-trip : verified OK (both links)\n')
     print(url)
     if url2:

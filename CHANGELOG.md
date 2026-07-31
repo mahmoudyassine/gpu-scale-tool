@@ -1,5 +1,33 @@
 # Changelog
 
+## Studio 5.32.1 (2026-07-31) · engine v27
+
+A correction to the audit shipped an hour earlier in 5.32.0, found by running a
+realistic brief through it: a contact-centre project was refused because a 400 ms
+first-token target on 16K of Llama 3.3 70B at TP8 needs 580 ms.
+
+The physics was right, the verdict was wrong. **Refusing to build a link is only
+correct when no hardware choice can fix the configuration.** A target that is
+simply unreachable on the chosen card is a sizing result, and showing it is what
+the studio is for: the link is the clearest way to explain to somebody why their
+ask is impossible on that GPU.
+
+The audit now has three levels:
+
+- **ERROR, no link.** Contradictory SLO targets, context overflow, weights that
+  fit nowhere, a quantization the card cannot run, incoherent custom geometry.
+  Nothing about the hardware choice rescues these.
+- **WARN, link produced.** The fleet is buildable but will miss a target the user
+  asked for, and the studio will show it red. The skill is instructed to deliver
+  the link and repeat the warning with the number the studio will show, and
+  explicitly not to quietly lower the target to silence it.
+- **note, link produced.** Legal but usually a mistake.
+
+Verified against the same thirteen specs: five errors, two warnings, five notes,
+one clean. The two warning cases produce links that open on a fleet which fits
+and reports "Fits, but SLO targets missed", which is exactly the conversation the
+user needs to have.
+
 ## Studio 5.32.0 (2026-07-31) · engine v27
 
 The `gpuscale-link` skill now **refuses to produce a link for a configuration

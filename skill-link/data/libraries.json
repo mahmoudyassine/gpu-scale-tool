@@ -3535,7 +3535,7 @@
  "versions": {
   "schema": "gpuscale.net/5",
   "engine": 27,
-  "studio": "5.32.0"
+  "studio": "5.32.1"
  },
  "kv_policies": [
   "running",
