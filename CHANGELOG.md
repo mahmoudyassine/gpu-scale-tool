@@ -1,5 +1,67 @@
 # Changelog
 
+## Studio 5.29.0 (2026-07-31) · engine v27
+
+A manual, reachable from a book icon in the studio's toolbar and at
+**[gpuscale.net/manual.html](https://gpuscale.net/manual.html)**.
+
+Seventeen chapters, 45 sections, 61 printed pages. Not a feature tour: it
+documents every control and every readout with a screenshot, then derives the
+whole engine from first principles so a number can be defended to whoever signs
+the purchase order.
+
+### What is in it
+
+- **Concepts first.** The three currencies a GPU sells and the two phases that
+  spend them; why every field describes one model call and never one task; how
+  use cases become pools, pools own cards, and only the fleet is rounded to whole
+  nodes.
+- **The interface, control by control.** Every station and every field, with what
+  a typical value looks like and what moves it.
+- **Reading the results.** All ten output panels, including how to read a fleet
+  map cell, what the shaded bands and the hatched legend entries on the charts
+  mean, and how to trust a priced Apply button.
+- **The mathematics in full.** Weights, KV per token and the effective-KV
+  convention for MLA, sliding-window and SSM hybrids; prefix caching; activations
+  and the fit inequality; prefill; the decode equation; admission; latency and
+  P95; concurrency from a headcount. Each formula is paired with why it has that
+  shape, and the chapter ends with a worked example every line of which can be
+  checked on a calculator.
+- **The solver, pooling, MIG slicing, supporting models, all twelve resilience
+  patterns, the optimiser's full catalogue, the preset evidence, the exports, the
+  libraries, the accuracy limits, and a glossary.**
+
+### How it was built
+
+- **29 screenshots**, every one captured from the running application against a
+  single reference project that the manual prints as a readable link, so a reader
+  can open the exact fleet in the figures and follow along.
+- **Five hand-drawn SVG diagrams**, theme-aware like the rest of the studio: the
+  three currencies, use cases to purchase order, tensor parallelism against
+  replicas, the memory stack on one card, and the solver as a flowchart.
+- **41 automated checks** re-derive every number the manual asserts from the code
+  and the data files: library counts, tuning defaults, engine constants, the
+  formulas quoted against the engine source, and all sixteen figures in the worked
+  example. Two errors were caught this way and corrected before release: the
+  resilience table had `nndr` at 3N when it is 4N and described the active/active
+  split variants loosely, and a parenthetical about the reasoning budget said 18.0 s
+  when the real figure is 19.1 s, because reasoning tokens also extend the KV cache
+  and slow decode.
+- Numbered headings and the contents are generated from the document at load, so
+  they cannot drift from it. Contents filter, scroll-spy, click-to-zoom figures,
+  light and dark, no horizontal overflow from 430 px up, and a print stylesheet
+  that produces a 61-page PDF.
+
+### Also
+
+- **The portable single-file build no longer ships dead links.** Downloaded and
+  opened from disk, its links to the manual, the documents and the skill were
+  404s; the build now rewrites site-relative links to `https://gpuscale.net/…`
+  and fails the build if any relative link survives. The rewrite runs before the
+  app is inlined, so it cannot touch the application's own template literals.
+- README gains a documentation table and a manual badge; `llms.txt`, DATA.md and
+  PRACTICES.md point at the manual; the sitemap lists it.
+
 ## Studio 5.28.0 (2026-07-30) · engine v27
 
 Links any AI assistant can write. A share link normally carries the project as

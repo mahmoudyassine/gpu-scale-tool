@@ -1,0 +1,1463 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GPUscale manual · how the studio sizes an LLM fleet</title>
+<meta name="description" content="The complete GPUscale manual: every control, every readout, and the full closed-form mathematics behind LLM GPU capacity sizing, with worked examples and diagrams.">
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+<link rel="canonical" href="https://gpuscale.net/manual.html">
+<link rel="stylesheet" href="docs/manual/manual.css">
+<script>/* theme before paint: shared with the studio, no flash */
+try{var t=localStorage.getItem('gpuscale-theme');
+  if(!t) t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';
+  document.documentElement.dataset.theme=t;}catch(e){}</script>
+</head>
+<body>
+
+<div class="mbar">
+  <div class="mbar-in">
+    <a class="mb-brand" href="index.html" title="Back to the studio">
+      <svg viewBox="0 0 64 64" aria-hidden="true">
+        <rect x="8" y="12" width="48" height="34" rx="8" fill="var(--teal)" opacity=".9"/>
+        <circle cx="23" cy="28" r="8.3" fill="var(--panel)"/><circle cx="41" cy="28" r="8.3" fill="var(--panel)"/>
+        <circle cx="23" cy="28" r="3.1" fill="var(--amber-border)"/><circle cx="41" cy="28" r="3.1" fill="var(--amber-border)"/>
+        <rect x="15" y="45" width="34" height="5.4" rx="2.7" fill="var(--panel)"/>
+      </svg>
+      <span style="display:flex;flex-direction:column;line-height:1.1">
+        <b>GPUscale</b><span>gpuscale.net</span>
+      </span>
+    </a>
+    <div class="mb-sep"></div>
+    <div class="mb-title">Manual</div>
+    <div class="mb-sp"></div>
+    <div class="mb-act">
+      <button class="mbtn" id="btnPrint" type="button" title="Print or save as PDF">
+        <svg viewBox="0 0 24 24"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v7H6z"/></svg>
+        <span class="lbl">Print</span></button>
+      <button class="mbtn" id="btnTheme" type="button" title="Toggle light / dark" aria-label="Toggle theme">
+        <svg viewBox="0 0 24 24" id="icoTheme"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
+      <a class="mbtn pri" href="index.html">
+        <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        <span class="lbl">Open the studio</span></a>
+    </div>
+  </div>
+</div>
+
+<div class="shell">
+<nav class="toc" aria-label="Contents">
+  <h2>Contents</h2>
+  <input class="tsearch" id="tocFilter" type="search" placeholder="Filter sections…" aria-label="Filter contents">
+  <ol id="tocList"></ol>
+</nav>
+
+<main class="doc" id="doc">
+
+<h1>The GPUscale manual</h1>
+<p class="lead">Everything the studio does, why it does it, and the arithmetic underneath. Read
+section&nbsp;1 to get a fleet on screen in five minutes; read section&nbsp;5 if you need to defend a
+number to somebody who signs the purchase order.</p>
+
+<div class="chips">
+  <span class="chip t">Studio 5.29</span><span class="chip">Engine v27</span>
+  <span class="chip">Library v33</span><span class="chip">101 models · 37 GPUs · 24 presets</span>
+  <span class="chip">MIT licensed</span><span class="chip">Nothing leaves your browser</span>
+</div>
+
+<h2 id="quick">Quick start</h2>
+
+<p>GPUscale answers one question: <b>what hardware does this LLM workload need, and will it keep the
+promises you made about latency?</b> It is a single static page. There is no account, no backend and
+no upload; every number is computed in your browser from closed-form formulas you can audit in
+<code>assets/app.js</code>.</p>
+
+<ol class="steps">
+  <li><b>Describe a use case, not a machine.</b> Pick a workload preset (or type the numbers), pick a
+    model, say how many people use it at peak. Leave the hardware alone for now.</li>
+  <li><b>Pick one GPU for the project</b> in <i>Hardware &amp; resilience</i>, and how many of them sit
+    in a node (8 for an HGX box, 72 for an NVL72 rack).</li>
+  <li><b>Press Auto-size.</b> The solver chooses tensor-parallel width, replica count and batch size,
+    then packs the cards into nodes and applies your resilience pattern.</li>
+  <li><b>Read the verdict bar,</b> then the fleet map. If something is red or amber, the
+    <i>Recommendations</i> at the bottom say what to change and, where possible, offer a button that
+    changes it and re-solves.</li>
+  <li><b>Add more use cases.</b> Two cards on the same model and precision are served by one pooled
+    deployment sized for their combined load, which is how real platforms are built.</li>
+</ol>
+
+<figure class="zoom">
+  <img src="docs/manual/img/overview-inputs.png" width="1440" height="2340" alt="The GPUscale studio: inputs on the left, results on the right, with numbered callouts">
+  <figcaption><b>Figure 1.</b> Inputs run down the left column, results down the right, and everything
+    recomputes on every keystroke. <span class="mn">1</span>&nbsp;project bar and exports ·
+    <span class="mn">2</span>&nbsp;use cases · <span class="mn">3</span>&nbsp;workload ·
+    <span class="mn">4</span>&nbsp;model · <span class="mn">5</span>&nbsp;precision ·
+    <span class="mn">6</span>&nbsp;hardware and resilience · <span class="mn">7</span>&nbsp;verdict ·
+    <span class="mn">8</span>&nbsp;project fleet · <span class="mn">9</span>&nbsp;summary and sizing
+    decision · <span class="mn">10</span>&nbsp;memory ledger · <span class="mn">11</span>&nbsp;key
+    numbers · <span class="mn">12</span>&nbsp;SLO compliance. Click any figure to enlarge it.</figcaption>
+</figure>
+
+<figure class="zoom">
+  <img src="docs/manual/img/overview-results.png" width="1440" height="3010" loading="lazy" decoding="async" alt="Lower half of the studio: fleet map, charts, latency anatomy and recommendations">
+  <figcaption><b>Figure 2.</b> Below the fold: <span class="mn">13</span>&nbsp;the fleet map draws every
+    node and every GPU with what it holds · <span class="mn">14</span>&nbsp;two charts showing how speed
+    decays with load and with context · <span class="mn">15</span>&nbsp;where each request's seconds go ·
+    <span class="mn">16</span>&nbsp;recommendations, several of which carry a priced Apply button ·
+    <span class="mn">17</span>&nbsp;advanced tuning, back in the left column.</figcaption>
+</figure>
+
+<div class="note"><span class="t">The example used throughout</span>
+<p>Every screenshot in this manual is one project: a hospital group running four workloads on
+H200&nbsp;141GB&nbsp;NVL nodes with one standby worker. You can open it yourself, edit it, and follow
+along. It is a readable link, so you can also read the project off the URL:</p>
+<pre><code>https://gpuscale.net/#p=t:name=Northwind+Health+AI+platform;gpu=H200+141GB+NVL;perw=8;
+  resil=n1;uc=Clinical+knowledge+assistant;model=Llama+3.3+70B;quant=FP8;kv=FP8;
+  preset=Clinical+knowledge;users=1500;uc=Document+intake;model=Qwen3+32B;quant=FP8;
+  kv=FP8;preset=Document+Q&amp;A;users=400;uc=Coding+agent;model=Qwen3+32B;quant=FP8;
+  kv=FP8;preset=Code+agent;users=250;uc=Voice+triage;model=Qwen3+8B;quant=FP8;kv=FP8;
+  preset=Voice+agent;users=300</code></pre>
+<p>(Joined onto one line, without the indentation. Section&nbsp;12 explains the format.)</p>
+</div>
+
+<h2 id="concepts">How the studio thinks</h2>
+
+<p>Three ideas explain almost every number on the page. If you understand these, the rest of the
+manual is reference material.</p>
+
+<h3 id="currencies">Three currencies, spent by two different phases</h3>
+
+<p>A GPU sells you three things, and an LLM request spends them in two distinct phases. Sizing goes
+wrong when people track only the third one.</p>
+
+<div class="dia">
+<svg viewBox="0 0 860 300" role="img" aria-label="Diagram: compute serves prefill, bandwidth serves decode, capacity holds weights and KV">
+  <text class="ttl" x="10" y="18">What a GPU sells, and what each phase buys</text>
+  <!-- three currency columns -->
+  <g>
+    <rect class="boxT" x="10" y="40" width="265" height="80" rx="8"/>
+    <text class="lbl" x="26" y="66" font-weight="600">Compute · TFLOPS</text>
+    <text class="sm" x="26" y="86">Matrix multiplies per second.</text>
+    <text class="sm" x="26" y="103">Derated by MFU (~0.5 achieved).</text>
+  </g>
+  <g>
+    <rect class="boxT" x="297" y="40" width="265" height="80" rx="8"/>
+    <text class="lbl" x="313" y="66" font-weight="600">Bandwidth · TB/s</text>
+    <text class="sm" x="313" y="86">Bytes read from HBM per second.</text>
+    <text class="sm" x="313" y="103">Derated by MBU (~0.65 achieved).</text>
+  </g>
+  <g>
+    <rect class="boxT" x="584" y="40" width="266" height="80" rx="8"/>
+    <text class="lbl" x="600" y="66" font-weight="600">Capacity · GB</text>
+    <text class="sm" x="600" y="86">VRAM that holds weights and KV.</text>
+    <text class="sm" x="600" y="103">Not derated: it either fits or not.</text>
+  </g>
+  <!-- arrows -->
+  <path class="flow" d="M142 120 L142 160" marker-end="url(#ar)"/>
+  <path class="flow" d="M430 120 L430 160" marker-end="url(#ar)"/>
+  <path class="flow" d="M717 120 L717 160" marker-end="url(#ar)"/>
+  <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+    <path d="M0 0 L10 5 L0 10 z" fill="var(--faint)"/></marker></defs>
+  <!-- phases -->
+  <g>
+    <rect class="box" x="10" y="160" width="265" height="90" rx="8"/>
+    <text class="lbl" x="26" y="184" font-weight="600">PREFILL · one pass</text>
+    <text class="sm" x="26" y="204">Reads the whole prompt at once.</text>
+    <text class="sm" x="26" y="221">Compute bound. Sets <tspan font-weight="600">time to first token</tspan>.</text>
+    <text class="mn onT" x="26" y="240" style="font-size:10.5px">TTFT = 2·tok·P_act / (TF·TP·MFU)</text>
+  </g>
+  <g>
+    <rect class="box" x="297" y="160" width="265" height="90" rx="8"/>
+    <text class="lbl" x="313" y="184" font-weight="600">DECODE · one token at a time</text>
+    <text class="sm" x="313" y="204">Re-reads weights + KV every step.</text>
+    <text class="sm" x="313" y="221">Bandwidth bound. Sets <tspan font-weight="600">tok/s per user</tspan>.</text>
+    <text class="mn onT" x="313" y="240" style="font-size:10.5px">tok/s = BW_eff / bytes-per-token</text>
+  </g>
+  <g>
+    <rect class="box" x="584" y="160" width="266" height="90" rx="8"/>
+    <text class="lbl" x="600" y="184" font-weight="600">RESIDENCY · the whole time</text>
+    <text class="sm" x="600" y="204">Weights once per replica, KV per call.</text>
+    <text class="sm" x="600" y="221">Capacity bound. Sets <tspan font-weight="600">whether it fits</tspan>.</text>
+    <text class="mn onT" x="600" y="240" style="font-size:10.5px">need ≤ replicas · TP · VRAM</text>
+  </g>
+  <text class="sm" x="10" y="278">A fleet is sized by whichever of the three runs out first, and it is very often not capacity.</text>
+  <text class="sm" x="10" y="294">A card can sit at 35% memory and still be completely full, because its bandwidth is already spoken for.</text>
+</svg>
+</div>
+<p class="units">Diagram 1. The two phases have opposite bottlenecks, which is why one number never
+describes a deployment.</p>
+
+<div class="key"><span class="t">The most useful sentence in this manual</span>
+<p>At the operating point, one card holds about <code>bandwidth × interconnect × MBU ÷ achieved tok/s</code>
+gigabytes of KV cache. Promise a faster stream and that number shrinks, so you buy more cards, each
+one emptier than the last. <b>Empty-looking cards are usually a latency promise being kept, not
+waste.</b></p>
+</div>
+
+<h3 id="perrequest">One model call, never one task</h3>
+
+<p>Every workload field in the studio describes a <b>single call to the model</b>. This is the single
+most common way to get a sizing wrong by an order of magnitude.</p>
+
+<div class="tw"><table>
+<thead><tr><th>If you mean</th><th>Do not write</th><th>Write instead</th></tr></thead>
+<tbody>
+<tr><td class="wrap">An agent that makes 40 tool calls to finish a task</td>
+    <td class="wrap">40 × the tokens in one card</td>
+    <td class="wrap">One step's tokens, and let the traffic estimator turn tasks into simultaneous calls</td></tr>
+<tr><td class="wrap">A model with a 1M-token context window</td>
+    <td class="wrap"><code>resident = 1048576</code></td>
+    <td class="wrap">The tokens actually held per request, e.g. <code>8192</code></td></tr>
+<tr><td class="wrap">A 200,000-token browsing session</td>
+    <td class="wrap"><code>visible out = 200000</code></td>
+    <td class="wrap">One step: a 64K transcript in, a short tool call out</td></tr>
+</tbody></table></div>
+
+<p><b>Resident sequence</b> means the tokens the server is holding for that request right now: the
+system prompt, the retrieved passages, the conversation so far, the tool traces. Not the model's
+maximum context, which is a capability, not a workload.</p>
+
+<h3 id="pools">Use cases become pools, pools own cards, nodes are bought whole</h3>
+
+<p>A project is a list of use cases. Two use cases that run <b>the same model at the same weight and
+KV precision with the same KV policy</b> are served by one deployment sized for their combined load,
+exactly as they would be in production. That merged deployment is called a <b>pool</b>.</p>
+
+<div class="dia">
+<svg viewBox="0 0 860 330" role="img" aria-label="Diagram: use cases merge into pools, pools own cards, cards pack into nodes, resilience multiplies nodes">
+  <text class="ttl" x="10" y="18">From four use cases to a purchase order</text>
+  <!-- use cases -->
+  <text class="sm" x="10" y="42">USE CASES · demand</text>
+  <g>
+    <rect class="box" x="10" y="52" width="150" height="34" rx="6"/><text class="lbl" x="22" y="74">Clinical assistant</text>
+    <rect class="box" x="10" y="92" width="150" height="34" rx="6"/><text class="lbl" x="22" y="114">Document intake</text>
+    <rect class="box" x="10" y="132" width="150" height="34" rx="6"/><text class="lbl" x="22" y="154">Coding agent</text>
+    <rect class="box" x="10" y="172" width="150" height="34" rx="6"/><text class="lbl" x="22" y="194">Voice triage</text>
+  </g>
+  <!-- merge arrows -->
+  <path class="flow" d="M160 69 L232 69" marker-end="url(#ar2)"/>
+  <path class="flow" d="M160 109 C200 109 200 129 232 129" marker-end="url(#ar2)"/>
+  <path class="flow" d="M160 149 C200 149 200 129 232 129" marker-end="url(#ar2)"/>
+  <path class="flow" d="M160 189 L232 189" marker-end="url(#ar2)"/>
+  <defs><marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+    <path d="M0 0 L10 5 L0 10 z" fill="var(--faint)"/></marker></defs>
+  <!-- pools -->
+  <text class="sm" x="236" y="42">POOLS · same model + precision</text>
+  <g>
+    <rect class="boxT" x="236" y="52" width="176" height="34" rx="6"/><text class="lbl" x="248" y="74">Llama 3.3 70B FP8</text>
+    <rect class="boxT" x="236" y="112" width="176" height="34" rx="6"/><text class="lbl" x="248" y="134">Qwen3 32B FP8</text>
+    <text class="sm" x="248" y="151">two use cases, one deployment</text>
+    <rect class="boxT" x="236" y="172" width="176" height="34" rx="6"/><text class="lbl" x="248" y="194">Qwen3 8B FP8</text>
+  </g>
+  <path class="flow" d="M412 69 L470 69" marker-end="url(#ar2)"/>
+  <path class="flow" d="M412 129 L470 129" marker-end="url(#ar2)"/>
+  <path class="flow" d="M412 189 L470 189" marker-end="url(#ar2)"/>
+  <!-- cards -->
+  <text class="sm" x="474" y="42">CARDS · what the solver buys</text>
+  <g>
+    <rect class="box" x="474" y="52" width="150" height="34" rx="6"/><text class="mn" x="486" y="74">TP4 × 1 = 4 GPUs</text>
+    <rect class="box" x="474" y="112" width="150" height="34" rx="6"/><text class="mn" x="486" y="134">TP16 × 4 = 64 GPUs</text>
+    <rect class="box" x="474" y="172" width="150" height="34" rx="6"/><text class="mn" x="486" y="194">TP2 × 1 = 2 GPUs</text>
+  </g>
+  <path class="flow" d="M624 129 L682 129" marker-end="url(#ar2)"/>
+  <!-- nodes -->
+  <text class="sm" x="686" y="42">NODES · bought whole</text>
+  <rect class="box" x="686" y="52" width="164" height="100" rx="6"/>
+  <text class="mn" x="698" y="74">70 serving cards</text>
+  <text class="sm" x="698" y="92">+ 2 shared GPUs for</text>
+  <text class="sm" x="698" y="108">supporting models</text>
+  <text class="mn onT" x="698" y="130">= 9 nodes × 8 GPU</text>
+  <text class="sm" x="698" y="146">(72 cards, 2 slots spare)</text>
+  <path class="flow" d="M768 152 L768 186" marker-end="url(#ar2)"/>
+  <rect class="boxA" x="686" y="186" width="164" height="62" rx="6"/>
+  <text class="lbl" x="698" y="208">Resilience: N+1</text>
+  <text class="mn onA" x="698" y="228">10 nodes · 80 GPUs</text>
+  <text class="sm" x="698" y="243">one idle standby</text>
+  <text class="sm" x="10" y="278">Pools own CARDS, not nodes. Rounding each pool up to a whole node bought GPUs nobody asked for:</text>
+  <text class="sm" x="10" y="294">a pool needing two cards was handed eight. Cards from different pools share nodes, and only the</text>
+  <text class="sm" x="10" y="310">fleet total is rounded up to whole nodes, once, at the end.</text>
+</svg>
+</div>
+<p class="units">Diagram 2. The order of operations that turns demand into a bill of materials.</p>
+
+<p>Three consequences worth remembering:</p>
+<ul>
+  <li><b>Pooling is not an optimisation you opt into.</b> It is what your serving stack would do
+    anyway. If you need two separate deployments of the same model, tick <i>Isolate</i> on the use case.</li>
+  <li><b>The pool is sized for the combined concurrency</b> of its members, and each member is then
+    evaluated against its own SLO targets at the pool's shared batch size.</li>
+  <li><b>Only the fleet is rounded to whole nodes</b>, once, at the end, after supporting models and
+    co-residency have been placed.</li>
+</ul>
+
+<h2 id="interface">The interface, control by control</h2>
+
+<p>Inputs run down the left column in the order you should work: <i>Use cases</i>, then
+<i>Workload</i>, <i>Model</i>, <i>Precision</i>, then <i>Hardware</i>. Results on the right recompute
+on every keystroke. Nothing is ever "applied" or "submitted".</p>
+
+<h3 id="ui-project">The project bar</h3>
+<figure class="zoom">
+  <img src="docs/manual/img/ui-topbar.png" width="1416" height="138" loading="lazy" decoding="async" alt="The project bar: name, history, mode switch, import, export, XLS, share, PDF, theme">
+  <figcaption><b>Figure 3.</b> Left to right: project name (click to rename), new project, the history
+    menu, the Normal/Advanced switch, then the export group and the theme toggle.</figcaption>
+</figure>
+<div class="tw"><table>
+<thead><tr><th>Control</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td>Project name</td><td class="wrap">Free text. Appears on the PDF, the workbook and the JSON export.</td></tr>
+<tr><td>History (clock)</td><td class="wrap">Projects autosave to this browser's local storage as you type. The menu lists them, reloads one, deletes one, or starts a new project. Nothing is uploaded, and clearing site data clears them.</td></tr>
+<tr><td>Normal / Advanced</td><td class="wrap">Normal asks for people at peak and hides the tuning controls; Advanced exposes every field. See <a href="#ui-modes">below</a>.</td></tr>
+<tr><td>Import</td><td class="wrap">Reads a configuration JSON, including files exported by older versions.</td></tr>
+<tr><td>Export</td><td class="wrap">Writes the whole project as JSON, with a snapshot of every model and GPU used so the file survives library changes.</td></tr>
+<tr><td>XLS</td><td class="wrap">An Excel workbook with <b>live formulas</b>, not pasted values, plus three native charts. See <a href="#exports">section 12</a>.</td></tr>
+<tr><td>Share</td><td class="wrap">Copies a link with the entire project compressed inside the URL. No backend, nothing stored.</td></tr>
+<tr><td>PDF</td><td class="wrap">Opens the print dialog against a print stylesheet that reflows the page into a report.</td></tr>
+</tbody></table></div>
+
+<h3 id="ui-usecases">Use cases</h3>
+<div class="figrow">
+<figure class="narrow zoom">
+  <img src="docs/manual/img/ui-usecases.png" width="362" height="469" loading="lazy" decoding="async" alt="The use cases station with four cards, one selected, showing pooled badges and support chips">
+  <figcaption><b>Figure 4.</b> Four use cases. The selected card is outlined; the others show a
+    <i>pooled</i> badge when they share a deployment.</figcaption>
+</figure>
+<div>
+<p>Each card is one workload with its own model, tokens, concurrency and SLO targets. The card shows
+its model, precision, derived concurrency, and chips for any supporting models attached to it.</p>
+<ul>
+  <li><b>+ Add</b> clones the current card as a starting point.</li>
+  <li>The <b>copy</b> and <b>×</b> icons duplicate and delete.</li>
+  <li>Click the name to rename it. The name is what appears in the fleet map, the charts and the report.</li>
+  <li><b>Support chips</b> (Embeddings, Reranker, Guard, ASR, TTS, OCR) attach automatically from the
+    preset. Click one to inspect or change the model behind it; click × to detach it.</li>
+  <li>A <b>pooled</b> badge means this card shares a deployment with another card. Hover it to see which.</li>
+  <li><b>Isolate</b> (in the card menu) forces a card into its own pool even when it could share.</li>
+</ul>
+</div>
+</div>
+
+<h3 id="ui-workload">Workload</h3>
+<div class="figrow">
+<figure class="narrow zoom">
+  <img src="docs/manual/img/ui-workload.png" width="362" height="930" loading="lazy" decoding="async" alt="The workload station: preset, resident sequence, shared cached prefix, visible output, reasoning, users, concurrency, batch, KV policy, SLO targets">
+  <figcaption><b>Figure 5.</b> The workload station. Every field here describes <b>one model call</b>.</figcaption>
+</figure>
+<div>
+<p>Start from a preset: 24 of them, each with SLO targets traced to published production guidance
+(<a href="#presets">section 11</a>). A preset only prefills the fields; edit anything afterwards.</p>
+</div>
+</div>
+
+<div class="tw"><table>
+<thead><tr><th>Field</th><th>Meaning</th><th>Typical</th></tr></thead>
+<tbody>
+<tr><td>Resident sequence</td><td class="wrap">Tokens held per request: system prompt + retrieved context + history + tool traces. <b>Not</b> the model's context window.</td><td>4K chat · 32K agent · 128K long-doc</td></tr>
+<tr><td>Shared cached prefix</td><td class="wrap">The share of that sequence which is byte-identical on every call, so a server with automatic prefix caching prefills it once and holds it once per replica. <b>Leave at 0 unless you have measured it.</b></td><td>agent loops 40-80% · RAG 10-30% · unique docs 0%</td></tr>
+<tr><td>Visible output</td><td class="wrap">Tokens the user actually sees per response.</td><td>60 inline completion · 350 chat · 2,000 document</td></tr>
+<tr><td>Reasoning mode / tokens</td><td class="wrap">Hidden thinking tokens per request. None, Light (2,000), Heavy (8,000) or an exact custom budget.</td><td>256 is enough for 95% of GSM8K accuracy</td></tr>
+<tr><td>Reasoning extends the KV cache</td><td class="wrap">On: thinking tokens are held in the cache alongside the prompt, so they cost memory and slow decode. Off: they are discarded as they are produced.</td><td>on for most stacks</td></tr>
+<tr><td>Active users at peak</td><td class="wrap">People using the feature in the busiest hour. Drives the concurrency estimator.</td><td></td></tr>
+<tr><td>Concurrent LLM calls</td><td class="wrap">Requests in flight simultaneously. Typing here pins it and the user count is ignored for this card.</td><td>usually 1-10% of active users</td></tr>
+<tr><td>Max batch per replica</td><td class="wrap">Ceiling on how many requests one replica co-batches. Auto-size sets it; raising it trades per-user speed for throughput.</td><td>solved</td></tr>
+<tr><td>KV policy</td><td class="wrap"><i>Running batch</i> frees KV between turns (vLLM-style admission). <i>Pinned per session</i> holds it for the whole session, which is far more expensive and only correct for live paths where an eviction would break the budget.</td><td>running, except voice</td></tr>
+<tr><td>SLO targets</td><td class="wrap">TTFT in ms, per-user speed in tok/s, end-to-end P95 in seconds. <code>0</code> disables a check. <b>tok/s is per user, never aggregate.</b></td><td>see <a href="#presets">section 11</a></td></tr>
+</tbody></table></div>
+
+<div class="warn"><span class="t">The concurrency estimator</span>
+<p>Under <i>Active users at peak</i> the studio shows its working: how many simultaneous calls that
+headcount implies, and what share of your users that is. It is Little's law
+(<a href="#math-conc">section 5.11</a>) over four traffic parameters the preset supplies. If your own
+telemetry says otherwise, type the concurrency directly; the card is then marked <i>set manually</i>
+and the user count stops driving it.</p>
+</div>
+
+<h3 id="ui-model">Model</h3>
+<div class="figrow">
+<figure class="narrow zoom">
+  <img src="docs/manual/img/ui-model.png" width="362" height="298" loading="lazy" decoding="async" alt="The model station: a searchable list of 101 models plus a custom geometry option">
+  <figcaption><b>Figure 6.</b> 101 models, with the geometry that matters printed underneath.</figcaption>
+</figure>
+<div>
+<p>The dropdown carries total and active parameters, hidden size, layers, KV heads, head dimension and
+maximum context for each entry, plus the architecture class and who published it.</p>
+<p><b>Active parameters</b> is what decides speed and first-token time. For a dense model it equals the
+total; for a mixture of experts it is much smaller, which is why a 671B MoE can decode faster than a
+70B dense model while needing ten times the memory.</p>
+<p><b>Custom model</b> unlocks seven fields (params, active, hidden, layers, KV heads, head dim,
+context) for anything not in the library. Everything else in the studio works identically; exports
+carry the geometry so the file stays readable later.</p>
+</div>
+</div>
+
+<div class="note"><span class="t">Effective KV</span>
+<p>Models with grouped-query attention, multi-head latent attention or sliding-window layers are
+encoded so the engine lands on their true per-token cache cost rather than their nominal head count.
+The convention is documented in <a href="#math-kv">section 5.3</a> and in
+<a href="docs/DATA.md">docs/DATA.md</a>. It is the difference between a believable number and a
+fantasy for these architectures.</p>
+</div>
+
+<h3 id="ui-precision">Precision</h3>
+<div class="figrow">
+<figure class="narrow zoom">
+  <img src="docs/manual/img/ui-precision.png" width="362" height="258" loading="lazy" decoding="async" alt="The precision station: weight quantization and KV cache quantization, with bytes per parameter shown">
+  <figcaption><b>Figure 7.</b> Two independent choices, with bytes per weight and per KV element.</figcaption>
+</figure>
+<div>
+<p><b>Weights</b> and <b>KV cache</b> are quantized separately, because they trade against different
+things. Weight precision sets the fixed cost per replica and the bytes re-read per decode step. KV
+precision sets the per-token cache cost, so it scales with concurrency and context.</p>
+<p>19 weight formats from FP32 down to 2-bit GGUF K-quants, and five KV formats. FP8 KV halves the
+cache against BF16 with negligible quality impact and has become the production default; the studio
+says so in the recommendations when you leave a KV-dominated pool at BF16.</p>
+</div>
+</div>
+
+<h3 id="ui-hardware">Hardware and resilience</h3>
+<div class="figrow">
+<figure class="narrow zoom">
+  <img src="docs/manual/img/ui-hardware.png" width="362" height="768" loading="lazy" decoding="async" alt="The hardware station: GPU, GPUs per node, resilience model, auto-size memory target, the Auto-size button, workers and tensor parallel">
+  <figcaption><b>Figure 8.</b> One GPU type per project, then the topology the solver fills in.</figcaption>
+</figure>
+<div>
+<p><b>GPU</b> is a project-wide choice: 37 accelerators with dense (not sparsity) TFLOPS, real HBM
+bandwidth, VRAM and TDP. Mixing GPU types in one project is deliberately not modelled, because in
+practice a serving pool is homogeneous.</p>
+<p><b>GPUs per node</b> is your chassis: 8 for an HGX or MI300X box, 4 for many OEM servers, 72 for an
+NVL72 rack. It matters for two reasons: nodes are bought whole, and a tensor-parallel group wider than
+one node pays a cross-node interconnect penalty.</p>
+<p><b>Resilience model</b> chooses among 12 patterns, from bare N to N+N with disaster recovery
+(<a href="#resil">section 9</a>).</p>
+<p><b>Auto-size memory target</b> is the fraction of VRAM the solver is allowed to plan into, 80% by
+default. The remainder absorbs fragmentation, CUDA graphs and the burst above your stated peak.</p>
+</div>
+</div>
+
+<p>Below the button, <b>Workers</b> and <b>Tensor parallel width</b> show what the solver chose. You
+can override them by hand; the next Auto-size will overwrite your values, and so will opening a share
+link, because a shared link carries the workload and re-solves the hardware.</p>
+
+<div class="key"><span class="t">Tensor parallel is not replication</span>
+<p><b>Tensor parallelism</b> splits <i>one</i> copy of the model across TP GPUs. It is what makes a
+model fit that does not fit on one card, and it multiplies the bandwidth available to that copy, so it
+is often the cheapest way to hit a speed target. <b>Replicas</b> are additional independent copies; they
+add concurrency, never room for one copy. Doubling workers will never make a model fit.</p>
+</div>
+
+<div class="dia">
+<svg viewBox="0 0 860 250" role="img" aria-label="Diagram: tensor parallelism splits one copy across GPUs; replicas are separate copies">
+  <text class="ttl" x="10" y="18">TP4 × 2 replicas = 8 GPUs, two independent copies</text>
+  <!-- replica 1 -->
+  <rect class="boxT" x="10" y="40" width="400" height="106" rx="8"/>
+  <text class="sm" x="24" y="60">REPLICA 1 · one model copy, sharded four ways</text>
+  <g>
+    <rect class="fW" x="26" y="70" width="86" height="30" rx="4"/><text class="mn onW" x="44" y="90">shard 1</text>
+    <rect class="fW" x="122" y="70" width="86" height="30" rx="4"/><text class="mn onW" x="140" y="90">shard 2</text>
+    <rect class="fW" x="218" y="70" width="86" height="30" rx="4"/><text class="mn onW" x="236" y="90">shard 3</text>
+    <rect class="fW" x="314" y="70" width="86" height="30" rx="4"/><text class="mn onW" x="332" y="90">shard 4</text>
+  </g>
+  <path class="flow" d="M26 112 H400" stroke-dasharray="4 3"/>
+  <text class="sm" x="26" y="132">NCCL all-reduce every layer · 15 GB of buffers · needs NVLink inside the group</text>
+  <!-- replica 2 -->
+  <rect class="boxT" x="440" y="40" width="410" height="106" rx="8"/>
+  <text class="sm" x="454" y="60">REPLICA 2 · a second, complete copy</text>
+  <g>
+    <rect class="fW" x="456" y="70" width="88" height="30" rx="4"/><text class="mn onW" x="475" y="90">shard 1</text>
+    <rect class="fW" x="554" y="70" width="88" height="30" rx="4"/><text class="mn onW" x="573" y="90">shard 2</text>
+    <rect class="fW" x="652" y="70" width="88" height="30" rx="4"/><text class="mn onW" x="671" y="90">shard 3</text>
+    <rect class="fW" x="750" y="70" width="88" height="30" rx="4"/><text class="mn onW" x="769" y="90">shard 4</text>
+  </g>
+  <path class="flow" d="M456 112 H838" stroke-dasharray="4 3"/>
+  <text class="sm" x="456" y="132">Replicas never talk to each other, so they pay no communication overhead</text>
+  <!-- effects -->
+  <rect class="box" x="10" y="164" width="400" height="72" rx="8"/>
+  <text class="lbl" x="24" y="186" font-weight="600">Wider TP gives one request</text>
+  <text class="sm" x="24" y="205">4× the bandwidth → 4× the decode ceiling</text>
+  <text class="sm" x="24" y="222">4× the FLOPS → first token in a quarter of the time</text>
+  <rect class="box" x="440" y="164" width="410" height="72" rx="8"/>
+  <text class="lbl" x="454" y="186" font-weight="600">More replicas give the fleet</text>
+  <text class="sm" x="454" y="205">More requests in flight, each no faster</text>
+  <text class="sm" x="454" y="222">Batch per replica falls toward 1, then stops helping</text>
+</svg>
+</div>
+<p class="units">Diagram 3. Why the solver reaches for TP before replicas when a speed target is missed.</p>
+
+<h3 id="ui-advanced">Advanced tuning</h3>
+<figure class="narrow zoom">
+  <img src="docs/manual/img/ui-advanced.png" width="362" height="135" loading="lazy" decoding="async" alt="The advanced tuning station, collapsed">
+  <figcaption><b>Figure 9.</b> Collapsed by default. Four efficiency assumptions.</figcaption>
+</figure>
+<div class="tw"><table>
+<thead><tr><th>Assumption</th><th>Default</th><th>What moves it</th></tr></thead>
+<tbody>
+<tr><td>Prefill MFU</td><td>0.50</td><td class="wrap">Model FLOPs utilization during prefill. Large batched prefills reach 0.5-0.6 on modern stacks; short prompts and small models do worse. Scales TTFT inversely.</td></tr>
+<tr><td>Decode MBU</td><td>0.65</td><td class="wrap">Memory bandwidth utilization during decode. 0.6-0.7 is realistic for a tuned server; the theoretical roofline is 1.0 and nobody reaches it. Scales tok/s directly.</td></tr>
+<tr><td>Interconnect efficiency</td><td>0.85</td><td class="wrap">The fraction of a tensor-parallel group's aggregate bandwidth you actually get after all-reduce. Inside an NVLink island 0.85 is fair. <b>A group wider than one node is automatically capped at 0.70</b>, and the studio tells you it did.</td></tr>
+<tr><td>Framework overhead</td><td>30 ms</td><td class="wrap">Scheduling, tokenization, HTTP, guardrail hops. Added to every request's latency, not to TTFT.</td></tr>
+</tbody></table></div>
+
+<h3 id="ui-modes">Normal and Advanced mode</h3>
+<p><b>Normal</b> numbers the stations, asks for active users rather than concurrency, and hides the
+tuning controls and the manual topology fields. It is the right mode for a first pass and for handing
+the tool to somebody who is not a serving engineer. <b>Advanced</b> exposes everything. The switch is
+non-destructive: nothing is lost or reset, and the mode is remembered per browser.</p>
+
+<div class="figrow">
+<figure class="zoom">
+  <img src="docs/manual/img/ui-footer.png" width="1416" height="248" loading="lazy" decoding="async" alt="The footer: project links, the downloadable skill, the URL format document and the studio version">
+  <figcaption><b>Figure 10.</b> The footer carries the version and engine numbers you should quote in a
+    bug report, the portable single-file build, the downloadable AI skill and the link format
+    document.</figcaption>
+</figure>
+<figure class="zoom">
+  <img src="docs/manual/img/dark-overview.png" width="1420" height="1172" loading="lazy" decoding="async" alt="The studio in dark theme">
+  <figcaption><b>Figure 11.</b> Light and dark are equal-effort themes, including the charts, the fleet
+    map and the printed report.</figcaption>
+</figure>
+</div>
+
+<h2 id="results">Reading the results</h2>
+
+<p>The right column answers, in order: does it fit, what does it cost, where does the memory go, how
+fast is it, does it keep the promises, what does the rack look like, how does it degrade, and what
+should you change.</p>
+
+<h3 id="res-verdict">The verdict bar</h3>
+<figure class="zoom">
+  <img src="docs/manual/img/out-verdict.png" width="1028" height="111" loading="lazy" decoding="async" alt="A green verdict bar reading Project fits and SLO targets met">
+  <figcaption><b>Figure 12.</b> Green: it fits and every enabled SLO target is met.</figcaption>
+</figure>
+<figure class="zoom">
+  <img src="docs/manual/img/out-verdict-fail.png" width="768" height="138" loading="lazy" decoding="async" alt="A red verdict bar reading Exceeds VRAM, explaining that each TP8 replica must hold a full 810 GB copy">
+  <figcaption><b>Figure 13.</b> Red: it does not fit, and the bar says <i>why</i>, in this case that more
+    workers cannot help because each replica needs a complete copy.</figcaption>
+</figure>
+<div class="tw"><table>
+<thead><tr><th>Colour</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td>Green</td><td class="wrap">Memory fits inside the fleet and every enabled SLO target passes.</td></tr>
+<tr><td>Amber</td><td class="wrap">Memory fits, but at least one latency or speed target is missed. The configuration is buildable; it will not keep a promise you made.</td></tr>
+<tr><td>Red</td><td class="wrap">It does not fit. The line underneath names the binding constraint and the levers that can move it.</td></tr>
+</tbody></table></div>
+
+<h3 id="res-fleet">Project fleet</h3>
+<figure class="zoom">
+  <img src="docs/manual/img/out-fleet.png" width="1028" height="446" loading="lazy" decoding="async" alt="The project fleet panel: one chip per pool and a card per use case with admitted calls, first token, speed, P95 and KV per call">
+  <figcaption><b>Figure 14.</b> One chip per pool along the top, then one card per use case with the
+    figures that use case will actually see.</figcaption>
+</figure>
+<p>The pool chips carry the deployment shape: precision, tensor-parallel width, GPUs per replica,
+replica count and pooled concurrency. The per-use-case cards carry what that workload experiences:
+admitted versus offered calls, first token against its target, per-user speed against its target, P95
+against its target, KV cost per call, and which supporting models are attached. Numbers that miss a
+target are red; numbers with no target are grey.</p>
+
+<h3 id="res-summary">Summary and the sizing decision</h3>
+<figure class="zoom">
+  <img src="docs/manual/img/out-summary.png" width="1028" height="958" loading="lazy" decoding="async" alt="The summary panel: demand per use case, deployments, resilience, and the auto-size sizing decision with per-pool reasoning">
+  <figcaption><b>Figure 15.</b> The summary is written to be pasted into a design document.</figcaption>
+</figure>
+<p>Three blocks:</p>
+<ul>
+  <li><b>Use cases · demand.</b> One line per card: active users, the concurrency that implies and what
+    share of your users that is in flight, the model, and whether its SLOs are met.</li>
+  <li><b>Deployments.</b> One line per pool: how many pooled calls it serves on how many GPUs, the
+    memory used, and the smallest tensor-parallel slice that fits one copy inside the memory target.</li>
+  <li><b>Sizing decision.</b> Written by the solver each time it runs, this is the audit trail: for each
+    pool, the width it started from, whether a first-token target forced it wider, whether the group
+    crosses a node boundary and what that costs, and any target it could not reach at any width.</li>
+</ul>
+<div class="note"><span class="t">Findings</span>
+<p>Underneath, short factual observations that are not recommendations: which pools are KV-dominated,
+where the cache outweighs the weights, where a shorter context would pay off. They are the input to
+the recommendations further down, printed separately so you can see the reasoning.</p>
+</div>
+
+<h3 id="res-ledger">Memory ledger</h3>
+<figure class="zoom">
+  <img src="docs/manual/img/out-ledger.png" width="1028" height="315" loading="lazy" decoding="async" alt="The memory ledger: one stacked bar per pool showing weights, KV, activations, overhead and headroom">
+  <figcaption><b>Figure 16.</b> Where every gigabyte goes, per pool, with the project total underneath.</figcaption>
+</figure>
+<p>Each bar is one pool, drawn to the same scale so pools are comparable. The four segments are
+<span class="mn">weights</span>, <span class="mn">KV cache</span>, <span class="mn">activations</span>
+and <span class="mn">overhead</span>; the pale remainder is headroom. Hover any segment for exact
+gigabytes and its share. The line underneath each bar breaks the same numbers out in text, including
+the sequence count the KV figure is for, so a screenshot of this panel is self-explanatory.</p>
+<p>Supporting models are accounted separately, on their own shared GPUs, and shown on their own line.</p>
+
+<h3 id="res-kpis">Key numbers</h3>
+<figure class="zoom">
+  <img src="docs/manual/img/out-kpis.png" width="1028" height="148" loading="lazy" decoding="async" alt="Four KPI tiles: average first token, average per-user speed, aggregate throughput, average user latency">
+  <figcaption><b>Figure 17.</b> Four project-level tiles, demand-weighted across pools.</figcaption>
+</figure>
+<div class="tw"><table>
+<thead><tr><th>Tile</th><th>Definition</th><th>Careful with</th></tr></thead>
+<tbody>
+<tr><td>Avg first token</td><td class="wrap">Concurrency-weighted mean TTFT across pools.</td><td class="wrap">A project average hides a slow pool. The per-pool figures are in Summary.</td></tr>
+<tr><td>Avg per-user speed</td><td class="wrap">Concurrency-weighted mean decode speed.</td><td class="wrap">Per user, not aggregate.</td></tr>
+<tr><td>Aggregate throughput</td><td class="wrap">Sum over pools of per-user speed × admitted calls.</td><td class="wrap">Only counts admitted requests; queued ones are listed beside it.</td></tr>
+<tr><td>Avg user latency</td><td class="wrap">Mean end-to-end seconds per request, with the worst P95 beside it.</td><td class="wrap">Includes hidden reasoning tokens, which the user waits for but never sees.</td></tr>
+</tbody></table></div>
+
+<h3 id="res-slo">SLO compliance</h3>
+<figure class="zoom">
+  <img src="docs/manual/img/out-slo.png" width="1028" height="196" loading="lazy" decoding="async" alt="SLO compliance row: one badge per use case reading all targets met">
+  <figcaption><b>Figure 18.</b> Per use case, because a project average would hide the one that fails.</figcaption>
+</figure>
+<p>Each badge lists that use case's enabled targets and whether each passes. Disabled targets
+(<code>0</code>) are shown as off rather than as a pass, so an empty promise never reads as a kept one.</p>
+
+<h3 id="res-fleetmap">Deployment topology and fleet map</h3>
+<figure class="zoom">
+  <img src="docs/manual/img/out-fleetmap.png" width="1028" height="1199" loading="lazy" decoding="async" alt="The fleet map: every node drawn as a grid of GPUs, coloured by what each card holds, with a legend and resilience economics">
+  <figcaption><b>Figure 19.</b> Every node, every GPU, and what is on it. This is the picture to put in
+    the procurement request.</figcaption>
+</figure>
+<p>Each node is a box; each GPU inside it is a cell. Cells are coloured by the pool that owns them,
+with adjacent replicas of the same pool in alternating shades so you can count them. Inside a cell, the
+stack is drawn bottom-up: <span class="mn">model weights</span>, then <span class="mn">KV cache</span>,
+then <span class="mn">working set</span>, with the percentage of the card in use. Empty space above the
+stack is memory the speed target cannot spend.</p>
+<div class="tw"><table>
+<thead><tr><th>Cell appearance</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td class="wrap">Solid pool colour</td><td class="wrap">A dedicated card carrying one pool's replica (or a shard of it).</td></tr>
+<tr><td class="wrap">Hatched</td><td class="wrap">A shared GPU: MIG slices or fractional allocations carrying sliced model replicas and supporting models. The <i>Shared GPUs</i> line under the map itemises every slice.</td></tr>
+<tr><td class="wrap">Dashed outline</td><td class="wrap">An unused slot on the last node. Nodes are bought whole, so these are paid for and idle.</td></tr>
+<tr><td class="wrap">Amber dashed</td><td class="wrap">Standby or spare hardware from the resilience pattern: idle in normal operation.</td></tr>
+<tr><td class="wrap">Outlined node</td><td class="wrap">Contains the currently selected use case's pool. A screen affordance only.</td></tr>
+</tbody></table></div>
+<figure class="mid zoom">
+  <img src="docs/manual/img/out-resilstats.png" width="990" height="95" loading="lazy" decoding="async" alt="Four resilience tiles: guaranteed at peak, normal-day capacity, idle hardware, cost versus bare N">
+  <figcaption><b>Figure 20.</b> The economics of the pattern you chose: what survives a failure, what
+    you get on a normal day, what stands idle, and the multiple over bare N.</figcaption>
+</figure>
+<p>Underneath the map, a text form of the same information is available for screen readers and for
+pasting into a ticket, listing every node and what sits on each GPU.</p>
+
+<h3 id="res-charts">The two charts</h3>
+<div class="figrow">
+<figure class="zoom">
+  <img src="docs/manual/img/out-chart-batch.png" width="516" height="356" loading="lazy" decoding="async" alt="Chart: per-user speed as admitted sequences grow, with target lines and shaded pass and fail zones">
+  <figcaption><b>Figure 21.</b> Speed per user as demand grows.</figcaption>
+</figure>
+<figure class="zoom">
+  <img src="docs/manual/img/out-chart-ctx.png" width="516" height="356" loading="lazy" decoding="async" alt="Chart: per-user speed against conversation length, with target lines and shaded zones">
+  <figcaption><b>Figure 22.</b> Speed per user against conversation length.</figcaption>
+</figure>
+</div>
+<p>Both charts plot the decode equation from <a href="#math-decode">section 5.8</a> with one variable
+swept and everything else held at your configuration. One line per pool.</p>
+<ul>
+  <li><b>Shaded bands</b> mark the region above your slowest target (comfortable) and below it
+    (missing). The boundary is the target itself.</li>
+  <li><b>The amber dashed line</b> is the binding per-user speed target, labelled with its value. Where
+    a curve crosses it is the load or context length at which that pool stops keeping its promise.</li>
+  <li><b>A hatched line</b> in the legend marks a target that is currently not met at the operating
+    point, so a failing pool is identifiable without reading the colours.</li>
+  <li><b>The vertical marker</b> is where you are now.</li>
+</ul>
+<p>The first chart is the more important one: it is the shape of the batching trade. Adding requests
+to a replica raises total throughput and lowers every individual user's speed, because the KV that must
+be re-read each step grows with the batch.</p>
+
+<h3 id="res-waterfall">Request latency anatomy</h3>
+<figure class="zoom">
+  <img src="docs/manual/img/out-waterfall.png" width="1028" height="229" loading="lazy" decoding="async" alt="Stacked horizontal bars per use case: first token, framework overhead, reasoning tokens, visible output, with a P95 marker">
+  <figcaption><b>Figure 23.</b> Where the seconds go, per use case, with the P95 marker.</figcaption>
+</figure>
+<p>Four segments per use case: <b>first token</b> (prefill), <b>framework overhead</b>, <b>hidden
+reasoning</b>, and <b>visible output</b>. The reasoning segment is usually the surprise: a reasoning
+model with an 8,000-token budget spends most of the request producing tokens nobody reads, and that
+time counts against your P95 exactly like visible output does. The marker shows the P95 for that use
+case against its target.</p>
+
+<h3 id="res-recs">Recommendations</h3>
+<figure class="zoom">
+  <img src="docs/manual/img/out-recs.png" width="1028" height="1219" loading="lazy" decoding="async" alt="The recommendations panel: several findings, some with priced Apply buttons">
+  <figcaption><b>Figure 24.</b> Ordered by what they would save, most valuable first.</figcaption>
+</figure>
+<p>Recommendations are graded: <b>red</b> is a defect in the configuration, <b>amber</b> is a risk or an
+over-provision, and <b>plain</b> is an explanation or an opportunity. Many carry buttons.</p>
+<figure class="zoom">
+  <img src="docs/manual/img/rec-apply.png" width="990" height="195" loading="lazy" decoding="async" alt="A recommendation about the speed target with two Apply buttons quoting the GPUs each would save">
+  <figcaption><b>Figure 25.</b> A priced Apply button. The number on the button is not an estimate: the
+    studio re-solved the entire project with that change to produce it.</figcaption>
+</figure>
+<div class="key"><span class="t">How to trust an Apply button</span>
+<p>Every button quotes what it would buy back, and that figure comes from re-running the whole solver
+with the proposed change, not from a rule of thumb. Applying it changes every use case in scope,
+re-solves, and offers <b>one Undo</b> that restores the project exactly. The studio never silently
+changes a number you typed.</p>
+</div>
+<figure class="zoom">
+  <img src="docs/manual/img/rec-why.png" width="990" height="179" loading="lazy" decoding="async" alt="A recommendation itemising why the fleet is this size when the cards sit at 38 percent">
+  <figcaption><b>Figure 26.</b> When the cards look empty, this itemises the order: cards held by the
+    speed and P95 promises, by the first-token targets, by the admission floor, by whole-node rounding
+    and by the resilience pattern.</figcaption>
+</figure>
+<p>The full catalogue of recommendation types is in <a href="#optimiser">section 10</a>.</p>
+
+<h2 id="math">The mathematics</h2>
+
+<p>The engine is about fifty lines of arithmetic between <code>/*ENGINE-START*/</code> and
+<code>/*ENGINE-END*/</code> in <code>assets/app.js</code>. There is no simulation, no fitted curve and
+no lookup table: every output is a closed form of the inputs, which is why the Excel export can
+reproduce it cell for cell and why you can check any figure by hand. This section is that arithmetic,
+in the order the engine evaluates it.</p>
+
+<h3 id="math-notation">Notation</h3>
+<div class="tw"><table>
+<thead><tr><th>Symbol</th><th>Meaning</th><th>Unit</th><th>Source</th></tr></thead>
+<tbody>
+<tr><td><code>P</code></td><td>Total parameters</td><td>billions</td><td>model library</td></tr>
+<tr><td><code>P_act</code></td><td>Active parameters per token (= <code>P</code> for a dense model)</td><td>billions</td><td>model library</td></tr>
+<tr><td><code>L</code>, <code>H_kv</code>, <code>d_head</code></td><td>Layers, KV heads, head dimension</td><td>count</td><td>model library</td></tr>
+<tr><td><code>b_w</code>, <code>b_kv</code></td><td>Bytes per weight, bytes per KV element</td><td>bytes</td><td>Precision station</td></tr>
+<tr><td><code>S</code></td><td>Resident sequence per request</td><td>tokens</td><td>Workload</td></tr>
+<tr><td><code>R</code></td><td>Hidden reasoning tokens per request</td><td>tokens</td><td>Workload</td></tr>
+<tr><td><code>O</code></td><td>Visible output tokens per response</td><td>tokens</td><td>Workload</td></tr>
+<tr><td><code>f</code></td><td>Shared cached prefix fraction</td><td>0 to 0.95</td><td>Workload</td></tr>
+<tr><td><code>C</code></td><td>Concurrent calls offered at peak</td><td>count</td><td>Workload</td></tr>
+<tr><td><code>B</code></td><td>Max batch per replica</td><td>count</td><td>Workload / solver</td></tr>
+<tr><td><code>TP</code></td><td>Tensor-parallel width</td><td>GPUs</td><td>Hardware / solver</td></tr>
+<tr><td><code>G</code></td><td>GPUs in the pool</td><td>count</td><td>Hardware / solver</td></tr>
+<tr><td><code>V</code>, <code>BW</code>, <code>F</code></td><td>VRAM, HBM bandwidth, dense FP16 TFLOPS per GPU</td><td>GB, TB/s, TFLOPS</td><td>GPU library</td></tr>
+<tr><td><code>η_mfu</code>, <code>η_mbu</code>, <code>η_ic</code></td><td>Prefill, decode and interconnect efficiency</td><td>fraction</td><td>Advanced tuning</td></tr>
+<tr><td><code>t_ovh</code></td><td>Framework overhead per request</td><td>ms</td><td>Advanced tuning</td></tr>
+</tbody></table></div>
+
+<h3 id="math-weights">Weights</h3>
+<div class="fx"><div class="eq"><span class="v">W</span> = P × b_w                    <span class="c">GB per replica</span>
+<span class="v">W_all</span> = replicas × W            <span class="c">GB across the pool</span></div>
+<div class="why">Parameters are counted in billions and bytes per weight in bytes, so the product is
+already gigabytes. Every replica holds a complete copy; tensor parallelism divides that copy across
+<code>TP</code> cards but does not shrink it. This is the reason more workers can never make a model
+fit.</div></div>
+<p>Worked: 70B at FP8 is <code>70 × 1 = 70.0 GB</code> per replica. At BF16 it is 140 GB, at NV FP4 it
+is 35 GB.</p>
+
+<h3 id="math-kv">KV cache per token, and effective KV</h3>
+<p>Every token a request holds occupies a key and a value vector in every layer. The uniform-attention
+form is:</p>
+<div class="fx"><div class="eq"><span class="v">kv_tok</span> = 2 × L × H_kv × d_head × b_kv / 1e9    <span class="c">GB per token</span></div>
+<div class="why">The 2 is key plus value. <code>H_kv</code> is <b>KV heads</b>, not attention heads:
+grouped-query attention shares one KV head across several query heads, and it is the KV count that
+occupies memory. This single distinction is worth an order of magnitude on a modern model.</div></div>
+<p>Worked: Llama 3.3 70B has 80 layers, 8 KV heads and a head dimension of 128. At FP8,
+<code>2 × 80 × 8 × 128 × 1 = 163,840 bytes</code> = <b>163.84 KB per token</b>. A 8,192-token request
+therefore holds 1.34 GB of cache, and fifty of them hold 67 GB.</p>
+
+<h4>Architectures that do not fit the uniform form</h4>
+<p>Three families would be badly mis-sized by the formula above, so the library encodes them with an
+<b>effective KV</b> geometry chosen to make that same formula land on the true cost:</p>
+<div class="tw"><table>
+<thead><tr><th>Family</th><th>What is different</th><th>How it is encoded</th></tr></thead>
+<tbody>
+<tr><td>MLA<br><span class="sm">DeepSeek</span></td><td class="wrap">Compresses key and value into one latent vector per token, so the cache is far smaller than the head count implies.</td><td class="wrap"><code>H_kv = 1</code> with <code>d_head = 288</code>, which reproduces the 576-dimension latent through the standard <code>2 × … </code> form.</td></tr>
+<tr><td>Sliding window<br><span class="sm">Gemma, Ministral, Llama 4</span></td><td class="wrap">Only a few layers attend to the full context; the rest hold a fixed window, so the per-token cost <i>falls</i> as the sequence grows.</td><td class="wrap">Explicit <code>kvGlobal</code> full-attention layers plus <code>kvWin</code> windowed ones, evaluated with the second form below.</td></tr>
+<tr><td>SSM hybrids<br><span class="sm">Jamba, Nemotron-H</span></td><td class="wrap">Mamba layers carry a constant-size state instead of a growing cache.</td><td class="wrap"><code>kvLayers</code> counts only the attention layers.</td></tr>
+</tbody></table></div>
+<div class="fx"><div class="eq"><span class="c">when kvGlobal &gt; 0 and kvWin &gt; 0:</span>
+<span class="v">kv_tok</span> = [ kvGlobal × k × H_g × d_g
+         + (L_kv − kvGlobal) × 2 × H_kv × d_head × min(1, kvWin / S_eff) ] × b_kv / 1e9
+
+<span class="c">k = 1 for key-only global layers, otherwise 2</span></div>
+<div class="why">The windowed term shrinks as the sequence grows because those layers never hold more
+than <code>kvWin</code> tokens no matter how long the conversation is. This is why a sliding-window
+model's memory curve flattens where a uniform model's keeps climbing, and why the second chart in the
+studio is worth looking at for these architectures.</div></div>
+
+<h3 id="math-prefix">Prefix caching</h3>
+<p>Engine v27. If part of the sequence is byte-identical on every call, a server with automatic prefix
+caching computes it once and stores it once per replica rather than once per request.</p>
+<div class="fx"><div class="eq"><span class="v">cached</span>    = floor(S × clamp(f, 0, 0.95))     <span class="c">tokens, shared</span>
+<span class="v">S_eff</span>     = S + R                            <span class="c">if reasoning extends the KV cache</span>
+<span class="v">unique</span>    = max(0, S_eff − cached)            <span class="c">tokens, per call</span>
+<span class="v">prefill</span>   = max(0, S − cached)               <span class="c">tokens actually prefilled</span>
+<span class="v">kv_shared</span> = cached × kv_tok                  <span class="c">GB, once per replica</span></div>
+<div class="why">Two separate consequences, and the model keeps them separate: prefill shrinks, so TTFT
+falls; and the shared blocks are stored once per replica instead of once per admitted request, so KV
+memory falls. <b>Decode is deliberately not discounted</b> and still divides by the full
+<code>S_eff</code>, because a request still attends over its whole context on every generated token
+unless the kernel batches shared pages, which not every stack does. Being optimistic about decode
+bandwidth would be the expensive kind of wrong.</div></div>
+<div class="warn"><span class="t">The shared block is per replica, not per fleet</span>
+<p>Each replica holds its own copy of the cached prefix, hence <code>replicas × kv_shared</code> in the
+total below. A pool with more replicas than concurrent calls therefore saves less, which is correct
+and occasionally surprising.</p></div>
+
+<h3 id="math-fit">Activations, overhead, and the fit inequality</h3>
+<div class="fx"><div class="eq"><span class="v">A</span>      = min(S_eff, 8192) × hidden × 12 × b_w / 1e9   <span class="c">GB per replica</span>
+<span class="v">fixed</span>  = 5                                          <span class="c">GB, CUDA context + framework</span>
+<span class="v">multi</span>  = replicas × (TP − 1) × m                    <span class="c">GB, NCCL buffers</span>
+       <span class="c">m = 15 GB per extra GPU in a group (1.4 for a MIG slice)</span></div>
+<div class="why">Activations are capped at an 8,192-token chunk because that is how long-context
+prefill is actually executed: in chunks, not as one enormous tensor. The NCCL term belongs to a
+<i>communicator</i>, and a communicator is one tensor-parallel replica; charging every extra GPU in the
+pool once billed 40 independent TP1 replicas 585 GB to communicate with nobody. That was engine v26's
+correction.</div></div>
+<div class="fx"><div class="eq"><span class="v">KV_total</span> = admitted × unique × kv_tok + replicas × kv_shared
+<span class="v">need</span>     = W_all + KV_total + A_all + fixed + multi
+<span class="v">avail</span>    = replicas × TP × V
+
+<span class="v">FITS</span> ⟺ need ≤ avail          <span class="c">and the solver plans to a fraction of avail</span></div></div>
+
+<div class="dia">
+<svg viewBox="0 0 860 250" role="img" aria-label="Diagram: the memory stack on one card, weights then KV then activations then overhead then headroom">
+  <text class="ttl" x="10" y="18">One card's 141 GB, at the worked example's operating point</text>
+  <g transform="translate(10,34)">
+    <rect class="fH" x="0" y="0" width="700" height="46" rx="4"/>
+    <rect class="fW" x="0" y="0" width="87" height="46"/>
+    <rect class="fK" x="87" y="0" width="83" height="46"/>
+    <rect class="fA" x="170" y="0" width="2" height="46"/>
+    <rect class="fO" x="172" y="0" width="62" height="46"/>
+    <text class="mn onW" x="10" y="28">17.5</text>
+    <text class="mn onW" x="99" y="28">16.8</text>
+    <text class="mn" x="182" y="28" fill="var(--text)">12.5</text>
+    <text class="mn" x="250" y="28" fill="var(--muted)">94.0 GB headroom the speed target cannot spend</text>
+    <text class="sm" x="712" y="28">141 GB</text>
+  </g>
+  <g transform="translate(10,96)">
+    <rect class="fW" x="0" y="0" width="13" height="13" rx="2"/><text class="sm" x="20" y="11">weights  70 GB ÷ TP4 = 17.5 per card</text>
+    <rect class="fK" x="250" y="0" width="13" height="13" rx="2"/><text class="sm" x="270" y="11">KV  67.1 GB ÷ 4 = 16.8 per card (50 calls)</text>
+    <rect class="fA" x="540" y="0" width="13" height="13" rx="2"/><text class="sm" x="560" y="11">activations 0.8 ÷ 4 = 0.2</text>
+    <rect class="fO" x="700" y="0" width="13" height="13" rx="2"/><text class="sm" x="720" y="11">overhead 50 ÷ 4 = 12.5</text>
+  </g>
+  <text class="sm" x="10" y="136">The pool needs 187.9 GB of the 564 GB in four cards: 33% used. That is not waste. At 77 tok/s per user</text>
+  <text class="sm" x="10" y="152">the group can only re-read about 137 GB per token, and 70 GB of that is already the weights. Filling the</text>
+  <text class="sm" x="10" y="168">remaining VRAM with more concurrent requests would push the per-user speed below the 40 tok/s promise.</text>
+  <rect class="boxT" x="10" y="184" width="840" height="52" rx="6"/>
+  <text class="lbl" x="24" y="206" font-weight="600">The rule of thumb worth memorising</text>
+  <text class="mn onT" x="24" y="226">KV a card can hold at speed  ≈  BW × η_ic × η_mbu × 1000 / tok_s  −  P_act × b_w</text>
+</svg>
+</div>
+<p class="units">Diagram 4. Why a fleet sized for latency looks empty, and why that is correct.</p>
+
+<h3 id="math-prefill">Prefill: time to first token</h3>
+<div class="fx"><div class="eq"><span class="v">TTFT</span> = 2 × prefill × P_act / (F × TP × η_mfu)      <span class="c">ms</span></div>
+<div class="why">A forward pass over one token costs about <code>2 × P_act</code> FLOPs (one multiply
+and one add per parameter), so a prompt of <code>prefill</code> tokens costs
+<code>2 × prefill × P_act</code>. Parameters in billions over TFLOPS gives milliseconds directly. It
+scales with active parameters, so an MoE prefills at the speed of its active slice, and it divides by
+<code>TP</code> because every card in the group works on the same prompt.</div></div>
+<p>Worked: 8,192 tokens of a 70B dense model at TP4 on an H200 (989 dense FP16 TFLOPS) at MFU 0.5:</p>
+<pre><code>TTFT = 2 × 8192 × 70 / (989 × 4 × 0.5)
+     = 1,146,880 / 1,978
+     = 580 ms</code></pre>
+<p>At a 50% shared prefix only 4,096 tokens are prefilled and the same expression gives <b>290 ms</b>.</p>
+
+<h3 id="math-decode">Decode: tokens per second per user</h3>
+<p>Generating one token requires reading every active weight and every cached key and value for every
+request in the batch. Decode is therefore bandwidth bound, and the studio's central equation is a
+division of available bytes per second by bytes needed per token.</p>
+<div class="fx"><div class="eq"><span class="v">BW_eff</span>   = BW × TP × η_ic × η_mbu × 1000        <span class="c">GB/s for the group</span>
+<span class="v">admitted</span> = min(C, B × replicas)                  <span class="c">or C when KV is pinned</span>
+<span class="v">b_rep</span>    = max(1, admitted / replicas)           <span class="c">batch actually running</span>
+
+<span class="v">tok/s</span>    =        BW_eff
+           ────────────────────────────────
+           P_act × b_w  +  b_rep × S_eff × kv_tok
+
+<span class="v">agg</span>      = tok/s × admitted                      <span class="c">fleet throughput</span></div>
+<div class="why">The denominator is the whole story. The first term is the weights, paid once per step
+however many requests are batched, which is why batching raises aggregate throughput. The second term
+is the KV of every co-batched request, which is why batching lowers each individual user's speed. The
+trade between those two terms is the first chart in the studio.</div></div>
+<p>Worked: <code>BW_eff = 4.8 × 4 × 0.85 × 0.65 × 1000 = 10,608 GB/s</code>, weights term
+<code>70 × 1 = 70 GB</code>, KV term <code>50 × 8192 × 0.00016384 = 67.1 GB</code>:</p>
+<pre><code>tok/s = 10,608 / (70 + 67.1) = 10,608 / 137.1 = 77.4 tok/s per user
+agg   = 77.4 × 50           = 3,868 tok/s for the pool</code></pre>
+
+<h3 id="math-admission">Admission and queueing</h3>
+<div class="fx"><div class="eq"><span class="v">replicas</span> = floor(G / TP)
+<span class="v">admitted</span> = C                       <span class="c">KV policy = pinned per session</span>
+<span class="v">admitted</span> = min(C, B × replicas)    <span class="c">KV policy = running batch</span>
+<span class="v">queued</span>   = C − admitted</div>
+<div class="why">Under a running batch the server admits what its batch slots allow and the rest wait,
+which is how vLLM and friends behave. Under a pinned policy every session holds its cache for the whole
+session, so all of them are resident whether or not they are generating: far more expensive, and the
+right model only for live paths where an eviction mid-conversation would break the latency budget.
+Queued requests are reported but their waiting time is not modelled, because queue delay depends on
+arrival distribution rather than on capacity.</div></div>
+
+<h3 id="math-latency">End-to-end latency and P95</h3>
+<div class="fx"><div class="eq"><span class="v">gen</span>     = R + O                                  <span class="c">tokens the user waits for</span>
+<span class="v">ITL</span>     = 1000 / tok_s                           <span class="c">ms between tokens</span>
+<span class="v">latency</span> = (TTFT + t_ovh) / 1000 + gen / tok_s     <span class="c">seconds, mean</span>
+<span class="v">P95</span>     = 1.3 × latency</div>
+<div class="why">Hidden reasoning tokens are in <code>gen</code>: the user waits for every one of them
+and never sees any of them, which is why a reasoning model's P95 is dominated by a budget nobody reads.
+The 1.3 multiplier is a <b>fixed convention, not a measured tail</b>. A real deployment's ratio depends
+on arrival burstiness and scheduler fairness; validate it with GenAI-Perf or vLLM bench before
+committing to a P95 in a contract.</div></div>
+<div class="key"><span class="t">Which promise is actually buying the hardware</span>
+<p>Invert the latency equation and a P95 target implies a per-user speed:</p>
+<pre><code>tok/s implied by a P95 target  =  gen / (P95 / 1.3 − (TTFT + t_ovh)/1000)</code></pre>
+<p>When that number exceeds your stated tok/s target, <b>the speed target is not the lever at all</b>:
+lowering it changes nothing and only the P95 can shrink the fleet. A 4-second P95 on a 1,000-token
+generation demands 343 tok/s whatever the tok/s field says. The studio detects this case explicitly and
+says so, because it once accounted for 89% of a reported project's cards while every suggestion the
+optimiser knew how to make was a lower tok/s target.</p>
+</div>
+
+<h3 id="math-conc">Concurrency from a headcount</h3>
+<p>Little's law: the number of requests in flight is the arrival rate times the time each one takes.</p>
+<div class="fx"><div class="eq"><span class="v">concurrent</span> = ceil( users × turns × share × calls × dur / 3600 × burst )</div>
+<div class="why"><code>turns</code> is interactions per user per hour, <code>share</code> the fraction of
+interactions that reach the model, <code>calls</code> the model calls per interaction (an agent makes
+several), <code>dur</code> the seconds each call occupies a slot, and <code>burst</code> the peak-to-mean
+ratio inside the hour. Presets supply a traffic shape per workload class; the studio prints the derived
+number and the percentage of your users it represents so you can sanity-check it against your own
+telemetry.</div></div>
+<p>Worked: 1,500 active users, 4 interactions/hour, 100% reaching the model, 1.5 calls each, 8 seconds
+per call, 2.5× burst gives <code>1500 × 4 × 1 × 1.5 × 8 / 3600 × 2.5 = 50</code> concurrent calls,
+3.3% of the user base in flight.</p>
+
+<h3 id="math-worked">A complete worked example</h3>
+<p>Every number below comes from the engine; you can reproduce all of them with a calculator.</p>
+<div class="tw"><table>
+<thead><tr><th>Input</th><th>Value</th><th>Input</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>Model</td><td>Llama 3.3 70B Instruct</td><td>GPU</td><td>H200 141GB NVL</td></tr>
+<tr><td>Geometry</td><td>80 L · 8 KV heads · 128 dim</td><td>Per GPU</td><td>141 GB · 4.8 TB/s · 989 TF</td></tr>
+<tr><td>Weights / KV</td><td>FP8 / FP8</td><td>Topology</td><td>TP4 · 1 replica · 4 GPUs</td></tr>
+<tr><td>Resident</td><td>8,192 tokens</td><td>Concurrency</td><td>50 calls · batch 50</td></tr>
+<tr><td>Visible out</td><td>350 tokens</td><td>Efficiency</td><td>MFU 0.5 · MBU 0.65 · IC 0.85</td></tr>
+</tbody></table></div>
+<div class="tw"><table>
+<thead><tr><th>Step</th><th>Arithmetic</th><th>Result</th></tr></thead>
+<tbody>
+<tr><td>Weights</td><td><code>70 × 1</code></td><td><b>70.00 GB</b></td></tr>
+<tr><td>KV per token</td><td><code>2 × 80 × 8 × 128 × 1 / 1e9</code></td><td><b>163.84 KB</b></td></tr>
+<tr><td>KV total</td><td><code>50 × 8192 × 0.00016384</code></td><td><b>67.11 GB</b></td></tr>
+<tr><td>Activations</td><td><code>8192 × 8192 × 12 × 1 / 1e9</code></td><td><b>0.81 GB</b></td></tr>
+<tr><td>Overhead</td><td><code>5 + 1 × (4−1) × 15</code></td><td><b>50.00 GB</b></td></tr>
+<tr><td>Total needed</td><td><code>70 + 67.11 + 0.81 + 50</code></td><td><b>187.91 GB</b></td></tr>
+<tr><td>Available</td><td><code>1 × 4 × 141</code></td><td><b>564 GB → fits, 33%</b></td></tr>
+<tr><td>Effective bandwidth</td><td><code>4.8 × 4 × 0.85 × 0.65 × 1000</code></td><td><b>10,608 GB/s</b></td></tr>
+<tr><td>Per-user speed</td><td><code>10608 / (70 + 67.11)</code></td><td><b>77.4 tok/s</b></td></tr>
+<tr><td>Aggregate</td><td><code>77.4 × 50</code></td><td><b>3,868 tok/s</b></td></tr>
+<tr><td>First token</td><td><code>2 × 8192 × 70 / (989 × 4 × 0.5)</code></td><td><b>580 ms</b></td></tr>
+<tr><td>Inter-token</td><td><code>1000 / 77.4</code></td><td><b>12.9 ms</b></td></tr>
+<tr><td>Mean latency</td><td><code>(580 + 30)/1000 + 350/77.4</code></td><td><b>5.13 s</b></td></tr>
+<tr><td>P95</td><td><code>1.3 × 5.13</code></td><td><b>6.67 s</b></td></tr>
+</tbody></table></div>
+<p>Against the Clinical knowledge preset's targets of 800 ms, 40 tok/s and 50 s, all three pass with
+room to spare. (The example sets reasoning to zero rather than the preset's 1,000-token budget, purely
+to keep the arithmetic followable. Switch it on and <code>gen</code> becomes 1,350 tokens, and because
+those tokens also extend the KV cache the per-user speed falls to 73.0 tok/s, so the mean latency rises
+to 19.1 s and the P95 to 24.8 s: still inside the 50 s promise, but four times the number above.) Now set the shared cached prefix to 50%: the prefill halves to 4,096 tokens, TTFT falls
+to <b>290 ms</b>, KV total falls to <b>34.2 GB</b> because the shared half is held once instead of fifty
+times, and the per-user speed is <b>unchanged at 77.4 tok/s</b>, exactly as
+<a href="#math-prefix">section 5.4</a> promises.</p>
+
+<h2 id="solver">The auto-size solver</h2>
+
+<p>Auto-size answers: <b>what is the cheapest topology that fits this pool and keeps every member's
+promises?</b> It runs per pool, and it is deterministic: the same inputs always produce the same plan.</p>
+
+<div class="dia">
+<svg viewBox="0 0 860 420" role="img" aria-label="Flowchart of the auto-size solver">
+  <text class="ttl" x="10" y="18">Auto-size, per pool</text>
+  <defs><marker id="ar3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+    <path d="M0 0 L10 5 L0 10 z" fill="var(--faint)"/></marker></defs>
+  <g>
+    <rect class="boxT" x="10" y="34" width="245" height="56" rx="7"/>
+    <text class="lbl" x="24" y="55" font-weight="600">1 · Fitting width</text>
+    <text class="sm" x="24" y="74">Smallest TP in 1,2,4,8,16,32,64,72 that</text>
+    <text class="sm" x="24" y="86">holds one copy inside the memory target</text>
+  </g>
+  <path class="flow" d="M255 62 H305" marker-end="url(#ar3)"/>
+  <g>
+    <rect class="boxT" x="305" y="34" width="245" height="56" rx="7"/>
+    <text class="lbl" x="319" y="55" font-weight="600">2 · First-token widening</text>
+    <text class="sm" x="319" y="74">Widen while any member misses its TTFT</text>
+    <text class="sm" x="319" y="86">target, but only while widening still helps</text>
+  </g>
+  <path class="flow" d="M550 62 H600" marker-end="url(#ar3)"/>
+  <g>
+    <rect class="boxT" x="600" y="34" width="250" height="56" rx="7"/>
+    <text class="lbl" x="614" y="55" font-weight="600">3 · Candidate widths</text>
+    <text class="sm" x="614" y="74">Plan the pool at that width and at every</text>
+    <text class="sm" x="614" y="86">wider one; keep the cheapest that passes</text>
+  </g>
+  <path class="flow" d="M725 90 V116" marker-end="url(#ar3)"/>
+  <g>
+    <rect class="box" x="180" y="116" width="670" height="118" rx="7"/>
+    <text class="lbl" x="196" y="138" font-weight="600">For each candidate width, plan(TP):</text>
+    <text class="sm" x="196" y="158">a. Fewest replicas that admit the peak concurrency, then grow until the memory target is met</text>
+    <text class="sm" x="196" y="176">b. Ask what one call gets ALONE at batch 1 on this width: a target that fails even there can</text>
+    <text class="sm" x="196" y="190">   never be met by more replicas, so it is reported as stuck instead of bought for</text>
+    <text class="sm" x="196" y="208">c. For reachable targets, grow replicas using the closed form below until every member passes</text>
+    <text class="sm" x="196" y="226">d. Give back any replica the plan does not need after the last growth step</text>
+  </g>
+  <path class="flow" d="M515 234 V262" marker-end="url(#ar3)"/>
+  <g>
+    <rect class="boxA" x="180" y="262" width="670" height="52" rx="7"/>
+    <text class="lbl" x="196" y="284" font-weight="600">Closed-form replica count, instead of a search</text>
+    <text class="mn onA" x="196" y="304">batch_per_replica = (BW_eff / target_tps − P_act × b_w) / (S_eff × kv_tok)</text>
+  </g>
+  <path class="flow" d="M515 314 V342" marker-end="url(#ar3)"/>
+  <g>
+    <rect class="boxT" x="180" y="342" width="670" height="60" rx="7"/>
+    <text class="lbl" x="196" y="364" font-weight="600">4 · Alternatives, then the cheapest plan wins</text>
+    <text class="sm" x="196" y="383">A TP1 pool whose copy fits a hardware slice is also priced as MIG slices sharing physical GPUs,</text>
+    <text class="sm" x="196" y="396">bin-packed against the supporting models. Whichever costs fewer real GPUs is the answer.</text>
+  </g>
+  <g>
+    <rect class="box" x="10" y="116" width="150" height="118" rx="7"/>
+    <text class="lbl" x="24" y="138" font-weight="600">Why widths,</text>
+    <text class="lbl" x="24" y="154" font-weight="600">not just replicas</text>
+    <text class="sm" x="24" y="176">Replicas push batch</text>
+    <text class="sm" x="24" y="190">per replica toward 1</text>
+    <text class="sm" x="24" y="204">and asymptote. A wider</text>
+    <text class="sm" x="24" y="218">TP raises the ceiling</text>
+  </g>
+</svg>
+</div>
+<p class="units">Diagram 5. The solver in full. Step 3c is the important one: the replica count that
+hits a speed target is algebra, not a loop.</p>
+
+<h3 id="solver-invariants">Invariants the solver is held to</h3>
+<p>These are enforced by a fuzz harness over thousands of random configurations, and each of them was
+added after a real defect:</p>
+<div class="tw"><table>
+<thead><tr><th>Invariant</th><th>What it prevents</th></tr></thead>
+<tbody>
+<tr><td class="wrap">No plan is beatable by a cheaper feasible plan</td><td class="wrap">The solver buying a wide TP when a narrow one with more replicas was cheaper and also passed. Currently 0 beatable out of 3,664 sampled plans.</td></tr>
+<tr><td class="wrap">A pool owns cards, never whole nodes</td><td class="wrap">A pool needing two cards being handed eight, because nodes are only rounded at the fleet level.</td></tr>
+<tr><td class="wrap">An unreachable target never suppresses a reachable one</td><td class="wrap">A pool mixing an impossible P95 with an achievable speed target having the hardware that met the achievable one handed straight back.</td></tr>
+<tr><td class="wrap">Tensor parallelism is a speed lever, not only a fitting lever</td><td class="wrap">Buying replicas forever against a target that only bandwidth per replica could reach.</td></tr>
+<tr><td class="wrap">Demand is capped safely</td><td class="wrap">Trimming a replica for cost when a member's P95 needed it.</td></tr>
+<tr><td class="wrap">Co-residency is latency-safe</td><td class="wrap">Packing two pools onto a card whose duty cycle or first-token budget cannot absorb the neighbour.</td></tr>
+</tbody></table></div>
+<div class="note"><span class="t">When the solver cannot win</span>
+<p>If a target is unreachable at any width and any batch size, the studio says so in the sizing decision
+and marks the pool <i>stuck</i> rather than buying hardware that will not help. The recommendations then
+propose what would make it reachable, priced.</p>
+</div>
+
+<h2 id="sharing">Pooling, co-residency and MIG slicing</h2>
+
+<p>Three different mechanisms let one GPU carry more than one thing. They apply in this order.</p>
+
+<h3 id="share-pool">Pooling · one deployment, several use cases</h3>
+<p>Two use cases with the same model, the same weight precision, the same KV precision and the same KV
+policy are one deployment. Their concurrency adds, the pool is solved once against the combined load,
+and each member is then checked against its own targets at the pool's shared batch size. Tick
+<b>Isolate</b> to prevent it.</p>
+
+<h3 id="share-copack">Whole-GPU co-residency</h3>
+<p>Separate pools can share one physical card the way vLLM memory fractions or Triton multi-model do.
+The studio merges them only when every one of these holds, and it records which one refused:</p>
+<div class="tw"><table>
+<thead><tr><th>Gate</th><th>Test</th></tr></thead>
+<tbody>
+<tr><td>Memory</td><td class="wrap">The sum of the per-GPU footprints stays under the auto-size memory target.</td></tr>
+<tr><td>Duty cycle</td><td class="wrap">The combined decode bandwidth demand stays under 95% of one card. Two pools each wanting 60% of a card's bandwidth do not fit on it, whatever the memory says.</td></tr>
+<tr><td>First token</td><td class="wrap">Neither tenant's TTFT headroom is consumed by sharing prefill compute with the other.</td></tr>
+<tr><td>P95</td><td class="wrap">Both tenants still meet their P95 with the neighbour present.</td></tr>
+</tbody></table></div>
+<figure class="mid zoom">
+  <img src="docs/manual/img/feat-copack.png" width="768" height="883" loading="lazy" decoding="async" alt="A fleet map of four small pools co-resident on four GPUs, with the blockers listed">
+  <figcaption><b>Figure 27.</b> Four pools, one node. The map states how many GPUs co-residency saved
+    and, underneath, exactly which pairing was refused and by which gate. A refusal is information, not
+    a failure: it tells you what to change if you want the saving.</figcaption>
+</figure>
+
+<h3 id="share-mig">MIG slicing</h3>
+<p>A pool at TP1 whose copy fits a hardware partition can run one replica per slice and share physical
+GPUs with other models and with supporting services, the way Triton and vLLM deployments do on
+partitioned clusters. Only real slice geometries are offered, per GPU, and the per-slice speed is
+computed from that slice's own bandwidth and compute rather than the whole card's.</p>
+<figure class="mid zoom">
+  <img src="docs/manual/img/feat-slicing.png" width="768" height="907" loading="lazy" decoding="async" alt="A fleet map showing two sliced pools and supporting models sharing physical GPUs, with a per-slice memory breakdown">
+  <figcaption><b>Figure 28.</b> Two model pools and two supporting models sharing physical cards as
+    isolated MIG slices, with the memory each slice occupies itemised underneath.</figcaption>
+</figure>
+<div class="warn"><span class="t">Slicing is priced honestly, and often loses</span>
+<p>Slices exist only whole, so a sliced plan is costed by first-fit-decreasing bin packing against the
+slices the supporting models already occupy, and the pool is charged only its <i>marginal</i> GPUs
+beyond those. The studio compares that against the dedicated plan and takes whichever is genuinely
+cheaper. Slicing frequently loses, and the sizing decision says why it was rejected for each pool: too
+large to fit a slice, no partitioning on this GPU, or simply more expensive.</p>
+</div>
+
+<h2 id="supports">Supporting models</h2>
+
+<p>A RAG copilot is not one model. It is a generator plus an embedder plus a reranker, probably a guard
+model, and for a voice path an ASR and a TTS. Those services are small, they are always on, and leaving
+them out of a capacity plan is how a fleet arrives 15% short.</p>
+<p>Presets attach the right kinds automatically; the chips on each use-case card show what is attached
+and let you change the model or detach it. 54 supporting models are in the library across six kinds,
+from tiny CPU-viable encoders to flagship tiers, including Arabic-specialised ASR, TTS, OCR, embedding,
+reranking and guard models.</p>
+<div class="tw"><table>
+<thead><tr><th>Kind</th><th>Attached by</th><th>Sizing note</th></tr></thead>
+<tbody>
+<tr><td>Embeddings</td><td>RAG, document and clinical presets</td><td class="wrap">One instance serves many queries; the cost is residency, not throughput.</td></tr>
+<tr><td>Reranker</td><td>RAG presets</td><td class="wrap">Cross-encoder, invoked per retrieved passage, so its instance count scales with retrieval depth.</td></tr>
+<tr><td>ASR</td><td>Voice presets</td><td class="wrap">Streaming; its first-chunk latency is part of the voice budget the LLM target is carved out of.</td></tr>
+<tr><td>TTS</td><td>Voice presets</td><td class="wrap">As above, at the other end of the turn.</td></tr>
+<tr><td>OCR</td><td>Document intake</td><td class="wrap">Page-rate driven rather than user driven.</td></tr>
+<tr><td>Guard</td><td>Public-facing and clinical presets</td><td class="wrap">Usually invoked twice per request, on the way in and on the way out.</td></tr>
+</tbody></table></div>
+<p>Supports are aggregated across the project by kind and model, so ten use cases that all want the same
+embedder do not buy ten embedders. They are then packed onto MIG slices, AMD partitions or fractional
+GPUs, and appear in the fleet map as shared cards and in the memory ledger on their own line. Their GPUs
+are counted once in the fleet total.</p>
+
+<h2 id="resil">Resilience patterns</h2>
+
+<p>Capacity and survival are different purchases. The resilience model decides how much hardware you buy
+beyond the serving fleet and what that hardware guarantees during a failure.</p>
+<div class="tw"><table>
+<thead><tr><th>Pattern</th><th>Procured</th><th>What it buys</th></tr></thead>
+<tbody>
+<tr><td><code>n</code></td><td>N</td><td class="wrap">Capacity only. A node failure removes its share of capacity.</td></tr>
+<tr><td><code>n1</code></td><td>N + 1</td><td class="wrap">One standby worker. One node can fail with no capacity loss. The common default.</td></tr>
+<tr><td><code>n2</code></td><td>N + 2</td><td class="wrap">Two standby workers: two concurrent failures, or one failure during planned maintenance.</td></tr>
+<tr><td><code>nn</code></td><td>2N</td><td class="wrap">In-site mirror. Survives losing half the fleet.</td></tr>
+<tr><td><code>dr</code></td><td>2N</td><td class="wrap">Full standby site, active/passive. Survives losing a site.</td></tr>
+<tr><td><code>drh</code></td><td>1.5N</td><td class="wrap">Half-size standby site: the second site runs degraded, which is often the honest trade.</td></tr>
+<tr><td><code>aas</code></td><td>N</td><td class="wrap">Active/active split: the same N spread across two sites, both serving. No extra hardware, and no spare capacity when a site is lost.</td></tr>
+<tr><td><code>aas1</code></td><td>N + 1</td><td class="wrap">The split above plus one spare shared across the two sites.</td></tr>
+<tr><td><code>aass</code></td><td>N + 2</td><td class="wrap">The split above with a spare in each site.</td></tr>
+<tr><td><code>aa</code></td><td>2N</td><td class="wrap">Two live sites, each able to carry the whole load.</td></tr>
+<tr><td><code>aan1</code></td><td>2N + 2</td><td class="wrap">Two live sites, each internally N+1.</td></tr>
+<tr><td><code>nndr</code></td><td>4N</td><td class="wrap">Active/active twin sites, each itself mirrored. The most expensive pattern the studio models.</td></tr>
+</tbody></table></div>
+<div class="key"><span class="t">Guaranteed versus normal-day capacity</span>
+<p>The four tiles under the fleet map separate two numbers people routinely conflate. <b>Guaranteed at
+peak</b> is what remains after the failure you chose to cover. <b>Normal-day capacity</b> is what you get
+when nothing is broken. Active/active patterns raise the second without raising the first, which makes
+them look like better value than they are if you plan sustained load on the burst headroom. Idle
+standby hardware adds nothing to either number on a normal day: it buys survival, not speed.</p>
+</div>
+<p>Spare nodes are shared across pools where the hardware is uniform, because any spare can take over
+from any failed node. That is why a project with three pools and N+2 buys two spares, not six.</p>
+
+<h2 id="optimiser">The SLO optimiser</h2>
+
+<p>Latency promises buy hardware. The optimiser's job is to show you the exchange rate and let you take
+the trade in one click, with an Undo.</p>
+<div class="fx"><div class="eq"><span class="c">at the operating point, one card holds about</span>
+<span class="v">KV per card</span> = BW × η_ic × η_mbu × 1000 / achieved_tok_s   <span class="c">GB</span></div>
+<div class="why">Independent of tensor-parallel width, because both the bandwidth and the cards scale
+together. Promise 100 tok/s on an H200 and a card can hold roughly 26 GB of cache; promise 40 and it can
+hold 66. That ratio is the whole economics of a latency target.</div></div>
+
+<h3 id="opt-catalogue">What it proposes</h3>
+<div class="tw"><table>
+<thead><tr><th>Recommendation</th><th>Trigger</th><th>Button</th></tr></thead>
+<tbody>
+<tr><td class="wrap">The speed target is what this pool is really paying for</td><td class="wrap">A lower per-user speed target would shrink the fleet</td><td class="wrap">Two levels: one that keeps every P95 promise exactly, one that relaxes P95 by at most half again. Both bounded by the workload class floor, so a live voice path is never asked to read at 19 tok/s.</td></tr>
+<tr><td class="wrap">The P95 promise is the binding one</td><td class="wrap">The P95 implies a higher speed than the tok/s field does, so lowering tok/s cannot help</td><td class="wrap">A reachable P95, priced.</td></tr>
+<tr><td class="wrap">The first-token target is buying the TP width</td><td class="wrap">TTFT widening chose a wider group than fitting needed</td><td class="wrap">Names the use case responsible and what a looser target would return.</td></tr>
+<tr><td class="wrap">A repeated prefix is being prefilled on every call</td><td class="wrap">8K+ resident tokens with no shared-prefix fraction set</td><td class="wrap">30% and 60%, each labelled with what it buys: GPUs off the order, or first-token headroom.</td></tr>
+<tr><td class="wrap">Why the fleet is this size when the cards sit at N%</td><td class="wrap">Fleet utilisation below 50%</td><td class="wrap">No button: an itemised account of the order by constraint class.</td></tr>
+<tr><td class="wrap">KV-dominated deployment</td><td class="wrap">Cache outweighs weights</td><td class="wrap">KV cache to FP8.</td></tr>
+<tr><td class="wrap">Exceeds VRAM</td><td class="wrap">Does not fit</td><td class="wrap">Weights to FP8, a wider tensor-parallel group, or a batch cap.</td></tr>
+<tr><td class="wrap">No redundancy configured</td><td class="wrap">Resilience is bare N</td><td class="wrap">N+1.</td></tr>
+<tr><td class="wrap">Interconnect efficiency is costing N cards</td><td class="wrap">IC set below the default</td><td class="wrap">Reset to 0.85 and re-solve.</td></tr>
+<tr><td class="wrap">TP crosses nodes (penalty modeled)</td><td class="wrap">A group is wider than one node</td><td class="wrap">No button: states that IC was capped at 0.70 and what it cost.</td></tr>
+</tbody></table></div>
+
+<h3 id="opt-rules">The rules it plays by</h3>
+<ul>
+  <li><b>Never silently change a number you typed.</b> Every change is a button you press, and every
+    button quotes its effect first.</li>
+  <li><b>Price by re-solving, not by estimating.</b> The saving on the button comes from running the
+    whole solver on the modified project.</li>
+  <li><b>Quote the unit you buy.</b> Cards are what a change moves; nodes are what you order. When a
+    real card saving does not reach the procurement line, the recommendation says so in those words
+    rather than implying a smaller order.</li>
+  <li><b>Never propose something a workload class forbids.</b> Floors come from the use case's own
+    fields, not from the preset dropdown, so switching a voice agent to a custom workload does not
+    change what it is.</li>
+  <li><b>Round the paired promise the safe way.</b> When a suggestion pairs a new speed with a new P95,
+    the P95 is rounded up, because writing a promise the recommended speed cannot meet would be a lie.</li>
+  <li><b>One Undo restores everything,</b> across every use case the change touched.</li>
+</ul>
+
+<h2 id="presets">Workload presets and the evidence behind them</h2>
+
+<p>The 24 presets are not opinions. Each one's SLO targets, context length and token budgets trace to
+published production guidance or a benchmark standard, and the trace is recorded in
+<a href="docs/PRACTICES.md">docs/PRACTICES.md</a> along with a July 2026 review of every one of them.</p>
+<div class="tw"><table>
+<thead><tr><th>Class</th><th>TTFT</th><th>Per token</th><th>As tok/s</th></tr></thead>
+<tbody>
+<tr><td>Interactive chat</td><td>300 ms p99</td><td>50 ms ITL</td><td>20</td></tr>
+<tr><td>RAG-augmented chat</td><td>400 ms p99</td><td>80 ms ITL</td><td>12.5</td></tr>
+<tr><td>Voice agent</td><td>150 ms p99</td><td>30 ms ITL</td><td>33</td></tr>
+<tr><td>Code completion, inline</td><td>100 ms p99</td><td>25 ms ITL</td><td>40</td></tr>
+<tr><td>Code completion, panel</td><td>300 ms p99</td><td>50 ms ITL</td><td>20</td></tr>
+<tr><td>Reasoning, interactive</td><td>1.5-2.0 s p99</td><td>15 ms TPOT</td><td>67</td></tr>
+<tr><td>Reasoning, server</td><td>2.0-3.0 s p99</td><td>80 ms TPOT</td><td>12.5</td></tr>
+<tr><td>Frontier dense, server</td><td>6 s p99</td><td>175 ms TPOT</td><td>5.7</td></tr>
+<tr><td>Batch / async</td><td>3,000 ms</td><td>200 ms ITL</td><td>5</td></tr>
+</tbody></table></div>
+<p>Two rules govern every preset, and <code>tools/check_presets.py</code> enforces the first mechanically
+on every release:</p>
+<ol>
+  <li><b>Self-consistency.</b> <code>p95Target ≥ 1.3 × (ttftTarget/1000 + (reasonTok + visibleOut) /
+    tpsTarget)</code>. A preset may never demand a P95 its own first-token and speed targets make
+    arithmetically impossible.</li>
+  <li><b>Per request, not per task.</b> Every field describes one model call.</li>
+</ol>
+<div class="note"><span class="t">Changing a preset moves every project that uses it</span>
+<p>Presets are referenced by name, so adding one is safe and editing one is not. If you maintain a fork,
+cite the source in PRACTICES.md and run the checker. Corrected targets only reach an existing card when
+its preset is re-selected.</p>
+</div>
+
+<h2 id="exports">Exports, share links and AI assistants</h2>
+
+<h3 id="exp-json">JSON</h3>
+<p>Schema <code>gpuscale.net/5</code>. Carries every use case, the project-wide hardware, and a full
+geometry snapshot of every model and GPU used, so the file still opens correctly after a library entry
+is renamed or removed: the studio rebuilds a missing model as a custom one and tells you it did. Older
+v3 and v4 single-scenario files import as a one-use-case project.</p>
+
+<h3 id="exp-xls">Excel workbook</h3>
+<p>Five sheets, and the important thing about it is that the <b>Results sheet contains formulas, not
+values</b>. Change a cell on the Inputs sheet and the whole model recalculates in Excel, mirroring the
+engine cell for cell.</p>
+<div class="tw"><table>
+<thead><tr><th>Sheet</th><th>Contents</th></tr></thead>
+<tbody>
+<tr><td>Report</td><td class="wrap">A formatted one-page brief: verdict banner, demand per use case, deployments, key numbers, the memory ledger, three native Excel charts, and a drawn fleet map.</td></tr>
+<tr><td>Inputs</td><td class="wrap">Every input as a named, editable cell, including the shared cached prefix.</td></tr>
+<tr><td>Results</td><td class="wrap">The full engine as live formulas: <code>kvTok</code>, <code>cachedTok</code>, <code>uniqueSeq</code>, <code>kvShared</code>, <code>kvTotal</code>, <code>ttft</code>, <code>tps</code>, memory terms and the SLO checks.</td></tr>
+<tr><td>Data</td><td class="wrap">The series behind the charts.</td></tr>
+<tr><td>Project</td><td class="wrap">Per use case and per pool detail, plus the node map.</td></tr>
+</tbody></table></div>
+
+<h3 id="exp-pdf">PDF report</h3>
+<figure class="mid zoom">
+  <img src="docs/manual/img/exp-report.png" width="705" height="583" loading="lazy" decoding="async" alt="Page one of the printed report: cover, project summary line, an inputs table for all use cases, and the verdict">
+  <figcaption><b>Figure 29.</b> The PDF is the page reflowed by a print stylesheet, not a separate
+    renderer, so it can never disagree with what you saw on screen.</figcaption>
+</figure>
+<p>It adds two things the screen does not show: a printed inputs table covering every use case, and a
+<i>Reading of this configuration</i> narrative that states the assumptions in prose for a reader who was
+not in the room.</p>
+
+<h3 id="exp-share">Share links</h3>
+<p>Three payload forms, all carrying the project inside the URL fragment. Nothing is uploaded and no
+short-link service is involved unless you self-host the optional worker.</p>
+<div class="tw"><table>
+<thead><tr><th>Form</th><th>Payload</th><th>Who writes it</th></tr></thead>
+<tbody>
+<tr><td><code>#p=z:</code></td><td class="wrap">deflate-raw + base64url of the project JSON</td><td class="wrap">The Share button. Compact.</td></tr>
+<tr><td><code>#p=j:</code></td><td class="wrap">base64url of the project JSON</td><td class="wrap">Fallback where <code>CompressionStream</code> is unavailable.</td></tr>
+<tr><td><code>#p=t:</code></td><td class="wrap">plain readable <code>key=value</code> pairs</td><td class="wrap">Anyone, including a chat model with no tools.</td></tr>
+</tbody></table></div>
+<p>Opening a link imports it as a <b>new local project</b>, never overwriting existing work, saves it,
+and clears the address bar so a refresh keeps your edits rather than the sender's snapshot.</p>
+
+<h3 id="exp-ai">Getting a link from ChatGPT, Gemini or Claude</h3>
+<p>The readable form exists because no chat model can deflate or reliably base64 a kilobyte of JSON, so
+without it an assistant could only give you arithmetic you cannot check. With it, an assistant can answer
+a sizing question with a link that opens a fully solved fleet:</p>
+<pre><code>https://gpuscale.net/#p=t:gpu=H200+141GB+NVL;perw=8;resil=n1;uc=Support+chat;
+model=Llama+3.3+70B;quant=FP8;preset=Simple+RAG;users=2000</code></pre>
+<p>Pairs separated by <code>;</code>, every <code>uc=</code> starts a use case, spaces written
+<code>+</code>. It carries the workload only; the studio solves the hardware. The complete key table,
+worked examples, encoding recipes and the rules that keep a generated link honest are in
+<b><a href="docs/URL-FORMAT.md">docs/URL-FORMAT.md</a></b>. Point your assistant at that file, or at
+<a href="llms.txt">llms.txt</a>, and it can build links unaided.</p>
+<p>In the page, <code>GPUscale.textShare()</code> prints the readable link for whatever is on screen,
+which is the fastest way to learn the format. For agents with a shell, the downloadable
+<code>gpuscale-link.skill</code> in the footer validates every name, clamps every field and round-trips
+the link before printing it.</p>
+
+<h2 id="libraries">Libraries, and extending them</h2>
+
+<p>Everything the studio knows lives in five one-entry-per-line files under <code>data/</code>. There is
+no build step: edit a line, reload the page.</p>
+<div class="tw"><table>
+<thead><tr><th>File</th><th>Entries</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td><code>models.js</code></td><td>101</td><td class="wrap">Dense, MoE, MLA, SSM hybrids, sliding-window, VLMs, and a deep Arabic and GCC sovereign set. Undisclosed internals are flagged <code>est. cfg</code>.</td></tr>
+<tr><td><code>gpus.js</code></td><td>37</td><td class="wrap">Dense (not sparsity) TFLOPS, real HBM bandwidth, VRAM, TDP and partitioning profiles.</td></tr>
+<tr><td><code>quants.js</code></td><td>19 + 5</td><td class="wrap">Weight formats and KV formats, in bytes per element.</td></tr>
+<tr><td><code>usecases.js</code></td><td>24</td><td class="wrap">Workload presets with their traffic shapes.</td></tr>
+<tr><td><code>support.js</code></td><td>54</td><td class="wrap">Supporting models across six kinds.</td></tr>
+</tbody></table></div>
+<p>Adding a model is one line:</p>
+<pre><code>{"name":"MyModel 34B","params":34.0,"active":34.0,"hidden":7168,"layers":60,
+ "kvHeads":8,"headDim":128,"ctx":131072, ...}</code></pre>
+<p>Use the effective-KV convention from <a href="#math-kv">section 5.3</a> for MoE, MLA and hybrid
+attention. <a href="docs/DATA.md">docs/DATA.md</a> has the complete schemas and worked examples for each
+family. The generated artifacts (the portable single-file build and both skills) are rebuilt by three
+scripts under <code>tools/</code> so they cannot drift from the live engine.</p>
+
+<h2 id="accuracy">Accuracy, limits and validation</h2>
+
+<div class="warn"><span class="t">What these numbers are</span>
+<p>Peak closed-form estimates. They land within roughly 10 to 30% of benchmarked behaviour when the
+efficiency assumptions match your stack, and <b>production fleets typically achieve 70 to 90% of
+peak</b>. Scope with this tool; verify with a benchmark; sign with margin.</p>
+</div>
+<h3 id="acc-not">Deliberately not modelled</h3>
+<div class="tw"><table>
+<thead><tr><th>Not modelled</th><th>Why, and what to do</th></tr></thead>
+<tbody>
+<tr><td class="wrap">Queue waiting time</td><td class="wrap">Depends on arrival distribution, not capacity. Queued requests are reported; their delay is not.</td></tr>
+<tr><td class="wrap">A measured P95 tail</td><td class="wrap">The 1.3× multiplier is a convention. Measure yours with GenAI-Perf.</td></tr>
+<tr><td class="wrap">Speculative decoding</td><td class="wrap">Worth 1.3-2× on decode when draft acceptance is high, but acceptance falls as batch grows, so the multiplier is largest exactly when the fleet is least loaded. It belongs in the margin column, never in the guaranteed one.</td></tr>
+<tr><td class="wrap">Decode benefit from shared-prefix kernels</td><td class="wrap">Cascade attention can read a shared block once per batch. Not every stack does; the studio stays conservative. See <a href="#math-prefix">5.4</a>.</td></tr>
+<tr><td class="wrap">Prefill/decode disaggregation</td><td class="wrap">Splitting the phases onto different hardware changes the shape of the problem; the studio sizes a homogeneous pool.</td></tr>
+<tr><td class="wrap">Mixed GPU types in one project</td><td class="wrap">A serving pool is homogeneous in practice.</td></tr>
+<tr><td class="wrap">Cooling, networking, storage, power distribution</td><td class="wrap">The kW figure is GPU TDP only. Facility overhead is typically another 30-50%.</td></tr>
+</tbody></table></div>
+<h3 id="acc-verify">How the engine itself is verified</h3>
+<p>Every release runs the same battery before it ships, and the numbers are recorded in the
+<a href="CHANGELOG.md">changelog</a>:</p>
+<ul>
+  <li><b>Parity against the previous release</b> for any input that should be unaffected by a change.
+    Engine v27 was byte-identical to v26 across 9,000 comparisons with prefix caching off.</li>
+  <li><b>An independent reimplementation in Python</b>, written from the documented formulas rather than
+    from the code, checked field by field over thousands of random states. Latest run: 2,500 states,
+    75,000 field checks, zero mismatches.</li>
+  <li><b>Solver optimality fuzz:</b> no sampled plan is beatable by a cheaper feasible one.</li>
+  <li><b>Reference projects</b> re-rendered and diffed line by line against the previous release, so an
+    unintended change to any number is caught before release.</li>
+</ul>
+
+<h2 id="privacy">Privacy, offline use and troubleshooting</h2>
+<ul>
+  <li><b>Nothing is uploaded.</b> No accounts, no analytics, no cookies, no telemetry. Projects autosave
+    to your browser's local storage; clearing site data clears them.</li>
+  <li><b>Works offline.</b> The page is installable, and
+    <a href="dist/gpuscale_standalone.html">the portable build</a> is the whole studio in one HTML file
+    you can email into an air-gapped network.</li>
+  <li><b>A share link is a one-shot import</b> into a new local project. It can never clobber existing
+    work.</li>
+  <li><b>Numbers look wrong?</b> Check <i>Resident sequence</i> first: it is the tokens held per request,
+    not the context window, and it is the field that is wrong nine times out of ten.</li>
+  <li><b>Fleet looks too big?</b> Read the <i>Why the fleet is this size</i> recommendation. It itemises
+    the order by cause.</li>
+  <li><b>Reporting a bug:</b> include the version and engine numbers from the footer and a share link. The
+    link reproduces your project exactly, and it contains nothing but your configuration.</li>
+</ul>
+
+<h2 id="glossary">Glossary</h2>
+<div class="tw"><table>
+<thead><tr><th>Term</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td>Active parameters</td><td class="wrap">Parameters touched per token. Equals total for a dense model; much smaller for an MoE. Drives speed and TTFT.</td></tr>
+<tr><td>Admitted</td><td class="wrap">Requests actually in flight, as opposed to offered. <code>min(concurrency, batch × replicas)</code> under a running batch.</td></tr>
+<tr><td>Card</td><td class="wrap">One GPU. Pools own cards; nodes are bought whole.</td></tr>
+<tr><td>Effective KV</td><td class="wrap">An encoded geometry that makes the standard KV formula land on an unusual architecture's true per-token cost.</td></tr>
+<tr><td>ITL / TPOT</td><td class="wrap">Inter-token latency, time per output token. The reciprocal of per-user tok/s.</td></tr>
+<tr><td>MBU</td><td class="wrap">Memory bandwidth utilization: the fraction of theoretical HBM bandwidth a real decode loop achieves.</td></tr>
+<tr><td>MFU</td><td class="wrap">Model FLOPs utilization: the same idea for prefill compute.</td></tr>
+<tr><td>MIG</td><td class="wrap">Multi-Instance GPU: hardware partitioning of one card into isolated slices with their own memory and bandwidth.</td></tr>
+<tr><td>Pool</td><td class="wrap">One deployment serving every use case that shares its model, precisions and KV policy.</td></tr>
+<tr><td>Prefill / decode</td><td class="wrap">The compute-bound pass over the prompt, and the bandwidth-bound one-token-at-a-time generation that follows.</td></tr>
+<tr><td>Replica</td><td class="wrap">One complete copy of the model. Adds concurrency, never room for one copy.</td></tr>
+<tr><td>Resident sequence</td><td class="wrap">Tokens held per request right now. Not the context window.</td></tr>
+<tr><td>Shared cached prefix</td><td class="wrap">The part of a request that is byte-identical every call, prefilled once and held once per replica.</td></tr>
+<tr><td>Tensor parallel (TP)</td><td class="wrap">One model copy split across TP GPUs, which multiplies bandwidth and compute for that copy.</td></tr>
+<tr><td>TTFT</td><td class="wrap">Time to first token: how long the user stares at nothing.</td></tr>
+</tbody></table></div>
+
+<h2 id="more">Where to go next</h2>
+<div class="cards">
+  <div class="card"><h4><a href="docs/DATA.md">docs/DATA.md</a></h4><p>Data schemas, the effective-KV convention, card stamps, co-residency gates and the engine version history.</p></div>
+  <div class="card"><h4><a href="docs/PRACTICES.md">docs/PRACTICES.md</a></h4><p>The published evidence behind every workload preset, and the 2026 review of all of them.</p></div>
+  <div class="card"><h4><a href="docs/URL-FORMAT.md">docs/URL-FORMAT.md</a></h4><p>How to build a configuration link, for AI assistants and for scripts.</p></div>
+  <div class="card"><h4><a href="CHANGELOG.md">Changelog</a></h4><p>Every release with its reasoning, its corrections and its verification numbers.</p></div>
+  <div class="card"><h4><a href="https://github.com/mahmoudyassine/gpu-scale-tool">Source</a></h4><p>MIT licensed. The engine is fifty lines you can read in five minutes.</p></div>
+  <div class="card"><h4><a href="index.html">The studio</a></h4><p>Back to work.</p></div>
+</div>
+
+<div class="footdoc">
+  <p>GPUscale manual · studio 5.29 · engine v27 · library v33. Written against the code, with every
+  figure captured from the running application and every formula checked against the engine.
+  © 2026 GPUscale.net, MIT licensed.</p>
+</div>
+
+</main>
+</div>
+
+<div class="lightbox" id="lb"><img id="lbImg" alt=""></div>
+
+<script>
+(function(){
+  var doc=document.getElementById('doc'), toc=document.getElementById('tocList');
+  var h2s=doc.querySelectorAll('h2'), items=[];
+  /* number the headings and build the contents from them, so the two can never
+     disagree with each other */
+  h2s.forEach(function(h2,i){
+    var n=i+1;
+    h2.insertAdjacentHTML('afterbegin','<span class="hn">'+n+'</span>');
+    h2.insertAdjacentHTML('beforeend','<a class="anchor" href="#'+h2.id+'" aria-label="Link to this section">#</a>');
+    var li=document.createElement('li');
+    li.innerHTML='<a href="#'+h2.id+'"><span class="num">'+n+'</span>'+h2.textContent.replace(/^\d+/,'').replace(/#$/,'').trim()+'</a>';
+    var subs=[], el=h2.nextElementSibling, m=0;
+    while(el && el.tagName!=='H2'){
+      if(el.tagName==='H3'){ m++;
+        el.insertAdjacentHTML('afterbegin','<span class="hn">'+n+'.'+m+'</span>');
+        el.insertAdjacentHTML('beforeend','<a class="anchor" href="#'+el.id+'" aria-label="Link to this section">#</a>');
+        subs.push('<li><a href="#'+el.id+'"><span class="num">'+n+'.'+m+'</span>'+
+          el.textContent.replace(/^[\d.]+/,'').replace(/#$/,'').trim()+'</a></li>');
+      }
+      el=el.nextElementSibling;
+    }
+    if(subs.length) li.innerHTML+='<ol class="sub">'+subs.join('')+'</ol>';
+    toc.appendChild(li); items.push(h2);
+  });
+  var links=toc.querySelectorAll('a');
+  /* scroll spy: highlight the deepest heading whose top is above the fold */
+  var heads=[].slice.call(doc.querySelectorAll('h2,h3'));
+  function spy(){
+    var y=window.scrollY+120, cur=null;
+    heads.forEach(function(h){ if(h.getBoundingClientRect().top+window.scrollY<=y) cur=h; });
+    links.forEach(function(a){ a.classList.toggle('on', !!cur && a.getAttribute('href')==='#'+cur.id); });
+  }
+  var t=null;
+  addEventListener('scroll',function(){ if(t) return; t=setTimeout(function(){ t=null; spy(); },90); },{passive:true});
+  spy();
+  /* contents filter */
+  var f=document.getElementById('tocFilter');
+  f.addEventListener('input',function(){
+    var q=f.value.trim().toLowerCase();
+    toc.querySelectorAll('li').forEach(function(li){
+      var hit=!q || li.textContent.toLowerCase().indexOf(q)>-1;
+      li.style.display=hit?'':'none';
+    });
+    if(q) toc.querySelectorAll('.sub').forEach(function(o){
+      var any=[].slice.call(o.children).some(function(c){ return c.style.display!=='none'; });
+      if(!any) o.style.display='none'; else o.style.display='';
+    });
+  });
+  /* lightbox for the screenshots */
+  var lb=document.getElementById('lb'), lbi=document.getElementById('lbImg');
+  doc.querySelectorAll('figure.zoom img').forEach(function(img){
+    img.style.cursor='zoom-in';
+    img.addEventListener('click',function(){ lbi.src=img.src; lbi.alt=img.alt; lb.classList.add('on'); });
+  });
+  lb.addEventListener('click',function(){ lb.classList.remove('on'); lbi.src=''; });
+  addEventListener('keydown',function(e){ if(e.key==='Escape') { lb.classList.remove('on'); lbi.src=''; } });
+  /* theme, shared with the studio */
+  var MOON='<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
+      SUN='<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>';
+  function paint(){ document.getElementById('icoTheme').innerHTML =
+    document.documentElement.dataset.theme==='light'? MOON : SUN; }
+  paint();
+  document.getElementById('btnTheme').addEventListener('click',function(){
+    var t=document.documentElement.dataset.theme==='light'?'dark':'light';
+    document.documentElement.dataset.theme=t;
+    try{ localStorage.setItem('gpuscale-theme',t); }catch(e){}
+    paint();
+  });
+  document.getElementById('btnPrint').addEventListener('click',function(){ window.print(); });
+})();
+</script>
+</body>
+</html>

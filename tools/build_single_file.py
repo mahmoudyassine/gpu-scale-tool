@@ -27,6 +27,22 @@ html = re.sub(r'\n<link rel="(icon" type="image/png|apple-touch-icon|manifest|ca
 html = re.sub(r'\n<meta (property="og:|name="twitter:)[^>]*>', '', html)
 html = re.sub(r'\n<link rel="canonical"[^>]*>', '', html)
 
+# The portable build is opened from a download folder, where every site-relative
+# link is a 404: the manual, the documents and the skill all live on the site.
+# Point them at the canonical host instead of shipping dead links.
+SITE = 'https://gpuscale.net/'
+def absolutise(m):
+    q = m.group(2)
+    if re.match(r'^(https?:|mailto:|data:|#|//)', q):
+        return m.group(0)
+    return f'{m.group(1)}="{SITE}{q}"'
+html, n = re.subn(r'(href)="([^"]+)"', absolutise, html)
+rel = [h for h in re.findall(r'href="([^"]+)"', html)
+       if not re.match(r'^(https?:|mailto:|data:|#)', h)]
+if rel:
+    sys.exit(f'build failed: relative links left in the portable build: {rel}')
+print(f'  {n} links checked, site-relative ones rewritten to {SITE}')
+
 scripts = ''.join((ROOT/p).read_text(encoding='utf-8')
                   for p in ['data/models.js','data/gpus.js','data/quants.js','data/usecases.js','data/support.js','assets/app.js'])
 inlined = '<script>\n'+scripts.replace('</script>','<\\/script>')+'\n</script>'
@@ -36,6 +52,7 @@ html = must_change(re.sub(r'<script src="data/models\.js"></script>.*?<script sr
 
 for leftover in re.findall(r'(?:src|href)="assets/[^"]+"', html):
     sys.exit(f'build failed: unresolved asset reference {leftover}')
+
 
 out = ROOT/'dist/gpuscale_standalone.html'
 out.parent.mkdir(exist_ok=True)

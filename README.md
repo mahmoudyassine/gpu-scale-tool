@@ -8,6 +8,7 @@
 <p align="center">
   <a href="https://gpuscale.net/"><img src="https://img.shields.io/badge/live-gpuscale.net-2dd4bf?style=flat-square" alt="Live site"></a>
   <a href="https://github.com/mahmoudyassine/gpu-scale-tool/releases"><img src="https://img.shields.io/github/v/release/mahmoudyassine/gpu-scale-tool?style=flat-square&color=4f63c2" alt="Latest release"></a>
+  <a href="https://gpuscale.net/manual.html"><img src="https://img.shields.io/badge/manual-read%20it-0f766e?style=flat-square" alt="Manual"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-f59e0b?style=flat-square" alt="MIT license"></a>
   <img src="https://img.shields.io/badge/dependencies-none-475569?style=flat-square" alt="No dependencies">
 </p>
@@ -21,7 +22,7 @@ compliance, a resilient topology and a fleet map of every model on every GPU,
 supporting models and MIG-shared GPUs included. Free, open source, and fully
 static: no backend, no build step, nothing uploaded.
 
-**▶ Try it now: https://gpuscale.net/**
+**▶ Try it now: https://gpuscale.net/**  ·  **📖 Manual: https://gpuscale.net/manual.html**
 
 ![The studio: a healthcare AI platform project with four use cases, pooled deployments and SLO verdicts](docs/screenshot.png)
 
@@ -46,6 +47,7 @@ static: no backend, no build step, nothing uploaded.
 - 🧾 **It tells you which promise is buying the hardware**: when a P95 target implies a higher per-user speed than the tok/s target does, lowering the speed target cannot shrink anything, and the tool says so and offers the P95 instead. When the cards look empty it itemises the order: cards held by the speed and P95 promises, by the first-token targets, by the admission and KV floor, by whole-node rounding, and by the resilience pattern
 - 🧠 **Prefix-cache aware**: tell it what share of the sequence is byte-identical every call (a system prompt, a tool schema, a few-shot block) and the engine prefills only the rest and holds the shared KV once per replica. When a project has a long resident context and no fraction set, the optimiser prices two levels and offers them as buttons, saying plainly that you should only accept them if your stack has prefix caching on
 - 🩺 **Fix-it buttons on the findings**: KV cache to FP8, weights to FP8, a reachable P95, reasoning off, N+1 redundancy, a tensor-parallel width, a batch cap - each one applies across the use cases in scope, re-solves, and offers one Undo
+- 📖 **A real manual**: [gpuscale.net/manual.html](https://gpuscale.net/manual.html) documents every control and every readout with screenshots, and derives the whole engine from first principles with diagrams and a worked example you can check on a calculator. Reachable from the book icon in the studio's toolbar
 - 🌓 **Polished**: light and dark themes, mobile friendly, installable, keyboard accessible
 - 🤖 **Claude skill**: download `gpuscale-link.skill` from the footer, hand it to Claude, and it turns plain-language requirements into a ready, verified share link (gpuscale.net + mirror)
 - 🔗 **Readable links any AI can write**: `#p=t:gpu=H200+141GB+NVL;uc=Support+chat;model=Llama+3.3+70B;preset=Simple+RAG;users=2000` opens a fully sized fleet. Plain text, no compression, no tooling, so ChatGPT, Gemini or Claude can answer a sizing question with a working link instead of arithmetic. Spec in [docs/URL-FORMAT.md](docs/URL-FORMAT.md)
@@ -69,6 +71,18 @@ Dark theme, same project:
 | **Use it online** | Open [the live studio](https://gpuscale.net/) |
 | **Run it locally** | Clone and double-click `index.html` (no server needed), or `python3 -m http.server 8080` |
 | **Carry one file** | Grab [`dist/gpuscale_standalone.html`](dist/gpuscale_standalone.html): the whole studio in a single portable HTML file |
+
+## 📖 Documentation
+
+| Document | What it covers |
+|---|---|
+| **[The manual](https://gpuscale.net/manual.html)** | The complete guide: quick start, every control and readout with screenshots, the full mathematics with diagrams and a worked example, the solver, pooling and MIG slicing, resilience patterns, the SLO optimiser, exports, and a glossary. Also the book icon in the studio's toolbar. |
+| [docs/DATA.md](docs/DATA.md) | Data schemas, the effective-KV convention, card stamps, co-residency gates, solver invariants and the engine version history. |
+| [docs/PRACTICES.md](docs/PRACTICES.md) | The published evidence every workload preset is calibrated against, and the 2026 review of all of them. |
+| [docs/URL-FORMAT.md](docs/URL-FORMAT.md) | How to build a configuration link, written for AI assistants and for scripts. |
+| [docs/V5-DESIGN.md](docs/V5-DESIGN.md) | The v5 architecture decisions. |
+| [llms.txt](llms.txt) | A machine-readable summary of the whole tool for agents. |
+| [CHANGELOG.md](CHANGELOG.md) | Every release with its reasoning, its corrections and its verification numbers. |
 
 ## 🧠 How it works
 
@@ -150,6 +164,7 @@ Change any slider and every number, chart and the topology diagram update live.
 
 ```
 index.html                     page markup only
+manual.html                    the manual (self-contained page)
 assets/    styles.css          all styling (light + dark via CSS variables)
            app.js              engine, charts, topology, exports
 data/      models.js gpus.js   the libraries: one entry per line,
@@ -164,6 +179,7 @@ skill/     the gpu-sizing CLI skill (generated)
 skill-link/  the gpuscale-link skill sources (share-link builder)
 docs/      DATA.md             schemas, effective-KV convention, solver notes
            URL-FORMAT.md       how to build a link (for AI assistants, scripts)
+           manual/             manual stylesheet + captured screenshots
            PRACTICES.md        the serving evidence the presets are calibrated on
            V5-DESIGN.md        the v5 architecture decisions
 ```

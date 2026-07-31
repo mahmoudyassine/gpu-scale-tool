@@ -1,5 +1,9 @@
 # Maintaining the data library
 
+
+> Prose version of much of this file, with diagrams and worked examples:
+> [the manual](https://gpuscale.net/manual.html).
+
 Building a link programmatically or from an AI assistant is a separate document:
 [URL-FORMAT.md](URL-FORMAT.md) covers the readable `#p=t:` form, the encoded
 `j:` / `z:` forms and the rules for getting a link right.

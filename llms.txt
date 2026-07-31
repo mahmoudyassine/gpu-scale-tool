@@ -113,6 +113,7 @@ the full key table and worked examples: https://gpuscale.net/docs/URL-FORMAT.md
 - [Live studio](https://gpuscale.net/): the tool itself; fully static HTML/JS
 - [README](https://github.com/mahmoudyassine/gpu-scale-tool/blob/main/README.md): method, formulas, worked example
 - [docs/PRACTICES.md](https://github.com/mahmoudyassine/gpu-scale-tool/blob/main/docs/PRACTICES.md): the serving evidence behind every workload preset
+- [Manual](https://gpuscale.net/manual.html): the complete guide, including the full closed-form mathematics, the solver algorithm and a worked example
 - [docs/URL-FORMAT.md](https://gpuscale.net/docs/URL-FORMAT.md): how to build a configuration link, for AI assistants and scripts
 - [Library names](https://gpuscale.net/skill-link/references/libraries.md): every valid model, GPU, preset, quantization and resilience name
 - [docs/DATA.md](https://github.com/mahmoudyassine/gpu-scale-tool/blob/main/docs/DATA.md): data schemas, effective-KV convention, solver invariants

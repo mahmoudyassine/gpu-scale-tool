@@ -1,5 +1,9 @@
 # Serving practice the presets are grounded in (2026 review)
 
+
+> How these presets are used in sizing, end to end:
+> [the manual](https://gpuscale.net/manual.html).
+
 The workload presets in `data/usecases.js` are not opinions. Each one's SLO
 targets, context length and token budgets trace to published production
 guidance or a benchmark standard. This file records that evidence, the review
