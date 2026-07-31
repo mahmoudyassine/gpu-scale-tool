@@ -130,7 +130,8 @@ function story(s,d){
   return L;
 }
 
-function report(s,d,resil,sol){
+function report(s,d,resil,sol,o0){
+  o0 = o0 || {};
   const info=RESIL[resil||'n']||RESIL.n;
   const servW=Math.max(1,Math.ceil(d.servingGpus/s.perW));
   const resilW=info.mult(servW)+info.add;
@@ -141,6 +142,7 @@ function report(s,d,resil,sol){
       weightsAllGB:+d.weightsAll.toFixed(1), kvTotalGB:+d.kvTotal.toFixed(1), replicas:d.replicas,
       kvPerTokenKB:+(d.kvTok*1e6).toFixed(2), headroomGB:+d.headroom.toFixed(1),
       sharedPrefixPct:+(Math.min(0.95,Math.max(0,s.cachePct||0))*100).toFixed(0),
+      residentFromCall: o0.session? `${o0.session.mins} min x ${o0.session.tokMin||o0.session.rate} tok/min + ${o0.session.base} base (${o0.session.basis})` : undefined,
       cachedPrefixTok:d.cachedTok, uniqueSeqTok:d.uniqueSeq,
       kvSharedPerReplicaGB:+d.kvShared.toFixed(2) },
     fleet:{ servingCards:d.servingGpus, nodes:servW, gpusPerNode:s.perW, tp:s.tp,
@@ -173,6 +175,7 @@ Usage:
              (--workload "Internal GPT" | --resident 16384 --out 800 --reasoning 0)
              --concurrent 377 [--auto [--target 80] | --workers 3 --tp 4 --batch 63]
              [--ttft ms --tps tokps --p95 s] [--policy running|all] [--cache pct]
+             [--call-minutes m [--tok-min r --prompt-tok t --basis peak|mean]]
              [--perw 8] [--resilience n|n1|n2|nn|dr|drh|aa|aas|aas1|aass|aan1|nndr] [--json]
   sizing.mjs --list-models | --list-gpus | --list-workloads`);
   process.exit(0);
@@ -204,6 +207,18 @@ if(args.policy) wl.policy=String(args.policy)==='all'?'all':'running';
 // prefilled once and held once per replica. Default 0: size for a full prefill
 // unless the caller states a measured hit rate.
 if(args.cache!=null&&args.cache!==true) wl.cachePct=Math.min(0.95,Math.max(0,+args.cache/100||0));
+/* --call-minutes: a conversation holds its transcript, so the resident sequence
+   grows with the length of the call. Presets that describe a session carry the
+   shape their own resident figure was built from, so stating the length alone is
+   enough. Matters most when KV is pinned per session. */
+if(args['call-minutes']!=null&&args['call-minutes']!==true){
+  const mins=Math.min(240,Math.max(0,+args['call-minutes']||0));
+  const sh=(args.workload&&CASES.find(x=>x.name.toLowerCase().includes(String(args.workload).toLowerCase()))||{}).session;
+  const rate=args['tok-min']!=null? Math.max(0,+args['tok-min']||0) : (sh? sh.tokMin : 200);
+  const base=args['prompt-tok']!=null? Math.max(0,+args['prompt-tok']||0) : (sh? sh.base : Math.max(0,wl.resident-1000));
+  const half=/^(mean|avg)/i.test(String(args.basis||''));
+  if(mins>0&&rate>0){ wl.resident=Math.round(base+rate*mins/(half?2:1)); wl.session={mins,rate,base,basis:half?'mean':'peak'}; }
+}
 
 const base={ model, gpu, wq, kq, ...wl, concurrent:+(args.concurrent||64), perW:+(args.perw||8), extend:true };
 
@@ -216,7 +231,7 @@ if(args.auto || !(args.workers&&args.tp)){
   s=makeState({...base, workers:+args.workers, tp:+args.tp, batch:+(args.batch||4)});
   d=compute(s);
 }
-const rep=report(s,d,String(args.resilience||'n'),sol);
+const rep=report(s,d,String(args.resilience||'n'),sol,wl);
 if(args.json){ console.log(JSON.stringify(rep,null,2)); }
 else {
   console.log(`\n=== ${model.name} · ${wq.name} weights / ${kq.name} KV · ${gpu.name} ===`);

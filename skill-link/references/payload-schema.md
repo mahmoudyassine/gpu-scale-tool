@@ -61,6 +61,11 @@ https://mahmoudyassine.github.io/gpuscale/#p=z:<fragment>
     //   prefills it once and holds it once per replica. OMIT OR LEAVE 0 unless
     //   the user states a measured hit rate: 0 sizes for a full prefill, which
     //   is the conservative default and what every preset ships.
+    "session": {"callMinutes": 5, "tokensPerMinute": 200,
+    //           "baseTokens": 3100, "basis": "peak"},
+    //   Conversation shape. For a session workload residentSeq is
+    //   baseTokens + tokensPerMinute x callMinutes (halved when basis is "mean").
+    //   Prefilled from the preset; omit it and the preset's own shape is used.
     "reasoning": {"mode": "None", "tokens": 0, "extendsKV": true},
     "concurrentCalls": 50,
     "maxBatchPerReplica": 15,

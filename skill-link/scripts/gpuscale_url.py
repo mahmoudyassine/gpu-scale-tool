@@ -160,6 +160,27 @@ def build_usecase(u, gl, idx, warnings):
     cachep  = clamp('sharedPrefixPct',
                     u['sharedPrefixPct'] if u.get('sharedPrefixPct') is not None
                     else (case or {}).get('cachePct', 0) or 0, warnings)
+    # conversation shape: a session holds its transcript, so the resident sequence
+    # follows the call length. Stating callMinutes alone is enough when a preset
+    # supplies the rate and the base.
+    shp = (case or {}).get('session')
+    sess = u.get('session')
+    if sess is not None or shp is not None:
+        sess = sess or {}
+        mins = float(sess.get('callMinutes', shp['min'] if shp else 0) or 0)
+        rate = float(sess.get('tokensPerMinute', shp['tokMin'] if shp else 200) or 0)
+        base = float(sess.get('baseTokens', shp['base'] if shp else max(0, resident - 1000)) or 0)
+        basis = 'mean' if str(sess.get('basis', 'peak')).lower().startswith(('mean', 'avg')) else 'peak'
+        mins = max(0.0, min(240.0, mins)); rate = max(0.0, min(20000.0, rate)); base = max(0.0, base)
+        session = {'callMinutes': mins, 'tokensPerMinute': rate,
+                   'baseTokens': int(base), 'basis': basis}
+        # an explicit session statement re-derives the resident sequence, but a
+        # spec that only names a preset keeps that preset's own figure
+        if u.get('session') is not None and u.get('residentSeq') is None and mins > 0 and rate > 0:
+            resident = clamp('residentSeq',
+                             int(round(base + rate * mins / (2 if basis == 'mean' else 1))), warnings)
+    else:
+        session = None
     # --- reasoning
     rz = u.get('reasoning')
     if rz is None:
@@ -257,6 +278,7 @@ def build_usecase(u, gl, idx, warnings):
         'weightQuant': wq['name'], 'kvQuant': kq['name'],
         'preset': preset,
         'residentSeq': resident, 'sharedPrefixPct': cachep, 'visibleOut': visible,
+        **({'session': session} if session else {}),
         'reasoning': {'mode': mode, 'tokens': tokens, 'extendsKV': extends},
         'concurrentCalls': conc, 'maxBatchPerReplica': batch, 'kvPolicy': policy,
         'hardware': {'workers': workers, 'tensorParallel': tp},

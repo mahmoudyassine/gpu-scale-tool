@@ -110,6 +110,7 @@ quant options are fixed in `app.js` (`KV_QUANTS`).
 | `ttftTarget` | First-token target in ms. `0` disables the check. |
 | `tpsTarget` | Per-user streaming speed target in tok/s. `0` disables. This is per user, never aggregate. |
 | `p95Target` | End-to-end P95 target in seconds. `0` disables. |
+| `session` | Optional `{min, tokMin, base}`. Describes the preset's resident figure as a conversation: `base` tokens of system prompt and tools, plus `tokMin` tokens for every minute of a `min`-minute call. **`base + tokMin x min` must reproduce `resident` to within 2%**, enforced by `check_presets.py`: the two numbers are two views of the same assumption and may not disagree. It prefills the conversation-length estimator; it never changes `resident` on its own. Required in spirit for any preset with `policy: "all"`, which is warned about otherwise. |
 | `cachePct` | Optional, 0-95. Share of `resident` that is byte-identical on every call, so a server with automatic prefix caching prefills it once and holds it once per replica. **Every shipped preset leaves this at 0** and sizes for a full prefill: a hit rate is a fact about the serving stack, not about the workload class. `check_presets.py` warns on any non-zero default. |
 | `policy` | `"all"` pins per-session KV for the whole session. Only for paths where an idle-turn eviction would break the latency budget. |
 | `supports` | Kind keys that auto-attach: `embed`, `rerank`, `asr`, `tts`, `ocr`, `guard`. |

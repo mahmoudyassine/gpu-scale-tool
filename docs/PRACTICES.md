@@ -137,6 +137,37 @@ Three decisions kept it honest:
   (agent loops 40-80%, RAG 10-30%, unique documents 0%) so the user supplies a
   measured hit rate rather than inheriting a guess.
 
+### Conversation length and the resident sequence (5.30.0)
+
+A conversation holds its own transcript, so a session's resident sequence is a function of how long
+the call lasts. The three presets that pin KV for the whole session now declare that function
+explicitly, and `tools/check_presets.py` fails the build if it does not reproduce the preset's own
+`resident` figure to within 2%.
+
+| Preset | Declared shape | Reproduces |
+|---|---|---|
+| Voice agent (real-time) | 3,100 base + 200 tok/min x 5 min | 4,100 vs 4,096 |
+| Speech-to-speech (native audio) | 346 base + 750 tok/min x 5 min | 4,096 |
+| Contact-center agent assist | 14,784 base + 200 tok/min x 8 min | 16,384 |
+
+The point is not the arithmetic; it is that each preset's resident figure stops being an assertion and
+becomes a statement a reader can disagree with. If your calls run twenty minutes rather than five, the
+number should move, and now it can.
+
+**Token rates.** Conversational speech runs about 150 words per minute across both speakers, and
+English tokenizes at roughly 1.3 tokens per word, giving **~200 tokens per minute** for any path where
+the model sees a text transcript. Native speech-to-speech models consume audio tokens instead, at codec
+frame rates of 12.5 to 25 Hz per stream; **750 tok/min** assumes 12.5 Hz with one party speaking at a
+time, and the band runs to 3,000 where both streams are retained at the higher rate. This is a property
+of the model, not of the workload, so it is worth checking against whatever you deploy.
+
+**Peak or average.** In steady state the in-flight calls have ages spread across [0, D], so the mean
+resident sequence is `base + rate x D/2` and the total KV is that times the concurrency. The studio
+defaults to the **end-of-call** figure instead, for two reasons: a first-token target has to hold on
+the last turn of a long call, not just the average one, and call-length distributions are not smooth
+enough for the mean to be safe without headroom. Both figures are always shown, and the basis is one
+click.
+
 ### Typical shared-prefix fractions
 
 Bands only. Measure yours; vLLM and SGLang both report cache hit rate.

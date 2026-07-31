@@ -76,7 +76,10 @@ aas1|aass|aan1|nndr), mfu, mbu, ic, ovh, util, mode.
 Use-case keys: uc, model, quant, kv, preset, seq (resident tokens per request),
 out, reason, extend, cache (shared prefix %), policy (running|all), ttft, tps,
 p95, users (people at peak), conc, turns, calls, burst, dur, batch, supports
-(embed,rerank,asr,tts,ocr,guard|none), isolate.
+(embed,rerank,asr,tts,ocr,guard|none), isolate, callmin (average conversation
+length in minutes: a session holds its transcript, so this drives the resident
+sequence and, under a pinned KV policy, the whole memory bill), tokmin, prompt,
+basis (peak|mean).
 A model outside the library: model=custom:params/active/hidden/layers/kvHeads/
 headDim/ctx.
 

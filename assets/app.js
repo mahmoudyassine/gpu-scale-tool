@@ -7,7 +7,7 @@ if(!MODELS.length || !GPUS.length || !QUANTS.length || !CASES.length){
   document.body.innerHTML = '<div style="font-family:system-ui,sans-serif;max-width:560px;margin:80px auto;padding:0 20px;line-height:1.65;color:#1A2536"><h2 style="margin-bottom:10px">Data files not loaded</h2><p>GPUscale.net could not find its library. Keep <code>index.html</code> together with the <code>data/</code> and <code>assets/</code> folders: the four files <code>data/models.js</code>, <code>data/gpus.js</code>, <code>data/quants.js</code> and <code>data/usecases.js</code> must sit next to this page.</p><p>If you need one portable file instead, use <code>dist/gpuscale_standalone.html</code> or rebuild it with <code>python3 tools/build_single_file.py</code>.</p></div>';
   throw new Error('GPUscale.net data missing');
 }
-const STUDIO_VERSION = '5.29.0', ENGINE_VERSION = 27;
+const STUDIO_VERSION = '5.30.0', ENGINE_VERSION = 27;
 function newProjId(){ const L='abcdefghjkmnpqrstuvwxyz', D='0123456789';
   const pick=s=>s[Math.floor(Math.random()*s.length)];
   return 'Project_'+pick(L)+pick(L)+pick(D)+pick(D)+pick(D); }
@@ -1414,6 +1414,7 @@ function render(){
     : `GPUscale.net · ${projName()} · ${m.name} · weights ${s.wq.name} / KV ${s.kq.name} · seq ${fmtTok(s.resident)} (+${fmtTok(s.reasonTok)} reasoning) · `+
       `${s.concurrent} concurrent, batch ${s.batch}/replica · ${s.workers}× worker (${s.perW} GPU) ${g.name} · TP${s.tp} · ${RESIL[s.resil].long} → ${topoInfo.procW} workers procured · ${new Date().toLocaleDateString()}`;
   if(window.__prj && UC.length>1) renderProjectReport(window.__prj); else restoreSingleReport();
+  renderSession();
   autosave();
 }
 
@@ -1439,6 +1440,14 @@ function applyCase(i){
      schema carries the field so a house preset can state a measured hit rate,
      and the optimiser offers it with a priced button rather than assuming it. */
   $('inCache').value=Math.min(95, Math.max(0, +c.cachePct||0));
+  /* A preset that describes a session prefills the conversation-length estimator
+     with the shape its own resident figure was built from, so changing the call
+     length starts from the preset's assumption rather than from nothing. */
+  const sh=c.session;
+  $('slMin').value  = sh? sh.min  : 5;
+  $('slRate').value = sh? sh.tokMin : 200;
+  $('slBase').value = sh? sh.base : Math.max(0, (+c.resident||4096) - 1000);
+  $('slBasis').value='peak';
   refreshCtl('inSeq'); refreshCtl('inOut'); refreshCtl('inCache');
   if(UC[activeUc]) applyNrmUsers();
 }
@@ -1456,7 +1465,8 @@ function syncReason(){
 const UC_KEYS=['chkCustom','selModel','cusParams','cusActive','cusHidden','cusLayers','cusKvh','cusHdim','cusCtx',
   'selWQuant','selKQuant','selCase','inSeq','inCache','inOut','selReason','inReasonTok','chkExtend',
   'inConc','inBatch','selPolicy','sloTtft','sloTps','sloP95',
-  'ccSessions','ccTurns','ccShare','ccCalls','ccBurst','ccDur','inWorkers','inTp','nrmUsers'];
+  'ccSessions','ccTurns','ccShare','ccCalls','ccBurst','ccDur','inWorkers','inTp','nrmUsers',
+  'slMin','slRate','slBase','slBasis'];
 const UC_CHECKS={chkCustom:1,chkExtend:1};
 let UC=[], activeUc=0, ucSeq=0;
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -1587,6 +1597,8 @@ function ucToConfig(u){ const f=u.f;
     weightQuant:wq.name, kvQuant:kq.name,
     preset: ci>=0&&CASES[ci]? CASES[ci].name : null,
     residentSeq:+f.inSeq, visibleOut:+f.inOut, sharedPrefixPct:+f.inCache||0,
+    session:{callMinutes:+f.slMin||0, tokensPerMinute:+f.slRate||0,
+             baseTokens:+f.slBase||0, basis:f.slBasis==='mean'?'mean':'peak'},
     reasoning:{mode:f.selReason, tokens:+f.inReasonTok, extendsKV:!!f.chkExtend},
     concurrentCalls:+f.inConc, maxBatchPerReplica:+f.inBatch, kvPolicy:f.selPolicy,
     hardware:{workers:+f.inWorkers, tensorParallel:+f.inTp},
@@ -2927,6 +2939,23 @@ function parseTextShare(text){
     slo.p95s   = c.p95 !=null? num(c.p95, 0)  : (cs? cs.p95Target ||0 : 0);
     out.sloTargets=slo;
     if(c.batch!=null) out.maxBatchPerReplica=num(c.batch, 64);
+    /* Conversation length. Stating callmin alone is enough: the rate and the base
+       come from the preset's own session shape, so `callmin=12` means "the same
+       workload, but calls run twelve minutes". */
+    const shp = cs&&cs.session? cs.session : null;
+    const saidSession = c.callmin!=null || c.tokmin!=null || c.prompt!=null || c.basis!=null;
+    if(saidSession || shp){
+      const mins = c.callmin!=null? Math.min(240, Math.max(0, num(c.callmin, 0))) : (shp? shp.min : 0);
+      const rate = c.tokmin !=null? Math.min(20000, Math.max(0, num(c.tokmin, 0))) : (shp? shp.tokMin : 200);
+      const base = c.prompt !=null? Math.max(0, num(c.prompt, 0)) : (shp? shp.base : Math.max(0,(out.residentSeq||4096)-1000));
+      const basis= c.basis  !=null && /^(mean|avg)/i.test(tsDec(c.basis))? 'mean' : 'peak';
+      out.session={callMinutes:mins, tokensPerMinute:rate, baseTokens:base, basis};
+      /* Only an EXPLICIT statement about the call moves the resident sequence.
+         A link that just names a preset keeps that preset's own resident figure
+         to the token, even though the shape would reproduce it to within 0.1%. */
+      if(saidSession && c.seq==null && mins>0 && rate>0)
+        out.residentSeq = Math.round(base + rate*mins/(basis==='mean'?2:1));
+    }
     // concurrency: an explicit count wins and is marked manual, otherwise the
     // people-at-peak number drives the estimator the same way Normal mode does
     const users = c.users!=null? Math.max(1, Math.round(num(c.users, 0))) : null;
@@ -2963,7 +2992,7 @@ function parseTextShare(text){
 const TS_PROJECT={name:1,gpu:1,perw:1,resil:1,mfu:1,mbu:1,ic:1,ovh:1,util:1,mode:1};
 const TS_CARD={model:1,quant:1,kv:1,preset:1,seq:1,cache:1,out:1,reason:1,extend:1,
   conc:1,users:1,batch:1,policy:1,ttft:1,tps:1,p95:1,isolate:1,supports:1,
-  turns:1,calls:1,burst:1,dur:1};
+  turns:1,calls:1,burst:1,dur:1,callmin:1,tokmin:1,prompt:1,basis:1};
 const TS_SUP=['embed','rerank','asr','tts','ocr','guard'];
 /* The same format written back out, so any project in the studio can be handed
    to an assistant as an editable one-line description of itself. */
@@ -2990,6 +3019,13 @@ function textShare(){
     put('seq', +f.inSeq, cs&&cs.resident);
     put('out', +f.inOut, cs&&cs.visibleOut);
     if(+f.inCache) parts.push('cache='+(+f.inCache));
+    const sh=cs&&cs.session? cs.session : null;
+    if(+f.slMin>0 && +f.slRate>0){
+      if(!sh || +f.slMin!==sh.min)   parts.push('callmin='+(+f.slMin));
+      if(!sh || +f.slRate!==sh.tokMin) parts.push('tokmin='+(+f.slRate));
+      if(!sh || +f.slBase!==sh.base)   parts.push('prompt='+(+f.slBase));
+      if(f.slBasis==='mean') parts.push('basis=mean');
+    }
     const rt=+f.inReasonTok||0;
     if(rt !== (cs? (cs.reasonTok!=null? cs.reasonTok : (REASON_TOK[cs.reasoning]||0)) : 0)) parts.push('reason='+rt);
     if(!f.chkExtend) parts.push('extend=0');
@@ -3096,6 +3132,8 @@ function serialize(){
       preset: +$('selCase').value>=0 ? CASES[+$('selCase').value].name : null,
       residentSeq:s.resident, visibleOut:s.visibleOut,
       sharedPrefixPct: Math.round((s.cachePct||0)*100),
+      session:{callMinutes:+$('slMin').value||0, tokensPerMinute:+$('slRate').value||0,
+               baseTokens:+$('slBase').value||0, basis:$('slBasis').value==='mean'?'mean':'peak'},
       reasoning:{mode:s.reasonMode, tokens:s.reasonTok, extendsKV:s.extend},
       concurrentCalls:s.concurrent, maxBatchPerReplica:s.batch, kvPolicy:s.policy,
       gpu:s.gpu.name,
@@ -3172,6 +3210,13 @@ function applyUcDom(c, snap, notes){
   if(c.residentSeq!=null) $('inSeq').value=c.residentSeq;
   if(c.visibleOut!=null) $('inOut').value=c.visibleOut;
   $('inCache').value=c.sharedPrefixPct!=null? Math.min(95, Math.max(0, +c.sharedPrefixPct||0)) : 0;
+  const sz=c.session;
+  if(sz){
+    if(sz.callMinutes!=null)     $('slMin').value=Math.min(240, Math.max(0, +sz.callMinutes||0));
+    if(sz.tokensPerMinute!=null) $('slRate').value=Math.min(20000, Math.max(0, +sz.tokensPerMinute||0));
+    if(sz.baseTokens!=null)      $('slBase').value=Math.max(0, +sz.baseTokens||0);
+    $('slBasis').value = sz.basis==='mean'? 'mean' : 'peak';
+  }
   const rz=c.reasoning||{};
   if(rz.mode){ $('selReason').value=rz.mode; }
   syncReason();
@@ -3857,6 +3902,44 @@ function deriveConcFor(u){
   u.concManual=false;
   return conc;
 }
+/* ---- Conversation length: call duration -> resident tokens ----
+   A conversation holds its own transcript, so the resident sequence grows with
+   the length of the call. Under the "all active sessions stay in KV" policy that
+   is the whole story of the memory bill: every caller in flight holds their cache
+   for the entire call. Presets that describe a session carry the shape, which is
+   also how their resident figure was derived in the first place. */
+function sessionShape(u){ const f=(u||UC[activeUc]||{f:{}}).f;
+  const min=Math.max(0, +f.slMin||0), rate=Math.max(0, +f.slRate||0), base=Math.max(0, +f.slBase||0);
+  const grown=rate*min;
+  return {min, rate, base, grown,
+    peak: Math.round(base+grown),
+    mean: Math.round(base+grown/2),
+    basis: f.slBasis==='mean'? 'mean' : 'peak'};
+}
+function sessionTokens(u){ const q=sessionShape(u); return q.basis==='mean'? q.mean : q.peak; }
+function renderSession(){
+  const el=$('slDerived'); if(!el) return;
+  const q=sessionShape(), pinned=$('selPolicy').value==='all';
+  const val=q.basis==='mean'? q.mean : q.peak;
+  el.dataset.tok=val;
+  if(!(q.min>0)||!(q.rate>0)){
+    el.innerHTML=`&rarr; <b>${fmt(q.base)}</b> tokens · no conversation growth (set a call length and a rate)`;
+  } else {
+    const other=q.basis==='mean'? q.peak : q.mean;
+    const mins=q.min%1? q.min.toFixed(1) : String(q.min);   // 5 min, not 5.00 min
+    el.innerHTML=`&rarr; <b>${fmt(val)} tokens</b> resident `
+      +`(${fmt(q.base)} system + ${fmt(Math.round(q.grown))} spoken over ${mins} min`
+      +(q.basis==='mean'? ', halved for the average call in flight':'')+`) `
+      +`<span class="cc-alt">· ${q.basis==='mean'? 'end of call' : 'steady-state average'} would be ${fmt(other)}</span>`
+      +(pinned? `<span class="cc-alt"> · KV pinned, so every caller holds this for the whole call</span>` : '');
+  }
+  /* Open where it is the answer (a pinned session), closed where it is trivia,
+     until the reader takes control of it themselves. The programmatic change
+     fires a toggle event of its own, which would otherwise read as a reader
+     touching it and freeze the drawer open for every later workload. */
+  const d=$('drwSession');
+  if(d && !d.dataset.touched && d.open!==pinned){ window.__sesAuto=true; d.open=pinned; }
+}
 function applyNrmUsers(){
   captureUc();
   const u=UC[activeUc]; if(!u) return 1;
@@ -3870,6 +3953,7 @@ document.querySelectorAll('input,select').forEach(el=>{
     if(el.id==='selReason') syncReason();
     if(el.id==='chkCustom'){ $('customBox').style.display=el.checked?'block':'none'; $('selModel').disabled=el.checked; }
     if(el.id==='nrmUsers'||el.id==='ccTurns'||el.id==='ccShare'||el.id==='ccCalls'||el.id==='ccBurst'||el.id==='ccDur') applyNrmUsers();
+    if(/^(slMin|slRate|slBase|slBasis|selPolicy|selCase)$/.test(el.id)) renderSession();
     if((el.id==='inConc'||el.id==='inConc_r')&&UC[activeUc]) UC[activeUc].concManual=true;
     if(/^(inWorkers|inTp|inPerW)(_r)?$/.test(el.id)&&UC[activeUc]) UC[activeUc].cards=0;
     if(el.id==='selResilSimple') $('selResil').value=el.value;
@@ -3881,6 +3965,17 @@ document.querySelectorAll('input,select').forEach(el=>{
   });
 });
 $('ccApply').addEventListener('click',()=>{ $('inConc').value=Math.max(1,+$('ccDerived').dataset.cc||1); refreshCtl('inConc'); render(); toast('Concurrency applied'); });
+$('slApply').addEventListener('click',()=>{
+  const q=sessionShape(), tok=Math.max(1, +$('slDerived').dataset.tok||1);
+  const was=+$('inSeq').value||0;
+  $('inSeq').value=tok; refreshCtl('inSeq'); render(); scheduleAuto();
+  toast(`Resident sequence set to ${fmt(tok)} tokens: ${fmt(q.base)} system + ${fmt(q.min)} min of conversation`
+    + (was? ` (was ${fmt(was)})` : ''));
+});
+$('drwSession').addEventListener('toggle',()=>{
+  if(window.__sesAuto){ window.__sesAuto=false; return; }
+  $('drwSession').dataset.touched='1';
+});
 
 /* ================= AUTO-SIZE ================= */
 function solvePool(s){

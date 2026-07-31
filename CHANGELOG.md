@@ -1,5 +1,94 @@
 # Changelog
 
+## Studio 5.30.0 (2026-07-31) · library v34 · engine v27
+
+**How long is the call?** A conversation holds its own transcript, so its resident
+sequence grows with the length of the call. The studio had no way to say that: a
+voice preset asserted 4,096 tokens and a twenty-minute contact-centre call was
+sized exactly like a two-minute IVR interaction. It matters most where it was
+least visible, because the presets that pin KV for the whole session are the same
+ones with no way to express duration: every caller in flight holds their entire
+cache for the entire call, so call length multiplies straight into the memory bill.
+
+### The control
+
+A **Conversation length** drawer in the Workload station, which opens by itself
+for a pinned-session workload and stays shut otherwise:
+
+```
+resident = base + rate × minutes            end of call, the default
+resident = base + rate × minutes / 2        average call in flight
+```
+
+`base` is everything resident before anyone speaks (system prompt, persona, tool
+schemas, retrieved account context) and `rate` is what the conversation adds per
+minute. Both figures are always shown, whichever is selected, so the trade is
+never hidden. Nothing changes until **Apply to resident sequence** is pressed.
+
+Token rates: about **200 tok/min** wherever the model reads a text transcript
+(150 words/min of conversational speech at roughly 1.3 tokens per word), and
+**750 to 3,000** for native speech-to-speech, which consumes audio tokens at codec
+frame rates of 12.5 to 25 Hz per stream.
+
+**End of call is the default** because a first-token promise has to hold on the
+last turn of a long call, not just the average one, and call-length distributions
+are not smooth enough for the steady-state mean to be safe without headroom.
+
+### The presets now explain themselves
+
+The three session presets declare the shape their own resident figure was built
+from, and `tools/check_presets.py` fails the build if the shape does not reproduce
+that figure to within 2%:
+
+| Preset | Declared shape | Reproduces |
+|---|---|---|
+| Voice agent (real-time) | 3,100 base + 200 tok/min × 5 min | 4,100 vs 4,096 |
+| Speech-to-speech (native audio) | 346 base + 750 tok/min × 5 min | 4,096 |
+| Contact-center agent assist | 14,784 base + 200 tok/min × 8 min | 16,384 |
+
+No preset's `resident` moved, so no project moved. What changed is that the number
+is now a statement a reader can disagree with instead of an assertion. The checker
+also warns on any preset that pins KV without declaring a shape, and on any preset
+that declares one while freeing KV between turns.
+
+### Everywhere else
+
+- **Readable links** gain `callmin`, `tokmin`, `prompt` and `basis`. Naming a
+  preset supplies the rate and the base, so `callmin=20` alone re-derives the
+  sequence. A link that only names the preset keeps that preset's own figure to
+  the token, which is why the derivation is gated on an explicit statement rather
+  than applied whenever a shape exists.
+- **The CLI skill** gains `--call-minutes`, with `--tok-min`, `--prompt-tok` and
+  `--basis`, and reports the derivation in `--json`.
+- JSON export, import, share links and the share-link encoder all carry the shape.
+- The manual gains section 3.4 with the formulas, the token-rate evidence and the
+  peak-versus-average argument; DATA.md documents the preset field and its
+  consistency rule; PRACTICES.md records where the rates come from.
+
+### Measured effect
+
+Three hundred concurrent callers on Qwen3 8B FP8, H200 141GB NVL, KV pinned:
+
+| Call length | Resident | KV cache | Serving cards |
+|---|---|---|---|
+| 5 minutes | 4,100 tok | 90.7 GB | 2 |
+| 20 minutes | 7,100 tok | 157 GB | 4 |
+
+### Also
+
+- The `toggle` event fired by opening the drawer programmatically read as the
+  reader touching it, which froze it open for every later workload.
+- `docs/manual` gains the figure; the manual's automated claim checker now derives
+  the expected version strings from the code instead of hardcoding them, so it no
+  longer fails on every version bump.
+
+### Unchanged and verified
+
+The engine block and the solver are byte-identical to 5.29.0. Both reference
+projects render identically. Solver optimality 3,664 plans / 0 beatable; the
+independent Python engine recheck 2,500 states / 75,000 checks / 0 mismatches; all
+41 manual claims re-derived; the portable build boots and the encoder round-trips.
+
 ## Studio 5.29.0 (2026-07-31) · engine v27
 
 A manual, reachable from a book icon in the studio's toolbar and at

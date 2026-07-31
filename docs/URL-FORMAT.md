@@ -87,7 +87,11 @@ Rules, all of them:
 | `p95` | End-to-end P95 target in seconds, `0` to disable | preset, else 0 |
 | `users` | People active at peak. The studio derives concurrent calls from this | |
 | `conc` | Concurrent calls, set directly. Overrides `users` | derived |
-| `turns` `calls` `burst` `dur` | Traffic shape: interactions/hour, LLM calls per interaction, burst factor, seconds per call | preset |
+| `callmin` | Average length of one conversation in minutes, 0-240. For a session workload the resident sequence is derived from it: `prompt + tokmin x callmin`. Stating it alone is enough when a preset is named, because the preset supplies the rate and the base | preset |
+| `tokmin` | Tokens the conversation adds per minute. Text transcript ~200; native audio 750-3,000 | preset, else 200 |
+| `prompt` | Tokens resident before the conversation starts: system prompt, persona, tool schemas | preset |
+| `basis` | `peak` (size every session at hang-up, the safe default) or `mean` (size at the average call in flight, roughly half the KV) | `peak` |
+| `turns` `calls` `burst` `dur` | Traffic shape: interactions/hour, LLM calls per interaction, burst factor, seconds one **model call** occupies a slot. Not the length of a conversation, which is `callmin` | preset |
 | `batch` | Max batch per replica | solved |
 | `supports` | Comma-separated helpers: `embed` `rerank` `asr` `tts` `ocr` `guard`, or `none` | the preset's own |
 | `isolate` | `1` keeps this use case in its own pool instead of sharing a deployment | 0 |
@@ -136,6 +140,16 @@ https://gpuscale.net/#p=t:name=Bank+platform;gpu=H200+141GB+NVL;perw=8;resil=n1;
 ```
 https://gpuscale.net/#p=t:gpu=B300+288GB;perw=8;uc=Long+doc+analysis;model=Qwen3+235B-A22B+(MoE);quant=FP8;kv=FP8;seq=131072;out=2000;reason=2000;ttft=5000;tps=30;p95=90;conc=40
 ```
+
+**A voice fleet where calls run twenty minutes**
+
+```
+https://gpuscale.net/#p=t:gpu=H200+141GB+NVL;perw=8;resil=n1;uc=Telephony;model=Qwen3+8B;quant=FP8;preset=Voice+agent;users=300;callmin=20
+```
+
+The preset supplies the token rate and the system-prompt base, so `callmin=20` alone re-derives the
+resident sequence from 4,096 to 7,100 tokens, and because the voice preset pins KV per session all 300
+callers hold that for the whole call.
 
 **A model that is not in the library**
 

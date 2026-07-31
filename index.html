@@ -139,6 +139,28 @@
       <div class="field"><div class="f-head"><label>TPS &ge;</label><span class="unit">tok/s</span></div><input type="number" id="sloTps" value="50" min="0"></div>
       <div class="field"><div class="f-head"><label>P95 &le;</label><span class="unit">s</span></div><input type="number" id="sloP95" value="3" min="0"></div>
     </div>
+    <details class="drawer" id="drwSession">
+      <summary>Conversation length &middot; from call duration</summary>
+      <div class="drawer-body">
+        <div class="grid2">
+          <div class="field"><div class="f-head"><label for="slMin">Average call</label><span class="unit">min</span></div>
+            <input type="number" id="slMin" value="5" min="0" max="240" step="0.5" title="How long one conversation or call lasts, end to end. Not the time one model call occupies a slot: that is in the concurrency estimator below."></div>
+          <div class="field"><div class="f-head"><label for="slRate">Accumulates</label><span class="unit">tok/min</span></div>
+            <input type="number" id="slRate" value="200" min="0" max="20000" step="10" title="Tokens the conversation adds per minute. Text transcript through STT/TTS is about 200 (150 words/min of speech). Native audio is 750 to 3,000 depending on the codec frame rate."></div>
+          <div class="field"><div class="f-head"><label for="slBase">System + tools</label><span class="unit">tok</span></div>
+            <input type="number" id="slBase" value="3100" min="0" max="1000000" step="50" title="Everything resident before the conversation starts: system prompt, persona, tool schemas, retrieved account context."></div>
+          <div class="field"><div class="f-head"><label for="slBasis">Size for</label><button class="info" data-help="hBasis" aria-expanded="false" type="button">i</button></div>
+            <select id="slBasis">
+              <option value="peak">End of call</option>
+              <option value="mean">Average in flight</option>
+            </select></div>
+        </div>
+        <div class="f-help" id="hBasis">End of call sizes every session at its longest, which is the conservative choice and the one that keeps a first-token promise on the last turn. Average in flight sizes at half that: correct for steady-state memory when call ages are spread evenly, and roughly half the KV bill.</div>
+        <div class="derived-line" id="slDerived">&rarr; 0 tokens</div>
+        <button class="btn primary apply" id="slApply" type="button">Apply to resident sequence</button>
+        <div class="f-help" style="display:block;margin-top:8px">A conversation holds its whole transcript, so the longer the call the more KV cache each session occupies. It matters most when the KV policy is <b>all active sessions stay in KV</b>, because then every caller in flight holds their cache for the whole call.</div>
+      </div>
+    </details>
     <details class="drawer adv">
       <summary>Concurrency estimator · Little's law</summary>
       <div class="drawer-body">

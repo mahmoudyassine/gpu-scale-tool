@@ -59,8 +59,8 @@ section&nbsp;1 to get a fleet on screen in five minutes; read section&nbsp;5 if 
 number to somebody who signs the purchase order.</p>
 
 <div class="chips">
-  <span class="chip t">Studio 5.29</span><span class="chip">Engine v27</span>
-  <span class="chip">Library v33</span><span class="chip">101 models · 37 GPUs · 24 presets</span>
+  <span class="chip t">Studio 5.30</span><span class="chip">Engine v27</span>
+  <span class="chip">Library v34</span><span class="chip">101 models · 37 GPUs · 24 presets</span>
   <span class="chip">MIT licensed</span><span class="chip">Nothing leaves your browser</span>
 </div>
 
@@ -362,6 +362,48 @@ its model, precision, derived concurrency, and chips for any supporting models a
 <tr><td>KV policy</td><td class="wrap"><i>Running batch</i> frees KV between turns (vLLM-style admission). <i>Pinned per session</i> holds it for the whole session, which is far more expensive and only correct for live paths where an eviction would break the budget.</td><td>running, except voice</td></tr>
 <tr><td>SLO targets</td><td class="wrap">TTFT in ms, per-user speed in tok/s, end-to-end P95 in seconds. <code>0</code> disables a check. <b>tok/s is per user, never aggregate.</b></td><td>see <a href="#presets">section 11</a></td></tr>
 </tbody></table></div>
+
+<h3 id="ui-session">Conversation length: how long is the call?</h3>
+<div class="figrow">
+<figure class="narrow zoom">
+  <img src="docs/manual/img/ui-session.png" width="328" height="483" loading="lazy" decoding="async" alt="The conversation length estimator: average call in minutes, tokens per minute, system and tools base, and a basis selector, with the derived resident tokens and an Apply button">
+  <figcaption><b>Figure 5b.</b> A twelve-minute call, and what it costs in resident tokens.</figcaption>
+</figure>
+<div>
+<p>A conversation holds its own transcript, so <b>the resident sequence grows with the length of the
+call</b>. A two-minute IVR interaction and a twenty-minute contact-centre call are not the same
+workload, and sizing both at one fixed number is how a voice fleet arrives short.</p>
+<p>It matters most when the KV policy is <i>all active sessions stay in KV</i>, which is the correct
+policy for a live voice path: every caller in flight holds their whole cache for the whole call, so
+call length multiplies straight into the memory bill.</p>
+<p>The drawer opens by itself for a pinned-session workload and stays shut otherwise.</p>
+</div>
+</div>
+<div class="fx"><div class="eq"><span class="v">peak</span> = base + rate × minutes           <span class="c">tokens at hang-up</span>
+<span class="v">mean</span> = base + rate × minutes / 2       <span class="c">average call in flight</span></div>
+<div class="why"><code>base</code> is everything resident before anyone speaks: system prompt,
+persona, tool schemas, retrieved account context. <code>rate</code> is what the conversation adds per
+minute.</div></div>
+<div class="tw"><table>
+<thead><tr><th>Workload</th><th>Tokens per minute</th><th>Why</th></tr></thead>
+<tbody>
+<tr><td class="wrap">Voice through STT and TTS</td><td>≈ 200</td><td class="wrap">The model sees a text transcript. Conversational speech runs about 150 words per minute across both speakers, and English is roughly 1.3 tokens per word.</td></tr>
+<tr><td class="wrap">Native speech-to-speech</td><td>750 to 3,000</td><td class="wrap">Audio tokens, not text. Codec frame rates run 12.5 to 25 Hz per stream; whether both streams stay in context, and at what rate, is a property of the model. 750 assumes 12.5 Hz with one party speaking at a time.</td></tr>
+<tr><td class="wrap">Text chat</td><td>≈ 200</td><td class="wrap">Typed turns are shorter but arrive less often, which lands in a similar place per minute of active session.</td></tr>
+</tbody></table></div>
+<div class="key"><span class="t">End of call, or average in flight?</span>
+<p>Both are defensible and the studio shows both, always. <b>End of call</b> sizes every session at its
+longest. It is the conservative choice, and it is the only one that keeps a first-token promise on the
+last turn of a long call, so it is the default. <b>Average in flight</b> sizes at half that, which is
+the correct steady-state figure when call ages are spread evenly across the in-flight population, and
+it roughly halves the KV bill. Choose the second only if your call-length distribution really is
+smooth and you have headroom for a run of long calls.</p>
+</div>
+<p>Nothing here changes your sizing until you press <b>Apply to resident sequence</b>. Presets that
+describe a session (the two voice presets and contact-centre assist) prefill the drawer with the shape
+their own resident figure was built from, so <code>4,096</code> for the voice agent stops being an
+assertion and becomes <i>a 3,100-token system prompt plus five minutes of conversation</i>. Change the
+five and press Apply.</p>
 
 <div class="warn"><span class="t">The concurrency estimator</span>
 <p>Under <i>Active users at peak</i> the studio shows its working: how many simultaneous calls that
@@ -767,6 +809,14 @@ therefore holds 1.34 GB of cache, and fifty of them hold 67 GB.</p>
 than <code>kvWin</code> tokens no matter how long the conversation is. This is why a sliding-window
 model's memory curve flattens where a uniform model's keeps climbing, and why the second chart in the
 studio is worth looking at for these architectures.</div></div>
+
+<div class="note"><span class="t">Where the resident sequence comes from for a conversation</span>
+<p>For a session workload the resident count is not a constant you guess: it is
+<code>base + rate × minutes</code>, and the studio derives it for you in the conversation-length
+drawer (<a href="#ui-session">section 3.4</a>). Under a pinned KV policy that product is multiplied by
+every caller in flight, which makes call duration one of the largest single levers on a voice fleet's
+memory.</p>
+</div>
 
 <h3 id="math-prefix">Prefix caching</h3>
 <p>Engine v27. If part of the sequence is byte-identical on every call, a server with automatic prefix
@@ -1377,7 +1427,7 @@ peak</b>. Scope with this tool; verify with a benchmark; sign with margin.</p>
 </div>
 
 <div class="footdoc">
-  <p>GPUscale manual · studio 5.29 · engine v27 · library v33. Written against the code, with every
+  <p>GPUscale manual · studio 5.30 · engine v27 · library v34. Written against the code, with every
   figure captured from the running application and every formula checked against the engine.
   © 2026 GPUscale.net, MIT licensed.</p>
 </div>

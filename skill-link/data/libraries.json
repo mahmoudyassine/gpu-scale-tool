@@ -2509,6 +2509,11 @@
    "ttftTarget": 200,
    "tpsTarget": 50,
    "p95Target": 3.5,
+   "session": {
+    "min": 5,
+    "tokMin": 200,
+    "base": 3100
+   },
    "note": "Telephony/IVR. Voice-to-voice budget needs LLM TTFT under ~300 ms; 50 tok/s feeds sentence-chunked TTS without gaps.",
    "supports": [
     "asr",
@@ -2722,6 +2727,11 @@
    "ttftTarget": 400,
    "tpsTarget": 40,
    "p95Target": 3,
+   "session": {
+    "min": 8,
+    "tokMin": 200,
+    "base": 14784
+   },
    "note": "Live suggestions while a human talks: transcript + KB in context, tiny outputs, utterance-to-suggestion under ~2.5 s.",
    "supports": [
     "asr",
@@ -2764,6 +2774,11 @@
    "tpsTarget": 50,
    "p95Target": 5,
    "policy": "all",
+   "session": {
+    "min": 5,
+    "tokMin": 750,
+    "base": 346
+   },
    "note": "A model that takes audio in and emits audio out, with no separate ASR or TTS. Native stacks reach 160-400 ms voice-to-voice against 1-2 s for a pipeline, so the whole budget sits on this one model.",
    "supports": [
     "guard"
@@ -3344,9 +3359,9 @@
   ]
  },
  "meta": {
-  "library": "v33",
-  "engine": 26,
-  "updated": "2026-07-30"
+  "library": "v34",
+  "engine": 27,
+  "updated": "2026-07-31"
  },
  "kv_quants": [
   {
@@ -3520,7 +3535,7 @@
  "versions": {
   "schema": "gpuscale.net/5",
   "engine": 27,
-  "studio": "5.29.0"
+  "studio": "5.30.0"
  },
  "kv_policies": [
   "running",

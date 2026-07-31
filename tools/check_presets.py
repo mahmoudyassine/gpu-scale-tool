@@ -56,6 +56,30 @@ for c in cases:
     elif cache > 0:
         warn.append(f'{n}: ships a {cache}% shared-prefix default, so it sizes for '
                     'prefix caching being enabled; every stock preset leaves this at 0')
+    # a declared session shape must reproduce the preset's own resident figure,
+    # or one of the two numbers is wrong and the tool would contradict itself
+    sess = c.get('session')
+    if sess is not None:
+        miss = [k for k in ('min', 'tokMin', 'base') if k not in sess]
+        if miss:
+            fail.append(f'{n}: session is missing {", ".join(miss)}')
+        else:
+            for k in ('min', 'tokMin', 'base'):
+                if not isinstance(sess[k], (int, float)) or sess[k] < 0:
+                    fail.append(f'{n}: session.{k} is {sess[k]!r}, must be a non-negative number')
+            if sess.get('min', 0) > 240:
+                fail.append(f'{n}: session.min {sess["min"]} exceeds the 240-minute cap')
+            implied = sess.get('base', 0) + sess.get('tokMin', 0) * sess.get('min', 0)
+            if c['resident'] and abs(implied - c['resident']) > 0.02 * c['resident']:
+                fail.append(f'{n}: session shape implies {implied:,.0f} resident tokens '
+                            f'but the preset says {c["resident"]:,} '
+                            f'({(implied / c["resident"] - 1) * 100:+.1f}%)')
+        if c.get('policy') != 'all':
+            warn.append(f'{n}: declares a session shape but frees KV between turns, '
+                        'so the call length matters much less than it would if KV were pinned')
+    elif c.get('policy') == 'all':
+        warn.append(f'{n}: pins KV for the whole session but declares no session shape, '
+                    'so its resident figure cannot be traced to a call length')
     for k in c.get('supports', []):
         if k not in {'embed', 'rerank', 'asr', 'tts', 'ocr', 'guard'}:
             fail.append(f'{n}: unknown support kind "{k}"')
