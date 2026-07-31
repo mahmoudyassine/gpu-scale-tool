@@ -61,6 +61,9 @@ https://mahmoudyassine.github.io/gpuscale/#p=z:<fragment>
     //   prefills it once and holds it once per replica. OMIT OR LEAVE 0 unless
     //   the user states a measured hit rate: 0 sizes for a full prefill, which
     //   is the conservative default and what every preset ships.
+    // supports[] entries may carry {"custom":{"name","params","vram","cap"}}
+    //   instead of relying on "model": vram is GB per running instance and cap
+    //   is concurrent streams per instance, which is all the sizing reads.
     "session": {"callMinutes": 5, "tokensPerMinute": 200,
     //           "baseTokens": 3100, "basis": "peak"},
     //   Conversation shape. For a session workload residentSeq is

@@ -1,5 +1,71 @@
 # Changelog
 
+## Studio 5.31.0 (2026-07-31) · engine v27
+
+Two bug reports, both about things the studio would not let you say.
+
+### The custom model lied about itself
+
+Ticking **Custom model** left the model dropdown greyed out but still naming a
+library model, so a card sized against a hand-entered 40B geometry read, at a
+glance, as a Kimi K2.5 deployment. The dropdown is now **replaced** rather than
+greyed, by a line stating the geometry actually in force:
+
+```
+Custom model · 40.0B total / 12.0B active · 48 layers · geometry below
+```
+
+Three separate copies of the code that couples the four bits of this UI (the
+checkbox, the geometry box, the dropdown, and now the summary line) had drifted
+apart. They are one function, `syncCustomUI()`, called from every path that can
+change any of them, including `render()`, so the DOM is self-healing whatever
+route got you there. That closes the reported failure where the checkbox appeared
+to clear itself and the unrelated model became real: nothing can now capture a
+model name that was never in use, because no unused model name is on screen.
+
+The **Custom model** checkbox was also marked Advanced-only, so in Normal mode the
+greyed dropdown had no visible explanation and no way to turn it off. It is
+visible in both modes now.
+
+### ASR, TTS and the other supporting models had no custom option
+
+Every supporting-model chip could only pick from the library. If you run a house
+ASR, or a TTS with no published figures, there was nothing to enter. Each chip's
+dropdown now ends with **Custom (enter geometry)**, which asks for the only two
+numbers the sizing reads:
+
+- **VRAM per instance**, gigabytes one running instance occupies
+- **Concurrent per instance**, streams or queries one instance serves before
+  another is needed
+
+Plus a name. The fields are seeded from whatever model was selected, so a house
+ASR starts from the nearest published one rather than from zero. A custom chip is
+drawn with a dashed border, the geometry travels in the JSON export and in share
+links, and the custom numbers are part of the project's solve signature so a
+changed VRAM figure invalidates the memoised fleet instead of quoting one solved
+against the old value.
+
+Resolution now goes through `supSpec()` everywhere, including the two display
+paths and the printed report, which previously read the library name directly and
+would have shown the wrong one for a custom entry.
+
+### Fixed while testing the fix
+
+`render()` rebuilds the use-case card list, and the custom-geometry fields live
+inside it, so writing on every keystroke destroyed the input being typed into and
+silently dropped the edit. The value is now written to state on every keystroke
+and the re-render waits for the field to be committed, so the caret stays put and
+nothing is lost.
+
+### Verified
+
+Both reference projects render identically to 5.30.0. A 26-step fuzz over a custom
+model (apply recommendations, add and remove cards, switch cards, auto-size, undo,
+serialize and re-import) leaves the geometry and the custom flag intact. Custom
+supporting geometry round-trips through export and import, and re-sizes the fleet
+correctly: 2,500 concurrent callers on a 24 GB ASR serving 3 streams each buys 834
+instances. Presets pass, and all 41 manual claims still re-derive.
+
 ## Studio 5.30.0 (2026-07-31) · library v34 · engine v27
 
 **How long is the call?** A conversation holds its own transcript, so its resident

@@ -183,9 +183,10 @@
     <div class="field">
       <div class="f-head"><label for="selModel">Model</label><button class="info" data-help="hModel" aria-expanded="false" type="button">i</button><span class="spacer"></span><span class="unit" id="modelCount"></span></div>
       <select id="selModel"></select>
+      <div id="customPick" style="display:none">Custom model &middot; geometry below</div>
       <div class="f-help" id="hModel">Architecture geometry drives every estimate: total params size the weights, active params drive compute and decode reads, and the effective KV heads &times; head dim encode each model's real cache cost (MLA, sparse and SSM hybrids use sheet-compatible effective values).</div>
     </div>
-    <div class="toggle-row adv"><input type="checkbox" id="chkCustom"><label for="chkCustom">Custom model · enter geometry manually</label></div>
+    <div class="toggle-row"><input type="checkbox" id="chkCustom"><label for="chkCustom">Custom model · enter geometry manually</label></div>
     <div id="customBox" style="display:none;margin-top:10px">
       <div class="grid2">
         <div class="field"><div class="f-head"><label>Total params</label><span class="unit">B</span></div><input type="number" id="cusParams" value="70" min="0.1" step="0.1" title="All weights that must sit in VRAM; for MoE, every expert."></div>

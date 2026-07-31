@@ -296,6 +296,28 @@ The stamp belongs to the POOL, not to one member: `poolState` requires every
 member's stamp to be fresh. Reading only the first member meant the same edit
 gave two different fleets depending on which card you typed in.
 
+## Supporting models: library entry or custom geometry
+
+A use case's `supports` array holds one entry per attached kind. An entry either names a library model:
+
+```js
+{"kind":"asr", "model":"Whisper large-v3-turbo", "on":true}
+```
+
+or carries its own geometry, which wins over `model`:
+
+```js
+{"kind":"asr", "model":"Whisper large-v3-turbo", "on":true,
+ "custom":{"name":"House ASR", "params":0.8, "vram":24, "cap":3}}
+```
+
+`vram` is gigabytes per running instance and `cap` is how many concurrent streams or queries one
+instance serves; those two numbers are all `allocSupports` reads, so a model with no published figures
+is still sizeable. `model` is retained alongside `custom` so that clearing the custom entry falls back
+to a real library choice rather than to nothing. Resolution goes through `supSpec(sp)`, never
+`SUP_MODEL` directly, and the custom numbers are part of the project's solve signature so a changed
+VRAM figure invalidates the memoised fleet.
+
 ## Whole-GPU co-residency (5.21)
 
 Separate from MIG slicing: several pools can share one physical card the way

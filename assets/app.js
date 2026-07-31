@@ -7,7 +7,7 @@ if(!MODELS.length || !GPUS.length || !QUANTS.length || !CASES.length){
   document.body.innerHTML = '<div style="font-family:system-ui,sans-serif;max-width:560px;margin:80px auto;padding:0 20px;line-height:1.65;color:#1A2536"><h2 style="margin-bottom:10px">Data files not loaded</h2><p>GPUscale.net could not find its library. Keep <code>index.html</code> together with the <code>data/</code> and <code>assets/</code> folders: the four files <code>data/models.js</code>, <code>data/gpus.js</code>, <code>data/quants.js</code> and <code>data/usecases.js</code> must sit next to this page.</p><p>If you need one portable file instead, use <code>dist/gpuscale_standalone.html</code> or rebuild it with <code>python3 tools/build_single_file.py</code>.</p></div>';
   throw new Error('GPUscale.net data missing');
 }
-const STUDIO_VERSION = '5.30.0', ENGINE_VERSION = 27;
+const STUDIO_VERSION = '5.31.0', ENGINE_VERSION = 27;
 function newProjId(){ const L='abcdefghjkmnpqrstuvwxyz', D='0123456789';
   const pick=s=>s[Math.floor(Math.random()*s.length)];
   return 'Project_'+pick(L)+pick(L)+pick(D)+pick(D)+pick(D); }
@@ -549,7 +549,8 @@ function prjSolveSig(prj){
       Math.round((p.state.cachePct||0)*100),
       p.state.tp,p.state.gpus,p.sliced? p.sliced.units:0,
       p.members.map(i=>[UC[i].f.selCase,UC[i].f.sloTtft,UC[i].f.sloTps,UC[i].f.sloP95,
-        UC[i].f.chkExtend?1:0,(UC[i].supports||[]).map(sp=>sp.kind+':'+sp.model).join('+')].join(',')).join(';')].join('/')).join('|')
+        UC[i].f.chkExtend?1:0,(UC[i].supports||[]).map(sp=>sp.kind+':'
+          +(sp.custom? `c${sp.custom.name}|${sp.custom.vram}|${sp.custom.cap}` : sp.model)).join('+')].join(',')).join(';')].join('/')).join('|')
     +'#'+[prj.hw.perW,prj.hw.g.name,prj.hw.ic,prj.hw.mbu,prj.hw.mfu,prj.hw.ovh,prj.hw.resil,
       (($('autoUtil')&&$('autoUtil').value)||80)].join('/');
 }
@@ -1414,7 +1415,7 @@ function render(){
     : `GPUscale.net · ${projName()} · ${m.name} · weights ${s.wq.name} / KV ${s.kq.name} · seq ${fmtTok(s.resident)} (+${fmtTok(s.reasonTok)} reasoning) · `+
       `${s.concurrent} concurrent, batch ${s.batch}/replica · ${s.workers}× worker (${s.perW} GPU) ${g.name} · TP${s.tp} · ${RESIL[s.resil].long} → ${topoInfo.procW} workers procured · ${new Date().toLocaleDateString()}`;
   if(window.__prj && UC.length>1) renderProjectReport(window.__prj); else restoreSingleReport();
-  renderSession();
+  syncCustomUI(); renderSession();
   autosave();
 }
 
@@ -1473,10 +1474,28 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',
 const UCCOL=i=>'var(--pool'+(i%6)+')';
 function captureUc(){ const u=UC[activeUc]; if(!u) return;
   UC_KEYS.forEach(id=>{ const el=$(id); if(el) u.f[id]=UC_CHECKS[id]? el.checked : el.value; }); }
+/* Custom geometry couples four bits of UI, and every path that could change one
+   of them has to change all four. Three separate copies of this drifted, which is
+   how a card ended up showing a greyed library model while a custom geometry was
+   actually in force: the dropdown named a model that was not being used, and any
+   later capture of the DOM would have made that name real. */
+function syncCustomUI(){
+  const on=$('chkCustom').checked;
+  $('customBox').style.display = on? 'block' : 'none';
+  // hide the select outright rather than greying it: a disabled control still
+  // naming an unrelated model is a lie, and it is the one users read
+  $('selModel').style.display = on? 'none' : '';
+  $('selModel').disabled = on;
+  const pick=$('customPick');
+  if(pick){
+    pick.style.display = on? 'block' : 'none';
+    if(on) pick.innerHTML = `<b>Custom model</b> · ${fmt(+$('cusParams').value||0)}B total / `
+      + `${fmt(+$('cusActive').value||0)}B active · ${+$('cusLayers').value||0} layers · geometry below`;
+  }
+}
 function loadUc(i){ activeUc=Math.max(0,Math.min(UC.length-1,i)); const u=UC[activeUc]; if(!u) return;
   UC_KEYS.forEach(id=>{ const el=$(id); if(el&&u.f[id]!==undefined){ if(UC_CHECKS[id]) el.checked=!!u.f[id]; else el.value=u.f[id]; } });
-  $('customBox').style.display=$('chkCustom').checked?'block':'none';
-  $('selModel').disabled=$('chkCustom').checked;
+  syncCustomUI();
   syncReason(); Object.keys(FIELDS).forEach(refreshCtl); }
 function ucName(u){ if(u.name) return u.name;
   const ci=+u.f.selCase; if(ci>=0&&CASES[ci]) return CASES[ci].name;
@@ -1484,6 +1503,18 @@ function ucName(u){ if(u.name) return u.name;
 function ucModelName(u){ return u.f.chkCustom? 'Custom model' : ((MODELS[+u.f.selModel||0]||{}).name||'?'); }
 const SUP_KIND=k=>SUPPORT.kinds.find(x=>x.key===k);
 const SUP_DEFAULT=k=>SUPPORT.models.find(m=>m.kind===k&&m.default)||SUPPORT.models.find(m=>m.kind===k);
+const SUP_CUSTOM='Custom (enter geometry)';
+/* A support entry either names a library model or carries its own geometry. The
+   sizing only ever needs two numbers from it, VRAM per instance and how many
+   concurrent streams one instance serves, so a house ASR or a TTS nobody has
+   published figures for is a first-class citizen rather than a missing row. */
+function supSpec(sp){
+  if(!sp) return null;
+  if(sp.custom) return {kind:sp.kind, name:(sp.custom.name||'Custom '+sp.kind),
+    params:+sp.custom.params||0, vram:Math.max(0.05,+sp.custom.vram||1),
+    cap:Math.max(1,+sp.custom.cap||10), note:'custom entry', custom:true};
+  return SUP_MODEL(sp.kind, sp.model);
+}
 const SUP_MODEL=(k,name)=>SUPPORT.models.find(m=>m.kind===k&&m.name===name)||SUP_DEFAULT(k);
 function defaultSupports(ci){ const c=CASES[ci]; if(!c||!c.supports) return [];
   return c.supports.map(k=>{ const d=SUP_DEFAULT(k); return d? {kind:k, model:d.name, on:true} : null; }).filter(Boolean); }
@@ -1501,14 +1532,21 @@ function renderUcCards(){ const box=$('ucCards'); if(!box||!UC.length) return; c
     const pool = pooled(keys[i])? `<span class="uc-pool" title="Same model, precision and KV policy as another use case: served by one shared pooled deployment">pooled</span>` : '';
     const defs = (CASES[+f.selCase]&&CASES[+f.selCase].supports)||[];
     const chips = (u.supports||[]).map((sp,ci2)=>{ const kd=SUP_KIND(sp.kind)||{label:sp.kind};
-      return `<span class="chip${chipEdit&&chipEdit.uc===i&&chipEdit.kind===sp.kind?' open':''}" data-chip="${i}:${sp.kind}" role="button" tabindex="0" title="${esc(sp.model||'')} · click to inspect">${esc(kd.label)}<button class="chip-x" data-chipx="${i}:${sp.kind}" type="button" aria-label="Remove ${esc(kd.label)} from ${esc(ucName(u))}">×</button></span>`; }).join('');
+      return `<span class="chip${sp.custom?' cust':''}${chipEdit&&chipEdit.uc===i&&chipEdit.kind===sp.kind?' open':''}" data-chip="${i}:${sp.kind}" role="button" tabindex="0" title="${esc((supSpec(sp)||{}).name||sp.model||'')} · click to inspect">${esc(kd.label)}<button class="chip-x" data-chipx="${i}:${sp.kind}" type="button" aria-label="Remove ${esc(kd.label)} from ${esc(ucName(u))}">×</button></span>`; }).join('');
     const ghosts = defs.filter(k=>!(u.supports||[]).some(sp=>sp.kind===k)).map(k=>{ const kd=SUP_KIND(k)||{label:k};
       return `<span class="chip ghost" data-chipadd="${i}:${k}" role="button" tabindex="0" title="Re-attach ${esc(kd.label)}">+ ${esc(kd.label)}</span>`; }).join('');
     let editor='';
     if(chipEdit&&chipEdit.uc===i){ const sp=(u.supports||[]).find(x=>x.kind===chipEdit.kind);
-      if(sp){ const sm=SUP_MODEL(sp.kind,sp.model)||{}; const kd=SUP_KIND(sp.kind)||{label:sp.kind};
-        const opts=SUPPORT.models.filter(m=>m.kind===sp.kind).map(m=>`<option${m.name===sp.model?' selected':''}>${esc(m.name)}</option>`).join('');
-        editor=`<div class="chip-editor"><div class="ce-row adv"><label>${esc(kd.label)} model</label><select data-chipsel="${i}:${sp.kind}">${opts}</select></div><div class="ce-note">${esc(sm.note||'')} · ~${sm.vram} GB per instance, one instance per ~${sm.cap} concurrent</div></div>`; } }
+      if(sp){ const sm=supSpec(sp)||{}; const kd=SUP_KIND(sp.kind)||{label:sp.kind};
+        const isC=!!sp.custom;
+        const opts=SUPPORT.models.filter(m=>m.kind===sp.kind).map(m=>`<option${!isC&&m.name===sp.model?' selected':''}>${esc(m.name)}</option>`).join('')
+          +`<option${isC?' selected':''}>${SUP_CUSTOM}</option>`;
+        const cbox=isC? `<div class="ce-grid">
+            <label>Name<input type="text" data-chipc="${i}:${sp.kind}:name" value="${esc(sp.custom.name||'')}" placeholder="House ASR" maxlength="40"></label>
+            <label>VRAM / instance<input type="number" data-chipc="${i}:${sp.kind}:vram" value="${+sp.custom.vram||1}" min="0.05" step="0.1" title="Gigabytes one running instance occupies."></label>
+            <label>Concurrent / instance<input type="number" data-chipc="${i}:${sp.kind}:cap" value="${+sp.custom.cap||10}" min="1" step="1" title="How many simultaneous streams or queries one instance serves before another is needed."></label>
+          </div>` : '';
+        editor=`<div class="chip-editor"><div class="ce-row"><label>${esc(kd.label)} model</label><select data-chipsel="${i}:${sp.kind}">${opts}</select></div>${cbox}<div class="ce-note">${esc(sm.note||'')} · ~${sm.vram} GB per instance, one instance per ~${sm.cap} concurrent</div></div>`; } }
     return `<div class="uc-card${i===activeUc?' active':''}" data-i="${i}" style="--uccol:${UCCOL(i)}" role="listitem" tabindex="0" aria-label="Use case ${esc(ucName(u))}${i===activeUc?', being edited':''}">
       <div class="uc-line">${name}${pool}
         <button class="uc-tool" data-ren="${i}" type="button" title="Rename" aria-label="Rename ${esc(ucName(u))}"><svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4"/></svg></button>
@@ -1584,8 +1622,32 @@ $('ucCards').addEventListener('focusout',e=>{
 $('ucCards').addEventListener('change',e=>{
   const cs=e.target.closest('[data-chipsel]'); if(!cs) return;
   const [i,k]=cs.dataset.chipsel.split(':'); const u=UC[+i];
-  const sp=(u.supports||[]).find(x=>x.kind===k); if(sp){ sp.model=cs.value;
+  const sp=(u.supports||[]).find(x=>x.kind===k); if(sp){
+    if(cs.value===SUP_CUSTOM){
+      // seed the custom geometry from whatever was selected, so the numbers start
+      // somewhere sensible instead of at zero
+      const from=supSpec(sp)||{};
+      sp.custom={name:'Custom '+((SUP_KIND(k)||{label:k}).label), params:+from.params||0,
+                 vram:+from.vram||1, cap:+from.cap||10};
+    } else { delete sp.custom; sp.model=cs.value; }
     announce((SUP_KIND(k)||{label:k}).label+' model set to '+cs.value); renderUcCards(); render(); } });
+/* Custom support geometry. render() rebuilds the whole card list, which would
+   destroy the very input being typed into, so the value is written to state on
+   every keystroke and the re-render waits for the field to be committed. */
+function writeChipCustom(cc){
+  const [i,k,field]=cc.dataset.chipc.split(':'); const u=UC[+i]; if(!u) return false;
+  const sp=(u.supports||[]).find(x=>x.kind===k); if(!sp||!sp.custom) return false;
+  sp.custom[field] = field==='name'? cc.value.slice(0,40)
+    : Math.max(field==='cap'? 1 : 0.05, +cc.value||0);
+  return true;
+}
+$('ucCards').addEventListener('input',e=>{
+  const cc=e.target.closest&&e.target.closest('[data-chipc]'); if(cc) writeChipCustom(cc);
+});
+$('ucCards').addEventListener('change',e=>{
+  const cc=e.target.closest&&e.target.closest('[data-chipc]');
+  if(cc && writeChipCustom(cc)){ renderUcCards(); render(); scheduleAuto(); }
+});
 $('btnAddUc').addEventListener('click',addUc);
 function ucToConfig(u){ const f=u.f;
   const wq=QUANTS[+f.selWQuant||0]||QUANTS[0], kq=KV_QUANTS[+f.selKQuant||0]||KV_QUANTS[0];
@@ -1992,7 +2054,7 @@ function allocSupports(hw){
   const g=hw.g, part=g.part||{kind:'frac'};
   const agg={};
   UC.forEach((u,idx)=>{ const conc=Math.round(uv(u.f,'inConc'));
-    (u.supports||[]).forEach(sp=>{ const m=SUP_MODEL(sp.kind, sp.model); if(!m) return;
+    (u.supports||[]).forEach(sp=>{ const m=supSpec(sp); if(!m) return;
       const key=sp.kind+'|'+m.name;
       const a=agg[key]=agg[key]||{kind:sp.kind, model:m, demand:0, ucIdx:[]};
       a.demand+=conc; a.ucIdx.push(idx); }); });
@@ -3185,17 +3247,17 @@ function findOption(sel, match){
 function applyUcDom(c, snap, notes){
   const mdl = c.model && typeof c.model==='object' ? c.model : {custom:false, name:c.model};
   if(mdl.custom){
-    $('chkCustom').checked=true; $('customBox').style.display='block'; $('selModel').disabled=true;
+    $('chkCustom').checked=true; syncCustomUI();
     $('cusParams').value=mdl.params; $('cusActive').value=mdl.active; $('cusHidden').value=mdl.hidden;
     $('cusLayers').value=mdl.layers; $('cusKvh').value=mdl.kvHeads; $('cusHdim').value=mdl.headDim; $('cusCtx').value=mdl.ctx;
   } else if(mdl.name){
     const o=findOption($('selModel'), mdl.name);
     if(o){
-      $('chkCustom').checked=false; $('customBox').style.display='none'; $('selModel').disabled=false;
-      $('selModel').value=o.value;
+      $('chkCustom').checked=false;
+      $('selModel').value=o.value; syncCustomUI();
     } else if(snap.model && snap.model.params){
       // model left the library since this file was saved: rebuild it from the embedded geometry
-      $('chkCustom').checked=true; $('customBox').style.display='block'; $('selModel').disabled=true;
+      $('chkCustom').checked=true; syncCustomUI();
       $('cusParams').value=snap.model.params; $('cusActive').value=snap.model.active;
       $('cusHidden').value=snap.model.hidden; $('cusLayers').value=snap.model.layers;
       $('cusKvh').value=snap.model.kvHeads; $('cusHdim').value=snap.model.headDim; $('cusCtx').value=snap.model.ctx;
@@ -3577,7 +3639,7 @@ async function buildXlsxBytes(){
     pr(ucName(u), ci>=0&&CASES[ci]?CASES[ci].name:'Custom', ucModelName(u),
       (QUANTS[+f.selWQuant||0]||{}).name||'', (KV_QUANTS[+f.selKQuant||0]||{}).name||'',
       +f.inConc||0, +f.sloTtft||0, +f.sloTps||0, +f.sloP95||0,
-      (u.supports||[]).map(sp=>(KIND_LABEL[sp.kind]||sp.kind)+' ('+sp.model+')').join(', ')); });
+      (u.supports||[]).map(sp=>(KIND_LABEL[sp.kind]||sp.kind)+' ('+((supSpec(sp)||{}).name||sp.model)+')').join(', ')); });
   pr(); pr('POOLS · one shared deployment per model+precision');
   pr('Model','Weights','Use cases','TP','Placement','Replicas','Batch','Pooled calls','Fits');
   prj.pools.forEach(p=>pr(p.state.model.name, p.state.wq.name,
@@ -3951,7 +4013,7 @@ document.querySelectorAll('input,select').forEach(el=>{
   el.addEventListener('input',()=>{
     if(el.id==='selCase') applyCase(+el.value);
     if(el.id==='selReason') syncReason();
-    if(el.id==='chkCustom'){ $('customBox').style.display=el.checked?'block':'none'; $('selModel').disabled=el.checked; }
+    if(el.id==='chkCustom'||/^cus(Params|Active|Layers)$/.test(el.id)) syncCustomUI();
     if(el.id==='nrmUsers'||el.id==='ccTurns'||el.id==='ccShare'||el.id==='ccCalls'||el.id==='ccBurst'||el.id==='ccDur') applyNrmUsers();
     if(/^(slMin|slRate|slBase|slBasis|selPolicy|selCase)$/.test(el.id)) renderSession();
     if((el.id==='inConc'||el.id==='inConc_r')&&UC[activeUc]) UC[activeUc].concManual=true;

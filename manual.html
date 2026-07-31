@@ -59,7 +59,7 @@ section&nbsp;1 to get a fleet on screen in five minutes; read section&nbsp;5 if 
 number to somebody who signs the purchase order.</p>
 
 <div class="chips">
-  <span class="chip t">Studio 5.30</span><span class="chip">Engine v27</span>
+  <span class="chip t">Studio 5.31</span><span class="chip">Engine v27</span>
   <span class="chip">Library v34</span><span class="chip">101 models · 37 GPUs · 24 presets</span>
   <span class="chip">MIT licensed</span><span class="chip">Nothing leaves your browser</span>
 </div>
@@ -427,7 +427,9 @@ total; for a mixture of experts it is much smaller, which is why a 671B MoE can 
 70B dense model while needing ten times the memory.</p>
 <p><b>Custom model</b> unlocks seven fields (params, active, hidden, layers, KV heads, head dim,
 context) for anything not in the library. Everything else in the studio works identically; exports
-carry the geometry so the file stays readable later.</p>
+carry the geometry so the file stays readable later. While it is on, <b>the dropdown is replaced</b> by
+a line naming the geometry actually in force, rather than greyed out still showing a library model that
+is not being used.</p>
 </div>
 </div>
 
@@ -1153,6 +1155,13 @@ reranking and guard models.</p>
 <tr><td>OCR</td><td>Document intake</td><td class="wrap">Page-rate driven rather than user driven.</td></tr>
 <tr><td>Guard</td><td>Public-facing and clinical presets</td><td class="wrap">Usually invoked twice per request, on the way in and on the way out.</td></tr>
 </tbody></table></div>
+<p><b>Not in the library?</b> Every chip's model dropdown ends with <i>Custom (enter geometry)</i>,
+which asks for the only two numbers the sizing needs: gigabytes per running instance, and how many
+concurrent streams or queries one instance serves before another is needed. The fields are seeded from
+whatever was selected, so a house ASR starts from the nearest published model rather than from zero.
+A custom chip is drawn with a dashed border, and the geometry travels in the JSON export and in share
+links.</p>
+
 <p>Supports are aggregated across the project by kind and model, so ten use cases that all want the same
 embedder do not buy ten embedders. They are then packed onto MIG slices, AMD partitions or fractional
 GPUs, and appear in the fleet map as shared cards and in the memory ledger on their own line. Their GPUs
@@ -1427,7 +1436,7 @@ peak</b>. Scope with this tool; verify with a benchmark; sign with margin.</p>
 </div>
 
 <div class="footdoc">
-  <p>GPUscale manual · studio 5.30 · engine v27 · library v34. Written against the code, with every
+  <p>GPUscale manual · studio 5.31 · engine v27 · library v34. Written against the code, with every
   figure captured from the running application and every formula checked against the engine.
   © 2026 GPUscale.net, MIT licensed.</p>
 </div>
