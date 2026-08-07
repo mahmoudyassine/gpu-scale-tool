@@ -15,6 +15,20 @@ def must_change(new, old, what):
         sys.exit(f'build failed: {what} did not match anything in index.html')
     return new
 
+# The version chip in index.html is static markup until the app boots and
+# rewrites it, so it is what a crawler and a first paint see. It had drifted to
+# v4.7 across twenty-seven releases. Stamp it here, where every release passes.
+studio_v = re.search(r"STUDIO_VERSION = '([\d.]+)'",
+                     (ROOT/'assets/app.js').read_text(encoding='utf-8')).group(1)
+short_v = 'v' + '.'.join(studio_v.split('.')[:2])
+idx_path = ROOT/'index.html'
+idx = idx_path.read_text(encoding='utf-8')
+stamped = re.sub(r'(id="verChip">)v[\d.]*(<)', r'\g<1>' + short_v + r'\g<2>', idx)
+if stamped != idx:
+    idx_path.write_text(stamped, encoding='utf-8')
+    print(f'  stamped index.html version chip -> {short_v}')
+html = stamped
+
 css = (ROOT/'assets/styles.css').read_text(encoding='utf-8')
 html = must_change(html.replace('<link rel="stylesheet" href="assets/styles.css">',
                                 '<style>\n'+css+'</style>'), html, 'stylesheet link')

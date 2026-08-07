@@ -1,0 +1,16 @@
+{
+ "gpu": "H200 141GB NVL",
+ "gpusPerWorker": 8,
+ "resilience": "n1",
+ "name": "no-supports",
+ "usecases": [
+  {
+   "name": "RAG",
+   "model": "Llama 3.3 70B",
+   "weightQuant": "FP8",
+   "preset": "Simple RAG",
+   "concurrentCalls": 40,
+   "supports": []
+  }
+ ]
+}

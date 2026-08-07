@@ -1,0 +1,22 @@
+{
+ "gpu": "H200 141GB NVL",
+ "gpusPerWorker": 8,
+ "resilience": "n1",
+ "name": "slow-voice",
+ "usecases": [
+  {
+   "name": "Voice",
+   "model": "Qwen3 8B",
+   "weightQuant": "FP8",
+   "preset": "Voice agent",
+   "residentSeq": 4096,
+   "visibleOut": 100,
+   "concurrentCalls": 200,
+   "sloTargets": {
+    "ttftMs": 200,
+    "tps": 12,
+    "p95s": 3.5
+   }
+  }
+ ]
+}

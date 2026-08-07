@@ -1,0 +1,16 @@
+{
+ "gpu": "RTX 4060 Ti 16GB",
+ "gpusPerWorker": 1,
+ "resilience": "n1",
+ "name": "too-big",
+ "usecases": [
+  {
+   "name": "Huge",
+   "model": "Kimi K2.5 1T-A32B (MoE)",
+   "weightQuant": "BF16",
+   "residentSeq": 8192,
+   "visibleOut": 400,
+   "concurrentCalls": 10
+  }
+ ]
+}

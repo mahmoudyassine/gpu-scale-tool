@@ -1,0 +1,16 @@
+{
+ "gpu": "H200 141GB NVL",
+ "gpusPerWorker": 8,
+ "resilience": "n1",
+ "name": "ctx-overflow",
+ "usecases": [
+  {
+   "name": "Long",
+   "model": "Qwen3 8B",
+   "weightQuant": "FP8",
+   "residentSeq": 200000,
+   "visibleOut": 500,
+   "concurrentCalls": 10
+  }
+ ]
+}

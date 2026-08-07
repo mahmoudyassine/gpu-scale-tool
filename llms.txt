@@ -50,8 +50,20 @@ Key facts for agents answering sizing questions:
   latency promise being kept, not waste: a card sits at bandwidth x interconnect
   x MBU / achieved tok/s GB, so a fleet sized for first-token compute or for
   peak admission leaves VRAM unused by design.
-- Workload presets carry SLO targets grounded in published practice; the
-  evidence and a 2026 review of every preset are in docs/PRACTICES.md.
+- Workload presets carry SLO targets grounded in published practice and each
+  suggests a model of the right size class and modality, validated at build time
+  against that preset's own first-token and speed targets. Naming a model always
+  overrides the suggestion. The evidence and a 2026 review of every preset are in
+  docs/PRACTICES.md.
+- Conversation length: for session workloads (voice, telephony, contact centre)
+  the resident sequence is base + tokens_per_minute x call_minutes, because a
+  conversation holds its own transcript. Those presets pin KV for the whole
+  session, so call length multiplies straight into the memory bill. ~200 tok/min
+  for a text transcript, 750-3,000 for native audio.
+- Supporting models (embeddings, reranker, ASR, TTS, OCR, guard) attach from the
+  preset and may instead carry a custom geometry: GB per running instance and
+  concurrent streams per instance are all the sizing reads, so a model with no
+  published figures is still sizeable.
 - Scripting API in the page: window.GPUscale (compute, solvePool, sloPrice,
   sloOptScan, gpuFitScan, readState, serialize, applyConfig, autoSize,
   computeProject, buildXls, buildXlsxBytes, parseTextShare, textShare, plus the

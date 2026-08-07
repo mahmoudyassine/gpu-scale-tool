@@ -1,0 +1,15 @@
+{
+ "bad-custom": "error",
+ "bf16-kv-heavy": "note",
+ "cache-assumed": "note",
+ "clean": "clean",
+ "ctx-overflow": "error",
+ "impossible-p95": "error",
+ "no-supports": "note",
+ "sized-on-ctx": "note",
+ "slow-voice": "error",
+ "too-big": "error",
+ "unreachable-tps": "warn",
+ "unreachable-ttft": "warn",
+ "wrong-quant-hw": "error"
+}

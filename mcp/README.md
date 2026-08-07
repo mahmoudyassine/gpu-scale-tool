@@ -64,6 +64,22 @@ node gpuscale-mcp.mjs --self-test
 Results come back as readable text **and** as `structuredContent`, so an agent can
 either quote the summary or read the fields.
 
+## The fields that decide the answer
+
+`size_project` and the other spec tools take a project and a list of use cases.
+The full schema is on each tool; these are the ones that change the number most.
+
+| Field | Meaning |
+|---|---|
+| `gpu`, `gpusPerWorker`, `resilience` | One GPU type for the project; 8 = HGX, 72 = NVL72; `n1` for one standby node. |
+| `model`, `preset` | A library name, or a custom geometry. A preset also **suggests a model** when you omit one, and fills tokens, SLO targets, KV policy, traffic shape and supporting models. |
+| `residentSeq` | Tokens **held per request**, not the context window. |
+| `activeUsers` or `concurrentCalls` | People at peak, or requests in flight. Prefer the first when the user described people. |
+| `session.callMinutes` | For voice and contact centre: a conversation holds its transcript, so the resident sequence follows the call length, and those presets pin KV for the whole session. |
+| `sharedPrefixPct` | Prefix caching, 0-95. Leave at 0 unless the user measured a hit rate. |
+| `sloTargets` | `{ttftMs, tps, p95s}`; `tps` is per user, never aggregate. |
+| `supports` | `"auto"` for the preset's own, or a list. An entry may carry `custom: {name, vram, cap}` when you run something with no published figures: GB per running instance and concurrent streams per instance are all the sizing reads. |
+
 ## Resources
 
 | URI | Contents |

@@ -1,0 +1,21 @@
+{
+ "gpu": "H200 141GB NVL",
+ "gpusPerWorker": 8,
+ "resilience": "n1",
+ "name": "impossible-p95",
+ "usecases": [
+  {
+   "name": "Chat",
+   "model": "Llama 3.3 70B",
+   "weightQuant": "FP8",
+   "residentSeq": 8192,
+   "visibleOut": 2000,
+   "concurrentCalls": 50,
+   "sloTargets": {
+    "ttftMs": 500,
+    "tps": 20,
+    "p95s": 4
+   }
+  }
+ ]
+}

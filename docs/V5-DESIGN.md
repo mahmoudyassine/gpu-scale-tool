@@ -3,9 +3,14 @@
 Status: SHIPPED and superseded. This is the historical design record for the
 v5 rework (locked after Batch 0 research: 3 researchers + a 3-judge UX panel).
 v5 shipped from the `v5` branch and merged to `main`; everything below describes
-the decisions taken then, not the current build. For how the studio works today
-see [DATA.md](DATA.md) (schemas, solver invariants), [PRACTICES.md](PRACTICES.md)
-(the evidence behind the workload presets) and the CHANGELOG.
+the decisions taken then, not the current build.
+
+**For how the studio works today, read [the manual](https://gpuscale.net/manual.html)**:
+every control and readout with screenshots, and the full mathematics with a
+worked example. Then [DATA.md](DATA.md) (schemas, solver invariants, engine
+history), [PRACTICES.md](PRACTICES.md) (the evidence behind the workload
+presets), [URL-FORMAT.md](URL-FORMAT.md) (building a configuration link),
+[mcp/README.md](../mcp/README.md) (the MCP server) and the CHANGELOG.
 
 ## Batch 0 verdict (locked decisions)
 

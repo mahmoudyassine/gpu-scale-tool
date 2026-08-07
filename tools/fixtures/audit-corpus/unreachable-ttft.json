@@ -1,0 +1,21 @@
+{
+ "gpu": "H200 141GB NVL",
+ "gpusPerWorker": 8,
+ "resilience": "n1",
+ "name": "unreachable-ttft",
+ "usecases": [
+  {
+   "name": "Snappy",
+   "model": "Llama 3.1 405B",
+   "weightQuant": "FP8",
+   "residentSeq": 65536,
+   "visibleOut": 200,
+   "concurrentCalls": 10,
+   "sloTargets": {
+    "ttftMs": 100,
+    "tps": 0,
+    "p95s": 0
+   }
+  }
+ ]
+}

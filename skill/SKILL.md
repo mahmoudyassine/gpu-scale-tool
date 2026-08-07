@@ -9,6 +9,26 @@ You have the actual GPUscale.net sizing engine (engine v27, library v35: 101
 models, 37 GPUs) as a CLI in this skill's directory. For ANY numeric sizing
 question, run it; never hand-compute what the CLI can compute.
 
+## Before you start: is there a better door?
+
+This skill is a CLI that sizes **one dedicated pool** per invocation. Two other
+routes exist, and one of them is usually better:
+
+- **MCP server** (<https://gpuscale.net/mcp/gpuscale-mcp.mjs>). One file, no
+  dependencies. If the runtime can start a local MCP server, use it instead: it
+  exposes the same engine but sizes a **whole project**, pooling use cases that
+  share a model and precision, attaching supporting models and applying a
+  resilience pattern, which this CLI does not do.
+- **`gpuscale-link` skill**, when the user wants a clickable studio link rather
+  than numbers in the chat.
+
+Use this CLI when you have a shell but no MCP, or when one pool is genuinely the
+whole question. It does **not** model pooling across use cases, supporting models
+(embeddings, rerankers, ASR, TTS, OCR, guards) or co-residency: if the answer
+needs those, say so and use the MCP server or the studio.
+
+The method behind every number is documented at <https://gpuscale.net/manual.html>.
+
 ## Running the engine
 
 ```bash
@@ -49,6 +69,15 @@ https://gpuscale.net/#p=t:gpu=H200+141GB+NVL;perw=8;resil=n1;uc=Support+chat;mod
 `key=value` pairs separated by `;`, one `uc=` per use case, spaces written `+`.
 The studio re-solves the topology on import, so send the workload, not the
 hardware. Full key table and rules: <https://gpuscale.net/docs/URL-FORMAT.md>.
+
+## Presets carry a suggested model
+
+`--list-workloads` shows each preset's suggested model. It is a starting point of
+the right size class and modality, checked at build time against that preset's
+own first-token and speed targets, so it can never be one that shows red on
+arrival. If the user named a model, always pass `--model` and ignore the
+suggestion; if they described a workload and no model, the suggestion is a
+defensible default to state and move on with.
 
 ## The mental model (explain with the numbers, in this order)
 

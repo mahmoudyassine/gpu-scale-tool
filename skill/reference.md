@@ -29,6 +29,21 @@
 - Defaults that survive production contact: MFU 0.5, MBU 0.65, interconnect
   0.85 in-island / 0.7 cross-node.
 
+## Conversation length (session workloads)
+
+A conversation holds its own transcript, so its resident sequence follows the
+call:
+
+- resident = base + tok_per_min x minutes           (end of call, the default)
+- resident = base + tok_per_min x minutes / 2       (average call in flight)
+
+base is the system prompt, persona and tool schemas; the rate is ~200 tok/min
+where the model reads a text transcript (150 words/min at ~1.3 tokens/word) and
+750-3,000 for native speech-to-speech, which consumes audio tokens. It matters
+most under the "all active sessions stay in KV" policy, which live voice paths
+want, because every caller in flight then holds their whole cache for the whole
+call. CLI: `--call-minutes`, with `--tok-min`, `--prompt-tok` and `--basis`.
+
 ## Auto-size algorithm (current)
 
 1. **Fitting width.** TP = smallest of [1,2,4,8,16,32,64,72] whose group holds
@@ -86,6 +101,15 @@ n 1x · n1 +1 worker · n2 +2 · nn 2x mirror · dr 2x standby site · drh 1.5x
 (halves on site loss) · aas 1x split sites (halves on site loss) · aas1/aass
 split + spares · aa 2x each-site-full · aan1 2N+2 · nndr 4x. Active/active
 normal-day capacity is real burst but must not carry planned load.
+
+## Going further
+
+- Each workload preset also names a suggested model, checked at build time
+  against that preset's own first-token and speed targets. `--list-workloads`
+  prints them. A model the user named always wins.
+- Full method, with diagrams and a worked example: <https://gpuscale.net/manual.html>
+- Whole-project sizing (pooling, supporting models, resilience) over MCP:
+  <https://gpuscale.net/mcp/README.md>
 
 ## Sources
 

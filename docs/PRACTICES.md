@@ -181,6 +181,31 @@ Bands only. Measure yours; vLLM and SGLang both report cache hit rate.
 | Document Q&A on one document | 60-90% | The document itself across a question series |
 | One-off document processing | 0% | Nothing; each call is a new document |
 
+## Suggested models (5.33.0)
+
+Selecting a preset used to leave whatever model happened to be selected next to
+it, which read as a recommendation without being one. Each preset now names a
+model, and the choice is constrained rather than editorial:
+
+- **Right size class for the promise.** `check_presets.py` fails the build unless
+  the pick can prefill the preset's resident sequence inside its own
+  `ttftTarget`, and reach its `tpsTarget` at batch 1, both at TP8 on a reference
+  H200, with a context window that holds the working set. Selecting a preset can
+  therefore never open on a configuration that is red on arrival.
+- **Right modality.** Vision classes get genuinely multimodal models (Gemma 3,
+  Llama 4 Scout), reasoning classes get reasoning models (Magistral,
+  DeepSeek-R1), translation gets a model built for it (Aya Expanse).
+- **Not a ranking.** It is a starting point. The suggestion applies only until
+  the reader picks a model, and never touches a saved project.
+
+The check earned itself on the first run. *Code agent*'s obvious pick was
+Qwen3-Coder 480B-A35B, the library's dedicated coding model; its 35B active
+parameters need 1,160 ms to prefill the preset's 64K context, above the preset's
+own 1,000 ms promise. It is Qwen3-Next 80B-A3B instead, whose 3.9B active
+parameters do the same prefill in 129 ms. For a long-context agent with a
+first-token promise, a sparse MoE is the architecture that fits, and the check
+made that argument rather than a preference.
+
 ## What was deliberately not changed
 
 - **The tpsTarget convention stays per-user streaming speed**, not aggregate

@@ -1,0 +1,16 @@
+{
+ "gpu": "H200 141GB NVL",
+ "gpusPerWorker": 8,
+ "resilience": "n1",
+ "name": "clean",
+ "usecases": [
+  {
+   "name": "Support copilot",
+   "model": "Llama 3.3 70B",
+   "weightQuant": "FP8",
+   "kvQuant": "FP8",
+   "preset": "Simple RAG",
+   "activeUsers": 2000
+  }
+ ]
+}

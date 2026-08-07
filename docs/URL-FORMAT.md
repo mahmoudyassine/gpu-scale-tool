@@ -13,6 +13,12 @@ A link is just gpuscale.net with a payload in the fragment:
 https://gpuscale.net/#p=<payload>
 ```
 
+**If your runtime can start a local MCP server, you may not need a link at all.**
+<https://gpuscale.net/mcp/gpuscale-mcp.mjs> is one file with no dependencies that
+exposes this engine as tools, so you get the solved fleet back as data rather
+than sending the user something to click. It returns a link too. Use the formats
+below when you cannot run a server, or when the deliverable really is a URL.
+
 There are three payload forms. **Use `t:` unless you are running code.**
 
 | Form | Payload | Who can write it |
@@ -93,7 +99,7 @@ Rules, all of them:
 | `basis` | `peak` (size every session at hang-up, the safe default) or `mean` (size at the average call in flight, roughly half the KV) | `peak` |
 | `turns` `calls` `burst` `dur` | Traffic shape: interactions/hour, LLM calls per interaction, burst factor, seconds one **model call** occupies a slot. Not the length of a conversation, which is `callmin` | preset |
 | `batch` | Max batch per replica | solved |
-| `supports` | Comma-separated helpers: `embed` `rerank` `asr` `tts` `ocr` `guard`, or `none` | the preset's own |
+| `supports` | Comma-separated helpers: `embed` `rerank` `asr` `tts` `ocr` `guard`, or `none`. A **custom** supporting model (your own VRAM and capacity figures) cannot be expressed here; use the JSON payload or the MCP server for that | the preset's own |
 | `isolate` | `1` keeps this use case in its own pool instead of sharing a deployment | 0 |
 
 A custom model that is not in the library:
@@ -298,6 +304,8 @@ Offering both links is polite when you do not know the user's network.
 - Format and rules (this file): <https://gpuscale.net/docs/URL-FORMAT.md>
 - Every valid name: <https://gpuscale.net/skill-link/references/libraries.md>
 - Full JSON schema: <https://gpuscale.net/skill-link/references/payload-schema.md>
-- Engine formulas and conventions: <https://gpuscale.net/docs/DATA.md>
+- The method, in full, with diagrams and a worked example: <https://gpuscale.net/manual.html>
+- Engine formulas and data conventions: <https://gpuscale.net/docs/DATA.md>
+- The MCP server, for runtimes that can start one: <https://gpuscale.net/mcp/README.md>
 - Preset evidence: <https://gpuscale.net/docs/PRACTICES.md>
 - Agent summary of the whole tool: <https://gpuscale.net/llms.txt>

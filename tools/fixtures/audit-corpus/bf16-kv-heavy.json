@@ -1,0 +1,23 @@
+{
+ "gpu": "H200 141GB NVL",
+ "gpusPerWorker": 8,
+ "resilience": "n1",
+ "name": "bf16-kv-heavy",
+ "usecases": [
+  {
+   "name": "Bulk",
+   "model": "Llama 3.3 70B",
+   "weightQuant": "FP8",
+   "kvQuant": "BF16",
+   "residentSeq": 32768,
+   "visibleOut": 500,
+   "concurrentCalls": 200,
+   "maxBatchPerReplica": 200,
+   "sloTargets": {
+    "ttftMs": 3000,
+    "tps": 10,
+    "p95s": 0
+   }
+  }
+ ]
+}

@@ -1,5 +1,52 @@
 # Changelog
 
+## Studio 5.34.1 (2026-08-07) · engine v27
+
+A documentation sweep: eight releases had landed since several of these files
+were last read end to end, and an audit found real gaps rather than cosmetic
+ones.
+
+### What was missing
+
+| Document | Was not mentioned |
+|---|---|
+| README | preset model suggestions, custom supporting models |
+| llms.txt | preset model suggestions, conversation length, custom supporting models |
+| skill/SKILL.md | that the MCP server exists and is usually the better door; that this CLI models neither pooling nor supporting models; preset model suggestions |
+| skill/reference.md | conversation length, preset suggestions |
+| skill-link/SKILL.md | custom supporting models, the MCP server |
+| skill-link payload schema | that a preset suggests a model |
+| docs/PRACTICES.md | the suggested-model rule and the check that enforces it |
+| docs/URL-FORMAT.md | the MCP server, custom supports being out of scope for `t:` |
+| docs/V5-DESIGN.md | its "for how it works today" pointer predated the manual |
+| mcp/README.md | the spec fields that actually change the answer |
+
+All closed. Both skills were regenerated, so the shipped bundles carry the new
+text.
+
+### The version chip had drifted 27 releases
+
+`index.html` carried `v4.7` in static markup. The app rewrites it on boot, so
+nobody saw it, but it is what a crawler and the first paint see.
+`build_single_file.py` now stamps it from `STUDIO_VERSION` on every release,
+which is a step that already runs, so it cannot drift again.
+
+### A test surface that survives a reboot
+
+Three times now, verification scripts and fixtures have lived in a scratchpad and
+been lost. Everything is in the repo:
+
+- `tools/check_presets.py` the preset rules, including the suggested-model check
+- `tools/check_manual.py` 46 checks re-deriving every number the manual asserts
+- `tools/check_link_skill.py` **new**, replays 13 deliberately-broken specs
+  against the encoder and asserts the class of each outcome: error, warn, note or
+  clean
+- `tools/check_mcp.py` 43 protocol and studio-parity checks
+- `tools/check_all.py` **new**, all four in one command
+- `tools/fixtures/` the audit corpus and the reference project, as readable links
+
+`python3 tools/check_all.py` is now the release gate. It passes.
+
 ## Studio 5.34.0 (2026-08-07) · engine v27
 
 **An MCP server, so an agent can talk to the engine directly.** Until now an

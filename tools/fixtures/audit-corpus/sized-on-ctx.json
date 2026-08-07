@@ -1,0 +1,16 @@
+{
+ "gpu": "H200 141GB NVL",
+ "gpusPerWorker": 8,
+ "resilience": "n1",
+ "name": "sized-on-ctx",
+ "usecases": [
+  {
+   "name": "RAG",
+   "model": "Llama 3.1 8B",
+   "weightQuant": "FP8",
+   "residentSeq": 131072,
+   "visibleOut": 400,
+   "concurrentCalls": 40
+  }
+ ]
+}

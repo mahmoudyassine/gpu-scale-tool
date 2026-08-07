@@ -1,0 +1,25 @@
+{
+ "gpu": "H200 141GB NVL",
+ "gpusPerWorker": 8,
+ "resilience": "n1",
+ "name": "bad-custom",
+ "usecases": [
+  {
+   "name": "House",
+   "model": {
+    "custom": true,
+    "params": 10,
+    "active": 40,
+    "hidden": 4096,
+    "layers": 32,
+    "kvHeads": 8,
+    "headDim": 128,
+    "ctx": 32768
+   },
+   "weightQuant": "FP8",
+   "residentSeq": 4096,
+   "visibleOut": 300,
+   "concurrentCalls": 10
+  }
+ ]
+}

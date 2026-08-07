@@ -1,0 +1,17 @@
+{
+ "gpu": "H200 141GB NVL",
+ "gpusPerWorker": 8,
+ "resilience": "n1",
+ "name": "cache-assumed",
+ "usecases": [
+  {
+   "name": "Agent",
+   "model": "Qwen3 32B",
+   "weightQuant": "FP8",
+   "residentSeq": 32768,
+   "sharedPrefixPct": 60,
+   "visibleOut": 300,
+   "concurrentCalls": 40
+  }
+ ]
+}

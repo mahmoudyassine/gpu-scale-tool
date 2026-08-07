@@ -4,6 +4,15 @@
 > Prose version of much of this file, with diagrams and worked examples:
 > [the manual](https://gpuscale.net/manual.html).
 
+Four generators read these files and must be rerun on every release, or they
+drift from the studio: `build_single_file.py` (the portable build),
+`build_skill.py` (the CLI skill), `build_skill_link.py` (the link skill) and
+`build_mcp.py` (the MCP server, which embeds the engine, the solver and the whole
+project layer verbatim). `python3 tools/check_all.py` verifies the result:
+the preset rules, every number the manual asserts, the audit corpus of thirteen
+deliberately-broken specs, and the MCP server's parity with what the browser
+renders for `tools/fixtures/reference-project.txt`.
+
 Building a link programmatically or from an AI assistant is a separate document:
 [URL-FORMAT.md](URL-FORMAT.md) covers the readable `#p=t:` form, the encoded
 `j:` / `z:` forms and the rules for getting a link right.

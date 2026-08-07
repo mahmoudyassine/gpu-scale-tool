@@ -1,0 +1,21 @@
+{
+ "gpu": "H200 141GB NVL",
+ "gpusPerWorker": 8,
+ "resilience": "n1",
+ "name": "unreachable-tps",
+ "usecases": [
+  {
+   "name": "Fast",
+   "model": "Llama 3.1 405B",
+   "weightQuant": "BF16",
+   "residentSeq": 32768,
+   "visibleOut": 500,
+   "concurrentCalls": 20,
+   "sloTargets": {
+    "ttftMs": 5000,
+    "tps": 300,
+    "p95s": 0
+   }
+  }
+ ]
+}

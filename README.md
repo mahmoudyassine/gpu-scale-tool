@@ -30,7 +30,8 @@ static: no backend, no build step, nothing uploaded.
 
 - 🗂️ **Projects with multiple use cases**: each card has its own workload, concurrency, SLOs and model; same model + precision is served by one shared pooled deployment, sized for the combined load
 - 🍰 **GPU sharing (MIG slicing)**: in multi-use-case projects, small-model pools can run one replica per hardware slice and share physical GPUs with other models and supporting services, the way Triton and vLLM deployments do on partitioned clusters; only real slice geometries, honest per-slice speed
-- 🤝 **Supporting models auto-attach**: embeddings and rerankers for RAG, ASR and TTS for voice, OCR for documents, guard models for public chat; placed on MIG slices, AMD partitions or fractional GPUs with honest footprints
+- 🤝 **Supporting models auto-attach**: embeddings and rerankers for RAG, ASR and TTS for voice, OCR for documents, guard models for public chat; placed on MIG slices, AMD partitions or fractional GPUs with honest footprints. Running something with no published figures? Every chip offers **Custom (enter geometry)**: give it GB per instance and concurrent streams per instance and it sizes like any other
+- 🎯 **Presets suggest a model**: picking a workload picks a starting model of the right size class and modality, marked *suggested for this preset*. Every suggestion is checked at build time against that preset's own first-token and speed targets, so selecting a preset never leaves you looking at a configuration that is red on arrival. Choose a model yourself and the suggesting stops for that card
 - 🗺️ **Fleet map**: every node and GPU drawn with its assignment: replicas, support slices, spares and standby nodes, plus a screen-reader text form
 - 🎚️ **Two modes**: Normal asks for people at peak and derives the rest; Advanced exposes every control
 - 🧮 **Memory fit**: weights, KV cache, activations and overhead per replica, against real fleet capacity
@@ -40,7 +41,7 @@ static: no backend, no build step, nothing uploaded.
 - 💾 **Projects persist**: autosaved to your browser's local storage, surviving reboots; a history menu lists, reloads and deletes them
 - 🔗 **Share links**: the whole project travels compressed inside the URL itself; send the link, they see your project (an optional self-hosted backend for short links ships in docs/share-worker.js)
 - 🔒 **Private by design**: everything runs and stays in your browser; nothing is uploaded or tracked
-- 📚 **Library**: 24 workload presets with SLO targets grounded in published practice (see [docs/PRACTICES.md](docs/PRACTICES.md)), 101 models (GQA, MoE, MLA, SSM hybrids, a deep Arabic/GCC sovereign set incl. VLMs and dialect models), 37 GPUs with partitioning profiles, and 54 supporting models (with Arabic-specialized ASR, TTS, OCR, embeddings, rerankers and guards) (embeddings, rerankers, ASR, TTS, OCR, guards from tiny CPU-viable to flagship tiers), one line each
+- 📚 **Library**: 24 workload presets with SLO targets grounded in published practice and a suggested model each (see [docs/PRACTICES.md](docs/PRACTICES.md)), 101 models (GQA, MoE, MLA, SSM hybrids, a deep Arabic/GCC sovereign set incl. VLMs and dialect models), 37 GPUs with partitioning profiles, and 54 supporting models (with Arabic-specialized ASR, TTS, OCR, embeddings, rerankers and guards) (embeddings, rerankers, ASR, TTS, OCR, guards from tiny CPU-viable to flagship tiers), one line each
 - 📤 **Exports**: JSON configs, an Excel template with live formulas, and a print-ready PDF report
 - 🪄 **Auto-size**: one click picks the TP that fits one copy of the model and the workers that admit your peak load
 - 🎯 **SLO optimiser**: decode re-reads `bandwidth × interconnect × MBU / target tok/s` GB per card per token, so the speed target sizes the fleet. Recommendations propose the targets that fill the GPU you already chose, bounded by each use case's P95 promise and its workload class (a live voice path is never asked to read at 19 tok/s), priced by re-solving the whole project, and applied across use cases in one click with a single Undo
@@ -180,7 +181,10 @@ tools/     build_single_file.py    rebuilds the portable one-file version
            check_presets.py        enforces the workload-preset rules
            build_mcp.py            regenerates mcp/gpuscale-mcp.mjs from the live engine
            check_manual.py         re-derives every number the manual asserts
+           check_link_skill.py     the audit corpus: 13 deliberately-broken specs
            check_mcp.py            MCP protocol + studio-parity checks
+           check_all.py            all four suites, one command
+           fixtures/               regression baselines, as readable links
 dist/      gpuscale_standalone.html  the portable build (generated)
 skill/     the gpu-sizing CLI skill (generated)
 skill-link/  the gpuscale-link skill sources (share-link builder)
@@ -191,9 +195,12 @@ docs/      DATA.md             schemas, effective-KV convention, solver notes
            V5-DESIGN.md        the v5 architecture decisions
 ```
 
-Everything generated is rebuilt by running the four `tools/build_*.py`
-scripts; do that on every release so the portable build and both skills cannot
-drift from `assets/app.js` and `data/`.
+Everything generated is rebuilt by running the four `tools/build_*.py` scripts;
+do that on every release so the portable build, both skills and the MCP server
+cannot drift from `assets/app.js` and `data/`. Then run `python3
+tools/check_all.py`, which enforces the preset rules, re-derives every number the
+manual asserts, replays the audit corpus, and checks the MCP server against what
+the browser renders for the reference project.
 
 ## 🧩 Add a model or GPU
 

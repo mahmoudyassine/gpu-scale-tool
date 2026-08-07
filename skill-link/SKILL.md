@@ -17,6 +17,13 @@ the demand inputs. So the demand side - model, quantization, tokens,
 concurrency, SLOs, GPU choice, resilience - is what must be right. Never
 pester the user for TP/worker counts; only pin them if volunteered.
 
+**If the runtime can start a local MCP server, prefer it.**
+<https://gpuscale.net/mcp/gpuscale-mcp.mjs> is one file with no dependencies that
+exposes the same engine as tools, and its `size_project` returns the solved fleet
+AND a link, so you get numbers to quote instead of only something to click. This
+skill remains the right choice when there is no MCP, when the user explicitly
+wants a link, or when you are reading or repairing one they pasted.
+
 If you cannot run the encoder (no shell, or the user just wants a link they can
 read and edit), write the **readable form** instead: `#p=t:` followed by
 `key=value` pairs separated by `;`, with every `uc=` starting a use case. It
@@ -248,6 +255,14 @@ the one field that makes the estimate less conservative.
 with negligible quality impact. Weight precision is the user's call; FP8 is a
 safe default, BF16 when they want maximum quality, NV FP4 only on Blackwell.
 
+**Supporting models can be custom.** A `supports` entry may carry its own
+geometry instead of naming a library model:
+`{"kind":"asr","custom":{"name":"House ASR","vram":24,"cap":3}}`, where `vram` is
+gigabytes per running instance and `cap` is concurrent streams per instance.
+Use it when the user runs something with no published figures, and ask for those
+two numbers rather than guessing them. The readable `#p=t:` form cannot express
+it; the JSON spec and the encoder can.
+
 **A preset carries a suggested model, and naming one overrides it.** If the user
 told you which model they run, always set `model` explicitly. If they described a
 workload but never named a model, you may omit `model` and let the preset's
@@ -301,6 +316,15 @@ python3 scripts/gpuscale_url.py list models|gpus|quants|kvquants|presets|resilie
   `salvaged_prefix.txt` - reconstruct what you can from it, ask the user for
   the missing pieces, and rebuild a fresh link. Give the rebuilt project a
   NEW projectId unless the user wants their browser copy overwritten.
+
+## Where the method is written down
+
+- <https://gpuscale.net/manual.html> the complete method, with the mathematics
+  and a worked example. Read section 5 before defending a number to anyone.
+- <https://gpuscale.net/docs/URL-FORMAT.md> the link formats, including the
+  readable one you can write without a shell.
+- <https://gpuscale.net/mcp/README.md> the MCP server, if your runtime can start
+  one, which returns solved numbers rather than only a link.
 
 ## Delivery rules
 

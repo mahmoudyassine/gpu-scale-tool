@@ -54,6 +54,9 @@ https://mahmoudyassine.github.io/gpuscale/#p=z:<fragment>
     "weightQuant": "FP8",
     "kvQuant": "FP8",              // FP8 is the production default
     "preset": "Internal GPT / Copilot",   // CASES name, or null for manual
+    //   A preset also SUGGESTS a model when the spec omits one; the suggestion
+    //   is checked against that preset's own SLO targets at build time.
+    //   Naming a model always wins over the suggestion.
     "residentSeq": 16384,
     "visibleOut": 800,
     "sharedPrefixPct": 0,                 // 0-95. Share of residentSeq that is

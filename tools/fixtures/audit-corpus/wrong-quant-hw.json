@@ -1,0 +1,16 @@
+{
+ "gpu": "A100 80GB SXM",
+ "gpusPerWorker": 8,
+ "resilience": "n1",
+ "name": "wrong-quant-hw",
+ "usecases": [
+  {
+   "name": "Nv4",
+   "model": "Llama 3.3 70B",
+   "weightQuant": "NV FP4",
+   "residentSeq": 8192,
+   "visibleOut": 400,
+   "concurrentCalls": 20
+  }
+ ]
+}
