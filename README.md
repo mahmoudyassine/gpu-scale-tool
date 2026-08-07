@@ -50,6 +50,7 @@ static: no backend, no build step, nothing uploaded.
 - 🩺 **Fix-it buttons on the findings**: KV cache to FP8, weights to FP8, a reachable P95, reasoning off, N+1 redundancy, a tensor-parallel width, a batch cap - each one applies across the use cases in scope, re-solves, and offers one Undo
 - 📖 **A real manual**: [gpuscale.net/manual.html](https://gpuscale.net/manual.html) documents every control and every readout with screenshots, and derives the whole engine from first principles with diagrams and a worked example you can check on a calculator. Reachable from the book icon in the studio's toolbar
 - 🌓 **Polished**: light and dark themes, mobile friendly, installable, keyboard accessible
+- 🔌 **MCP server**: `mcp/gpuscale-mcp.mjs` is one file with no dependencies that gives any MCP client the engine as tools: `size_project`, `compare_gpus`, `audit_spec`, `build_link`, `read_link`, `list_library`. It is generated from `assets/app.js`, so an agent gets the studio's numbers rather than an estimate, and it refuses a configuration that cannot work instead of sizing it. See [mcp/README.md](mcp/README.md)
 - 🤖 **Claude skill**: download `gpuscale-link.skill` from the footer, hand it to Claude, and it turns plain-language requirements into a ready, verified share link (gpuscale.net + mirror)
 - 🔗 **Readable links any AI can write**: `#p=t:gpu=H200+141GB+NVL;uc=Support+chat;model=Llama+3.3+70B;preset=Simple+RAG;users=2000` opens a fully sized fleet. Plain text, no compression, no tooling, so ChatGPT, Gemini or Claude can answer a sizing question with a working link instead of arithmetic. Spec in [docs/URL-FORMAT.md](docs/URL-FORMAT.md)
 
@@ -81,6 +82,7 @@ Dark theme, same project:
 | [docs/DATA.md](docs/DATA.md) | Data schemas, the effective-KV convention, card stamps, co-residency gates, solver invariants and the engine version history. |
 | [docs/PRACTICES.md](docs/PRACTICES.md) | The published evidence every workload preset is calibrated against, and the 2026 review of all of them. |
 | [docs/URL-FORMAT.md](docs/URL-FORMAT.md) | How to build a configuration link, written for AI assistants and for scripts. |
+| [mcp/README.md](mcp/README.md) | The MCP server: install it in Claude Code, Claude Desktop or anything that speaks MCP, and the tool surface it exposes. |
 | [docs/V5-DESIGN.md](docs/V5-DESIGN.md) | The v5 architecture decisions. |
 | [llms.txt](llms.txt) | A machine-readable summary of the whole tool for agents. |
 | [CHANGELOG.md](CHANGELOG.md) | Every release with its reasoning, its corrections and its verification numbers. |
@@ -171,11 +173,14 @@ assets/    styles.css          all styling (light + dark via CSS variables)
 data/      models.js gpus.js   the libraries: one entry per line,
            quants.js usecases.js   edit these to maintain the tool
            support.js
+mcp/       gpuscale-mcp.mjs    MCP server for agents (generated)
 tools/     build_single_file.py    rebuilds the portable one-file version
            build_skill.py          regenerates skill/sizing.mjs from the live engine
            build_skill_link.py     regenerates gpuscale-link.skill + its tables
            check_presets.py        enforces the workload-preset rules
+           build_mcp.py            regenerates mcp/gpuscale-mcp.mjs from the live engine
            check_manual.py         re-derives every number the manual asserts
+           check_mcp.py            MCP protocol + studio-parity checks
 dist/      gpuscale_standalone.html  the portable build (generated)
 skill/     the gpu-sizing CLI skill (generated)
 skill-link/  the gpuscale-link skill sources (share-link builder)
@@ -186,7 +191,7 @@ docs/      DATA.md             schemas, effective-KV convention, solver notes
            V5-DESIGN.md        the v5 architecture decisions
 ```
 
-Everything generated is rebuilt by running the three `tools/build_*.py`
+Everything generated is rebuilt by running the four `tools/build_*.py`
 scripts; do that on every release so the portable build and both skills cannot
 drift from `assets/app.js` and `data/`.
 

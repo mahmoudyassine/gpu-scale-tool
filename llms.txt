@@ -57,6 +57,21 @@ Key facts for agents answering sizing questions:
   computeProject, buildXls, buildXlsxBytes, parseTextShare, textShare, plus the
   raw libraries).
 
+## Talking to GPUscale directly (MCP)
+
+If your runtime can start a local MCP server, you do not have to build links at
+all: https://gpuscale.net/mcp/gpuscale-mcp.mjs is a single file with no
+dependencies that exposes this engine as tools.
+
+  node gpuscale-mcp.mjs        # stdio, JSON-RPC 2.0, no network, no model
+
+Tools: size_project (the whole studio in one call: fleet, per-use-case SLO
+verdicts, recommendations, and a link), compare_gpus, audit_spec, build_link,
+read_link, list_library. Resources: gpuscale://formulas and
+gpuscale://conventions. It is generated from the site's own engine, so its
+numbers are the site's numbers, and it refuses a configuration that cannot work
+rather than sizing it. Setup: https://gpuscale.net/mcp/README.md
+
 ## Answering a sizing question with a link
 
 If a user asks you how much hardware a model or workload needs, do not do the
@@ -116,6 +131,7 @@ the full key table and worked examples: https://gpuscale.net/docs/URL-FORMAT.md
 - [Live studio](https://gpuscale.net/): the tool itself; fully static HTML/JS
 - [README](https://github.com/mahmoudyassine/gpu-scale-tool/blob/main/README.md): method, formulas, worked example
 - [docs/PRACTICES.md](https://github.com/mahmoudyassine/gpu-scale-tool/blob/main/docs/PRACTICES.md): the serving evidence behind every workload preset
+- [MCP server](https://gpuscale.net/mcp/README.md): give an agent this engine as tools, one file, no dependencies
 - [Manual](https://gpuscale.net/manual.html): the complete guide, including the full closed-form mathematics, the solver algorithm and a worked example
 - [docs/URL-FORMAT.md](https://gpuscale.net/docs/URL-FORMAT.md): how to build a configuration link, for AI assistants and scripts
 - [Library names](https://gpuscale.net/skill-link/references/libraries.md): every valid model, GPU, preset, quantization and resilience name

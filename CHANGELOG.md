@@ -1,5 +1,72 @@
 # Changelog
 
+## Studio 5.34.0 (2026-08-07) · engine v27
+
+**An MCP server, so an agent can talk to the engine directly.** Until now an
+assistant could build a share link and hand it over, but it could not get a
+number back. `mcp/gpuscale-mcp.mjs` is one file with no dependencies that gives
+any MCP client the studio as tools.
+
+```bash
+curl -O https://gpuscale.net/mcp/gpuscale-mcp.mjs
+claude mcp add gpuscale -- node /path/to/gpuscale-mcp.mjs
+```
+
+No model, no network, no telemetry, no backend on gpuscale.net: the site stays
+the static page it has always been, and the server does arithmetic on the
+caller's own machine. It runs unchanged inside an air-gapped network.
+
+### Tools
+
+| Tool | Answers |
+|---|---|
+| `size_project` | How many GPUs and nodes, does it fit, does it keep its promises. Solves TP width, replicas and batch, pools use cases sharing a model and precision, attaches supporting models, applies the resilience pattern. Returns the fleet, per-pool topology, per-use-case SLO verdicts, recommendations and a link back into the browser. |
+| `compare_gpus` | The same workload across several cards, ranked by GPUs procured then power. |
+| `audit_spec` | Contradictions without sizing. |
+| `build_link` / `read_link` | A spec to a studio URL, and back. |
+| `list_library` | Every valid model, GPU, preset, quantization, resilience pattern and supporting model. |
+
+Results come back as readable text and as `structuredContent`, so a model can
+quote the summary or read the fields. Two resources carry the method:
+`gpuscale://formulas` and `gpuscale://conventions`.
+
+### It is the studio, not a port of it
+
+The studio's whole project layer turned out to be DOM-free: `ucState`,
+`poolState`, `computeProject`, `allocSupports` and `coPack` read a use-case array
+and a hardware object and nothing else. So `tools/build_mcp.py` embeds them
+**verbatim**, along with the engine, the solver, the SLO optimiser and the
+libraries. The only shim is a fake `$()` returning settings from a plain object
+instead of from form controls.
+
+That matters because a reimplementation would drift. `tools/check_mcp.py` proves
+it has not: 43 checks covering the protocol (initialize, version negotiation,
+tools/list, resources, ping, unknown methods, notifications) and **parity with
+the browser**, sizing the manual's reference project through the protocol and
+comparing against what the page renders, down to each pool's tensor-parallel
+width, replica count and memory percentage. All three pools match to 0.15%.
+
+### It refuses what cannot work
+
+The link skill's physics audit runs inside `size_project` too, so an agent cannot
+present a fleet for a configuration that is arithmetically impossible: a context
+overflow, SLO targets that contradict each other, weights that fit nowhere, a
+quantization the card cannot run. The error says what to change. Legal-but-wrong
+configurations come back with notes attached, led by `residentSeq` set to the
+model's whole context window.
+
+`initialize` returns instructions that tell the caller to read
+`gpuscale://conventions` once, quote the tool's numbers rather than estimating,
+and hand the user the link so they can check the sizing themselves.
+
+### Also
+
+- The footer offers the server as a download next to the manual and the skill.
+- README gains it in the feature list, the documentation table and the layout;
+  `llms.txt` tells agents it exists; the manual documents it in section 12.
+- There are four generators now, not three. Run `tools/build_mcp.py` on every
+  release or the server drifts from the studio.
+
 ## Studio 5.33.1 (2026-08-07) · engine v27
 
 Two things the eye caught that no test would have.

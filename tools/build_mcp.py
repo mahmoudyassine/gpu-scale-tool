@@ -1,0 +1,171 @@
+#!/usr/bin/env python3
+"""Rebuild the GPUscale MCP server (mcp/gpuscale-mcp.mjs) from the live app.
+
+The studio's whole project layer is DOM-free: ucState, poolState, computeProject,
+allocSupports and coPack read a use-case array and a hardware object, nothing
+else. So the MCP server embeds those functions VERBATIM, together with the
+engine, the solver and the libraries, and answers with the studio's own numbers
+rather than a reimplementation that could drift away from them.
+
+    python3 tools/build_mcp.py        # run on every release
+
+The only shim is a fake `$()` that returns settings from a plain object instead
+of from form controls.
+"""
+import json, os, re, subprocess, sys
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+APP = open(os.path.join(ROOT, 'assets', 'app.js'), encoding='utf-8').read()
+OUT = os.path.join(ROOT, 'mcp', 'gpuscale-mcp.mjs')
+
+STUDIO = re.search(r"STUDIO_VERSION = '([^']+)'", APP).group(1)
+ENGINE = int(re.search(r"ENGINE_VERSION = (\d+)", APP).group(1))
+
+
+def slice_engine():
+    i = APP.index('/*ENGINE-START*/')
+    j = APP.index('/*ENGINE-END*/')
+    return APP[i:j] + '/*ENGINE-END*/'
+
+
+def slice_function(name):
+    i = APP.index('function %s(' % name)
+    # keep a leading block comment when the function has one: the reasoning is
+    # the most valuable part of this code and it should travel with it
+    head = APP.rfind('*/', 0, i)
+    if head != -1 and APP[head + 2:i].strip() == '':
+        start = APP.rfind('/*', 0, head)
+        if start != -1 and '\n' not in APP[APP.rfind('\n', 0, start):start].strip():
+            i = start
+    j = APP.index('{', APP.index('function %s(' % name))
+    depth = 0
+    for k in range(j, len(APP)):
+        if APP[k] == '{':
+            depth += 1
+        elif APP[k] == '}':
+            depth -= 1
+            if depth == 0:
+                return APP[i:k + 1]
+    sys.exit('unbalanced braces in ' + name)
+
+
+def slice_const(name):
+    m = re.search(r'^const %s\s*=' % re.escape(name), APP, re.M)
+    if not m:
+        sys.exit('const not found: ' + name)
+    i = m.start()
+    line_end = APP.index('\n', i)
+    if APP[i:line_end].rstrip().endswith('{') or APP[i:line_end].rstrip().endswith('['):
+        close = '\n};' if APP[i:line_end].rstrip().endswith('{') else '\n];'
+        return APP[i:APP.index(close, i) + len(close)]
+    # single-line const, possibly with a continuation
+    j = i
+    depth = 0
+    while j < len(APP):
+        c = APP[j]
+        if c in '([{':
+            depth += 1
+        elif c in ')]}':
+            depth -= 1
+        elif c == ';' and depth == 0:
+            return APP[i:j + 1]
+        j += 1
+    sys.exit('unterminated const ' + name)
+
+
+# Everything the project layer needs, in dependency order. Resolved by running
+# the generated file and adding whatever it said was missing, which is why the
+# list is explicit rather than computed: it is a contract, and a silent
+# substitution here would be a wrong number in an agent's answer.
+CONSTS = ['KV_QUANTS', 'REASON_TOK', 'RESIL', 'FIELDS', 'SUP_KIND', 'SUP_DEFAULT',
+          'SUP_CUSTOM', 'SUP_MODEL', 'MIG_MEM_MAP7', 'MIG_MEM_MAP4', 'KIND_LABEL',
+          'uv', 'esc', 'sliceName', 'TS_PROJECT', 'TS_CARD', 'TS_SUP']
+FUNCS = ['fmt', 'fmtTok', 'kvgElem', 'kvlElem', 'supSpec', 'defaultSupports',
+         'ucName', 'ucModelName', 'poolKey', 'sliceProfiles', 'binCap', 'sliceCost',
+         'readHw', 'cardsKey', 'ucState', 'poolState', 'coDuty', 'coPack',
+         'allocSupports', 'computeProject', 'poolSolveState', 'prjSolveSig',
+         'allocShared', 'coShareSafe', 'coTtftSlack', 'coP95At', 'fleetTotals',
+         'solvePool', 'sloTpsFloor', 'sloOverride', 'sloPrice', 'sloOptScan',
+         'sloOptBuild', 'shortPoolTag', 'gpuFitScan', 'buildRecs', 'extraW',
+         'tsDec', 'tsBool', 'tsPick', 'parseTextShare']
+
+def gather():
+    parts = []
+    for name in CONSTS:
+        try:
+            parts.append(slice_const(name))
+        except SystemExit:
+            print('  (skipped const %s)' % name)
+    parts.append(slice_engine())
+    for name in FUNCS:
+        try:
+            parts.append(slice_function(name))
+        except (ValueError, SystemExit):
+            print('  (skipped function %s)' % name)
+    return '\n\n'.join(parts)
+
+
+def data_blob():
+    r = subprocess.run(['node', '-e', """
+      global.window={GPUSCALE_DATA:{}};
+      const fs=require('fs');
+      for (const f of ['models','gpus','quants','usecases','support'])
+        new Function('window', fs.readFileSync('data/'+f+'.js','utf8'))(global.window);
+      console.log(JSON.stringify(window.GPUSCALE_DATA));
+    """], capture_output=True, text=True, cwd=ROOT)
+    if r.returncode:
+        sys.exit('node: ' + r.stderr[:800])
+    return json.loads(r.stdout)
+
+
+D = data_blob()
+LIB_VERSION = D['meta']['library']
+
+PRELUDE = """#!/usr/bin/env node
+/* GPUscale MCP server %(studio)s (engine v%(engine)d, library %(lib)s)
+   GENERATED by tools/build_mcp.py from assets/app.js and data/*.js.
+   DO NOT EDIT: regenerate instead, or the numbers will drift from the studio.
+
+   Speaks MCP over stdio, JSON-RPC 2.0, one message per line. No dependencies,
+   no network, no model: this is the studio's arithmetic exposed as tools, so an
+   agent can size a fleet instead of guessing at one.
+
+     node mcp/gpuscale-mcp.mjs
+
+   The engine, the solver and the whole project layer below are copied verbatim
+   from the running site. The only thing that changes is where settings come
+   from: a plain object instead of form controls. */
+
+const STUDIO_VERSION = %(studio_js)s, ENGINE_VERSION = %(engine)d, LIBRARY_VERSION = %(lib_js)s;
+
+/* ============ LIBRARIES (verbatim from data/*.js) ============ */
+const DATA = %(data)s;
+const MODELS = DATA.models, GPUS = DATA.gpus, QUANTS = DATA.quants,
+      CASES = DATA.cases, SUPPORT = DATA.support;
+
+/* ============ SHIMS ============
+   The studio reads its project-wide settings from form controls. Here they come
+   from one object, so every embedded function below runs unmodified. */
+let UC = [], activeUc = 0;
+const SETTINGS = { selGpu: 0, selResil: 'n', inPerW: 8, inMfu: 0.5, inMbu: 0.65,
+                   inIc: 0.85, inOvh: 30, autoUtil: 80 };
+const $ = id => (id in SETTINGS) ? { value: SETTINGS[id], checked: !!SETTINGS[id] } : null;
+const window = { __autoNote: null };
+const document = { documentElement: { dataset: {} } };
+""" % dict(studio=STUDIO, studio_js=json.dumps(STUDIO), engine=ENGINE,
+           lib=LIB_VERSION, lib_js=json.dumps(LIB_VERSION),
+           data=json.dumps(D, separators=(',', ':')))
+
+body = gather()
+server = open(os.path.join(ROOT, 'tools', 'mcp_server.js'), encoding='utf-8').read()
+
+os.makedirs(os.path.dirname(OUT), exist_ok=True)
+with open(OUT, 'w', encoding='utf-8') as f:
+    f.write(PRELUDE)
+    f.write('\n/* ============ VERBATIM FROM assets/app.js ============ */\n')
+    f.write(body)
+    f.write('\n\n/* ============ MCP SERVER (tools/mcp_server.js) ============ */\n')
+    f.write(server)
+os.chmod(OUT, 0o755)
+print('wrote %s (%d bytes, studio %s, engine v%d, library %s)'
+      % (OUT, os.path.getsize(OUT), STUDIO, ENGINE, LIB_VERSION))
