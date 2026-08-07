@@ -5,7 +5,7 @@
   --bg:#F6F7FA; --panel:#FFFFFF; --panel-2:#F4F6FA; --inset:#EEF1F7;
   --line:#DCE2EE; --line-soft:#E8ECF4;
   --text:#1A2536; --muted:#5A6B8C; --faint:#8896B3;
-  --teal:#0F766E; --teal-soft:rgba(15,118,110,.10);
+  --teal:#0F766E; --teal-strong:#0F766E; --teal-soft:rgba(15,118,110,.10);
   --amber:#B45309; --amber-border:#F59E0B; --amber-soft:rgba(245,158,11,.14);
   --red:#DC2626; --red-soft:rgba(220,38,38,.10);
   --violet:#4F63C2;
@@ -24,7 +24,7 @@ html[data-theme="dark"]{
   --bg:#0C1322; --panel:#131C30; --panel-2:#0F1728; --inset:#0C1424;
   --line:#26324E; --line-soft:#1B2642;
   --text:#E8EDF7; --muted:#8C9AB8; --faint:#5B6A8C;
-  --teal:#2DD4BF; --teal-soft:rgba(45,212,191,.12);
+  --teal:#2DD4BF; --teal-strong:#2DD4BF; --teal-soft:rgba(45,212,191,.12);
   --amber:#FFC53D; --amber-border:#FFC53D; --amber-soft:rgba(255,197,61,.14);
   --red:#FF6B6B; --red-soft:rgba(255,107,107,.14);
   --violet:#8B9CE8;
@@ -41,10 +41,15 @@ body{font-family:var(--body);color:var(--text);background:var(--bg);
 .mbar{position:sticky;top:0;z-index:40;background:color-mix(in srgb,var(--panel) 88%,transparent);
   backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
 .mbar-in{max-width:1360px;margin:0 auto;padding:10px 22px;display:flex;align-items:center;gap:14px}
-.mb-brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:inherit;flex:none}
-.mb-brand svg{width:30px;height:30px}
-.mb-brand b{font-family:var(--disp);font-size:17px;letter-spacing:-.2px}
-.mb-brand span{color:var(--muted);font-size:12px;font-family:var(--mono)}
+/* the studio's own mark and wordmark, at the same proportions, so the manual
+   reads as the same product rather than a lookalike */
+.mb-brand{display:flex;align-items:center;gap:11px;text-decoration:none;color:inherit;flex:none}
+.mb-brand .logo-mark{width:34px;height:34px;flex:none}
+.mb-word{display:flex;flex-direction:column;gap:1px;line-height:1.05}
+.mb-word b{font-family:var(--disp);font-size:19px;font-weight:700;letter-spacing:-.4px;color:var(--text)}
+.mb-word .dom{font-family:var(--mono);font-size:9.5px;color:var(--teal);letter-spacing:.05em}
+.ver-chip{font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.04em;color:var(--teal);
+  background:var(--teal-soft);border:1px solid transparent;border-radius:20px;padding:2.5px 9px;margin-left:2px}
 .mb-sep{width:1px;height:26px;background:var(--line)}
 .mb-title{font-family:var(--disp);font-weight:600;font-size:15px}
 .mb-sp{flex:1}

@@ -175,6 +175,7 @@ tools/     build_single_file.py    rebuilds the portable one-file version
            build_skill.py          regenerates skill/sizing.mjs from the live engine
            build_skill_link.py     regenerates gpuscale-link.skill + its tables
            check_presets.py        enforces the workload-preset rules
+           check_manual.py         re-derives every number the manual asserts
 dist/      gpuscale_standalone.html  the portable build (generated)
 skill/     the gpu-sizing CLI skill (generated)
 skill-link/  the gpuscale-link skill sources (share-link builder)

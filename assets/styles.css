@@ -78,7 +78,11 @@ header.top{display:flex;align-items:flex-start;justify-content:space-between;gap
 .pm-actions{display:flex;gap:8px;border-top:1px solid var(--line-soft);margin-top:6px;padding-top:8px}
 .pm-act{flex:1;font-family:var(--body);font-size:12px;font-weight:600;color:var(--teal-strong);background:var(--teal-soft);border:1px solid transparent;border-radius:8px;padding:7px 8px;cursor:pointer}
 .pm-act:hover{border-color:var(--teal)}
-.scenario input{border:none;background:transparent;color:var(--text);font-family:var(--body);font-size:13px;font-weight:500;padding:8px 8px;width:200px;outline:none}
+.scenario{align-self:stretch}
+/* A 60-character project name needs ~400px; a fixed 200px field showed half of
+   it and the rest ran off the edge. Let the field take the width the toolbar
+   below it already occupies, and keep the two rows aligned. */
+.scenario input{border:none;background:transparent;color:var(--text);font-family:var(--body);font-size:13px;font-weight:500;padding:8px 8px;width:auto;flex:1 1 auto;min-width:190px;outline:none;text-overflow:ellipsis}
 .btn{display:inline-flex;align-items:center;gap:7px;font-family:var(--body);font-weight:500;font-size:12.5px;color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px 12px;cursor:pointer;box-shadow:var(--shadow);transition:border-color .15s,background .15s,transform .05s;white-space:nowrap}
 .btn:hover{border-color:var(--teal)}
 .btn:active{transform:translateY(1px)}

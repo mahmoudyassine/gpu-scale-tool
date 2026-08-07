@@ -1,5 +1,40 @@
 # Changelog
 
+## Studio 5.33.1 (2026-08-07) · engine v27
+
+Two things the eye caught that no test would have.
+
+**The manual wore a different logo.** Its header carried a simplified mark I had
+drawn by hand rather than the studio's own, so the two pages read as lookalikes
+instead of one product. It now uses the identical robot SVG, the same wordmark
+and `gpuscale.net` line, and the same version chip, at sticky-bar proportions.
+The manual's token set was missing `--teal-strong`, which the logo paints its
+body with, so that is defined in both themes too.
+
+**The project name was cut in half.** The field was a fixed 200 px while the
+control accepts 60 characters, which need about 400: a real project name showed
+its first few words and ran off the edge into white. The field now takes the
+width the toolbar below it already occupies (360 px at desktop, aligning the two
+rows), and ellipsises rather than clipping when there is genuinely no room, which
+is what happens on a phone.
+
+### Fixtures that survive
+
+`tools/fixtures/reference-project.txt` holds the four-use-case project every
+figure in the manual was captured from, as a **readable link** rather than a
+compressed blob, so it is diffable and editable. It reproduces 10 nodes / 80 GPUs
+across three pools with the tensor-parallel widths the manual documents. The
+regression baseline had been living in a scratchpad and was lost twice.
+
+### tools/check_manual.py
+
+The manual's 46 automated claim checks lived in a scratchpad that session
+restarts kept wiping, so they were rewritten from memory twice. They are in the
+repo now: library counts, engine constants, tuning defaults, the formulas quoted
+against the engine source, all sixteen worked-example figures, the reasoning
+aside, the header version chip, and every figure file. Run it on any change to
+`assets/app.js` or `data/`.
+
 ## Studio 5.33.0 (2026-07-31) · library v35 · engine v27
 
 **Presets suggest a model.** Selecting *Voice agent* used to leave whatever model
