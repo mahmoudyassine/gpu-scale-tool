@@ -27,7 +27,7 @@ Node 18 or newer. Nothing else.
 claude mcp add gpuscale -- node /absolute/path/to/gpuscale-mcp.mjs
 ```
 
-**Claude Desktop** — add to `claude_desktop_config.json`:
+**Claude Desktop**, in `claude_desktop_config.json`:
 
 ```json
 {
@@ -40,7 +40,7 @@ claude mcp add gpuscale -- node /absolute/path/to/gpuscale-mcp.mjs
 }
 ```
 
-**Anything else that speaks MCP** — it is a plain stdio server, JSON-RPC 2.0,
+**Anything else that speaks MCP.** It is a plain stdio server, JSON-RPC 2.0,
 one message per line. Point your client's `command` at `node` and its `args` at
 the file.
 
