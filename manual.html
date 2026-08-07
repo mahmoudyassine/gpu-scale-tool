@@ -20,7 +20,7 @@ try{var t=localStorage.getItem('gpuscale-theme');
     <a class="mb-brand" href="index.html" title="Back to the studio">
       <svg class="logo-mark" viewBox="0 0 64 64" aria-hidden="true"><rect x="13" y="8" width="42" height="10" rx="4" fill="#16233B"/><rect x="3" y="20" width="6" height="7.5" rx="1.8" fill="var(--faint)"/><rect x="3" y="31" width="6" height="7.5" rx="1.8" fill="var(--faint)"/><rect x="8" y="12" width="48" height="34" rx="8" fill="var(--teal-strong)"/><circle cx="23.0" cy="28.0" r="8.3" fill="#16233B"/><polygon points="26.90,28.07 30.46,27.22 29.50,31.75 26.59,29.52" fill="#263349"/><polygon points="24.89,31.41 27.41,34.07 23.00,35.50 23.48,31.87" fill="#263349"/><polygon points="20.99,31.34 19.95,34.85 16.50,31.75 19.89,30.35" fill="#263349"/><polygon points="19.10,27.93 15.54,28.78 16.50,24.25 19.41,26.48" fill="#263349"/><polygon points="21.11,24.59 18.59,21.93 23.00,20.50 22.52,24.13" fill="#263349"/><polygon points="25.01,24.66 26.05,21.15 29.50,24.25 26.11,25.65" fill="#263349"/><circle cx="23.0" cy="28.0" r="3.1" fill="var(--amber-border)"/><circle cx="21.85" cy="26.85" r="1.05" fill="#FFFFFF"/><circle cx="41.0" cy="28.0" r="8.3" fill="#16233B"/><polygon points="44.47,29.77 48.05,30.57 45.19,34.22 43.56,30.94" fill="#263349"/><polygon points="41.20,31.89 42.30,35.39 37.71,34.74 39.73,31.69" fill="#263349"/><polygon points="37.73,30.12 35.25,32.82 33.52,28.52 37.17,28.74" fill="#263349"/><polygon points="37.53,26.23 33.95,25.43 36.81,21.78 38.44,25.06" fill="#263349"/><polygon points="40.80,24.11 39.70,20.61 44.29,21.26 42.27,24.31" fill="#263349"/><polygon points="44.27,25.88 46.75,23.18 48.48,27.48 44.83,27.26" fill="#263349"/><circle cx="41.0" cy="28.0" r="3.1" fill="var(--amber-border)"/><circle cx="39.85" cy="26.85" r="1.05" fill="#FFFFFF"/><rect x="15" y="45" width="34" height="5.4" rx="2.7" fill="#16233B"/><rect x="17.60" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/><rect x="22.85" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/><rect x="28.10" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/><rect x="33.35" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/><rect x="41.10" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/><rect x="46.35" y="50" width="4.0" height="4.6" rx="1.3" fill="var(--amber-border)"/></svg>
       <span class="mb-word"><b>GPUscale</b><span class="dom">gpuscale.net</span></span>
-      <span class="ver-chip" id="verChip">v5.34</span>
+      <span class="ver-chip" id="verChip">v5.34.2</span>
     </a>
     <div class="mb-sep"></div>
     <div class="mb-title">Manual &amp; method</div>
@@ -1333,12 +1333,41 @@ which is the fastest way to learn the format. For agents with a shell, the downl
 <code>gpuscale-link.skill</code> in the footer validates every name, clamps every field and round-trips
 the link before printing it.</p>
 
+<h3 id="exp-skills">The two Claude skills</h3>
+<p>Both are downloadable from the footer and work in any agent that can run a shell.</p>
+<div class="tw"><table>
+<thead><tr><th>Skill</th><th>Use it when</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td><code>gpu-sizing</code></td><td class="wrap">You want numbers in the conversation and one deployment is the whole question.</td><td class="wrap">A CLI carrying the engine and the solver, generated from <code>assets/app.js</code>. Sizes <b>one dedicated pool</b>: it does not model pooling across use cases, supporting models or co-residency.</td></tr>
+<tr><td><code>gpuscale-link</code></td><td class="wrap">You want the user to end up in the studio, editing and sharing.</td><td class="wrap">Turns a brief into a share link, <b>audits the physics first</b>, and reads links back. Refuses to emit a link for a configuration that cannot work.</td></tr>
+</tbody></table></div>
+<p>The CLI answers in the shape you would want quoted back:</p>
+<pre><code>$ node sizing.mjs --model "Llama 3.3 70B" --gpu "H200 141GB NVL" \
+      --quant FP8 --workload "Simple RAG" --concurrent 200 --auto
+
+=== Llama 3.3 70B Instruct · FP8 weights / FP8 KV · H200 141GB NVL ===
+FITS · 39.8% of serving memory · 8 serving GPUs on 1 node(s) · 1 replicas x TP8 · batch 200
+admitted 200/200 · TTFT 289.9 ms · 62.7 tok/s/user · P95 6.64 s
+SLO: TTFT PASS · TPS PASS · P95 PASS</code></pre>
+<p>Add <code>--json</code> for machine-readable output, <code>--call-minutes</code> for a conversation,
+<code>--cache</code> for a measured prefix-cache hit rate, and <code>--list-models</code>,
+<code>--list-gpus</code> or <code>--list-workloads</code> to see valid names. The link skill's
+encoder refuses a broken brief rather than encoding it:</p>
+<pre><code>$ python3 gpuscale_url.py encode spec.json
+
+This configuration is wrong, so no link was produced:
+
+  ERROR  Chat: the targets contradict each other. 2,000 generated tokens at
+         20 tok/s after a 500 ms first token is 130.7 s at P95, above the
+         4 s promise.</code></pre>
+
 <h3 id="exp-mcp">Talking to the studio from an agent (MCP)</h3>
-<p>An agent does not have to build a link. <b><code>mcp/gpuscale-mcp.mjs</code></b> is a single file
-with no dependencies that exposes this engine over the Model Context Protocol, so any MCP client can
-call it as tools:</p>
+<p>An agent does not have to build a link at all. <b><code>mcp/gpuscale-mcp.mjs</code></b> is a single
+file with no dependencies that exposes this engine over the Model Context Protocol, so any MCP client
+calls it as tools and gets the solved fleet back as data. No model, no network, no telemetry: it runs
+unchanged inside an air-gapped network.</p>
 <pre><code>curl -O https://gpuscale.net/mcp/gpuscale-mcp.mjs
-claude mcp add gpuscale -- node /path/to/gpuscale-mcp.mjs</code></pre>
+claude mcp add gpuscale -- node /absolute/path/to/gpuscale-mcp.mjs</code></pre>
 <div class="tw"><table>
 <thead><tr><th>Tool</th><th>What it answers</th></tr></thead>
 <tbody>
@@ -1348,17 +1377,64 @@ claude mcp add gpuscale -- node /path/to/gpuscale-mcp.mjs</code></pre>
 <tr><td><code>build_link</code> / <code>read_link</code></td><td class="wrap">A spec to a studio URL, and back.</td></tr>
 <tr><td><code>list_library</code></td><td class="wrap">Every valid model, GPU, preset, quantization, resilience pattern and supporting model.</td></tr>
 </tbody></table></div>
+<h4>A worked call</h4>
+<p>Two workloads on one fleet, described the way a person would describe them:</p>
+<pre><code>size_project {
+  "gpu": "H200 141GB NVL", "gpusPerWorker": 8, "resilience": "n1",
+  "usecases": [
+    {"name": "Support chat", "model": "Llama 3.3 70B",
+     "preset": "Simple RAG",  "activeUsers": 2000},
+    {"name": "Code agent",   "model": "Qwen3 32B",
+     "preset": "Code agent",  "activeUsers": 250}
+  ]
+}</code></pre>
+<p>and what comes back, verbatim:</p>
+<pre><code>11 nodes · 88 H200 141GB NVL · ~52.8 kW  (N+1 · one standby worker)
+Fits and every SLO target is met.
+80 serving cards + 1 shared GPUs for supporting models.
+
+  Llama 3.3 70B Instruct FP8/FP8: TP8 x 1 replica = 8 cards, batch 200, 39.8% memory, 289.9 ms first token, 62.7 tok/s per user
+  Qwen3 32B FP8/FP8: TP16 x 4 replicas = 64 cards, batch 63, 35.8% memory, 530.1 ms first token, 60.1 tok/s per user
+
+  Support chat: 200 concurrent · ttft 289.9/400 ms · 62.7/25 tok/s · p95 6.6/18 s · SLOs met
+  Code agent: 250 concurrent · ttft 530.1/1000 ms · 60.1/50 tok/s · p95 44/60 s · SLOs met
+
+Open in the studio: https://gpuscale.net/#p=t:gpu=H200+141GB+NVL;perw=8;resil=n1;uc=Support+chat;model=Llama+3.3+70B+Instruct;quant=FP8;kv=FP8;preset=Simple+RAG;users=2000;uc=Code+agent;model=Qwen3+32B;quant=FP8;kv=FP8;preset=Code+agent+(Cline/Cursor-style);users=250
+
+Peak closed-form estimates; production typically achieves 70-90%. Validate with vLLM bench or GenAI-Perf before committing hardware.</code></pre>
+<p>The same result arrives as <code>structuredContent</code> alongside that text, so an agent can read
+<code>fleet.procuredGpus</code>, <code>pools[].memory.usedPct</code> or each use case's
+<code>slo</code> verdict as fields instead of parsing prose. Note what the caller did <i>not</i> supply:
+tokens, SLO targets, batch size, tensor-parallel width, replica counts or supporting models. The
+presets and the solver filled all of it in.</p>
+<div class="note"><span class="t">Two resources worth reading once</span>
+<p><code>gpuscale://formulas</code> is every closed form with its units.
+<code>gpuscale://conventions</code> is the ten rules that decide whether a configuration is right,
+led by the two that cost the most: <b><code>residentSeq</code> is tokens held per request, not the
+context window</b>, and <b>every field describes one model call</b>. The server's
+<code>initialize</code> response tells the caller to read them.</p>
+</div>
 <p>It is <b>generated from <code>assets/app.js</code></b> by <code>tools/build_mcp.py</code>, embedding
 the engine, the solver and the entire project layer verbatim, so an agent gets the studio's numbers
 rather than a reimplementation of them. <code>tools/check_mcp.py</code> proves it: it sizes this
 manual's reference project through the protocol and compares the result against what the browser
 renders, down to each pool's tensor-parallel width, replica count and memory percentage.</p>
-<div class="note"><span class="t">No model, no network, no telemetry</span>
-<p>The server does arithmetic. It never calls out, never loads a model and never reports anything, so
-it runs unchanged inside an air-gapped network. It also <b>refuses</b> a configuration that cannot
-work, rather than sizing it and letting the agent present the result: a context overflow, SLO targets
-that contradict each other, a quantization the card cannot run.</p>
+<div class="warn"><span class="t">It refuses rather than guesses</span>
+<p>The physics audit runs inside <code>size_project</code>, so an agent cannot present a fleet for a
+configuration that is arithmetically impossible: a context overflow, SLO targets that contradict each
+other, weights that fit nowhere, a quantization the card cannot run. The error says what to change.
+Configurations that are merely unwise come back with notes attached.</p>
 </div>
+
+<h3 id="exp-which">Which door to use</h3>
+<div class="tw"><table>
+<thead><tr><th>You are</th><th>Use</th><th>Because</th></tr></thead>
+<tbody>
+<tr><td class="wrap">An agent whose runtime can start a local MCP server</td><td><b>the MCP server</b></td><td class="wrap">Whole-project sizing as structured data, plus a link. Nothing else gives you both.</td></tr>
+<tr><td class="wrap">An agent with a shell but no MCP</td><td class="wrap"><code>gpu-sizing</code> or <code>gpuscale-link</code></td><td class="wrap">One pool with numbers, or a validated link.</td></tr>
+<tr><td class="wrap">A chat model with no tools at all</td><td class="wrap">a readable <code>#p=t:</code> link</td><td class="wrap">You can write one by hand. Follow the checks in <a href="docs/URL-FORMAT.md">URL-FORMAT.md</a>, because nothing will validate it for you.</td></tr>
+<tr><td class="wrap">A person</td><td class="wrap">the studio</td><td class="wrap">Every number here is one you can change and watch move.</td></tr>
+</tbody></table></div>
 
 <h2 id="libraries">Libraries, and extending them</h2>
 
@@ -1463,7 +1539,7 @@ peak</b>. Scope with this tool; verify with a benchmark; sign with margin.</p>
 </div>
 
 <div class="footdoc">
-  <p>GPUscale manual · studio 5.34 · engine v27 · library v34. Written against the code, with every
+  <p>GPUscale manual · studio 5.34 · engine v27 · library v35. Written against the code, with every
   figure captured from the running application and every formula checked against the engine.
   © 2026 GPUscale.net, MIT licensed.</p>
 </div>

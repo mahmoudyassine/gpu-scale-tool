@@ -1,5 +1,41 @@
 # Changelog
 
+## Studio 5.34.2 (2026-08-07) · engine v27
+
+Two questions, both of which found something real.
+
+### The manual's version did not match the studio's
+
+The studio renders its chip as `STUDIO_VERSION` with a trailing `.0` stripped, so
+at 5.34.1 it read **v5.34.1**. The manual's chips were hand-typed and read
+**v5.34**. They agreed at major.minor and disagreed after it, which is exactly
+the drift that let `index.html` sit at v4.7 for twenty-seven releases.
+
+Not normal, and now impossible. `build_single_file.py` stamps every version
+string in both `index.html` and `manual.html` from `assets/app.js` and
+`data/models.js`, using **the same rule the app applies at runtime**, on a step
+that already runs on every release. `check_manual.py` asserts the chip matches
+exactly rather than by prefix, and fails if it does not.
+
+### The manual documented the MCP server without showing it working
+
+Section 12 named the tools and stopped there: no spec, no response, and the two
+Claude skills had no example at all. Three subsections now:
+
+- **The two Claude skills**, with what each is for, when to reach for which, and
+  real output from both, including the link skill refusing a broken brief.
+- **Talking to the studio from an agent (MCP)**, with a worked call: a two-workload
+  spec written the way a person would describe it, and the response **verbatim**,
+  down to the pooled topology and the per-use-case SLO verdicts. The prose points
+  out what the caller did not have to supply: tokens, SLO targets, batch size,
+  tensor-parallel width, replica counts and supporting models, all filled in by
+  the presets and the solver.
+- **Which door to use**, a four-row table matching what you are (MCP-capable
+  agent, shell-only agent, tool-less chat model, person) to the right entry point.
+
+Every command and every block of output in those sections was captured from the
+shipped artifacts rather than written from memory.
+
 ## Studio 5.34.1 (2026-08-07) · engine v27
 
 A documentation sweep: eight releases had landed since several of these files

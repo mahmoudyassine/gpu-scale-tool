@@ -75,7 +75,10 @@ short = '.'.join(stu.split('.')[:2])
 chk(f'library {D["lib"]}',    has(f'Library {D["lib"]}'), D['lib'])
 chk(f'engine v{eng}',         has(f'Engine v{eng}'))
 chk(f'studio {short}',        has('Studio ' + short), stu)
-chk('header version chip',    has(f'>v{short}<'), stu)
+# the chip must carry EXACTLY what the app renders at runtime, which is
+# STUDIO_VERSION with a trailing ".0" stripped, not a hand-typed approximation
+chip = 'v' + (stu[:-2] if stu.endswith('.0') else stu)
+chk('header version chip',    has(f'>{chip}<'), f'expected {chip}')
 chk('101 models',             has('101 models') and D['models'] == 101, D['models'])
 chk('37 GPUs',                has('37 GPUs') and D['gpus'] == 37, D['gpus'])
 chk('24 presets',             has('24 presets') and D['presets'] == 24, D['presets'])

@@ -15,19 +15,38 @@ def must_change(new, old, what):
         sys.exit(f'build failed: {what} did not match anything in index.html')
     return new
 
-# The version chip in index.html is static markup until the app boots and
-# rewrites it, so it is what a crawler and a first paint see. It had drifted to
-# v4.7 across twenty-seven releases. Stamp it here, where every release passes.
+# Version strings in hand-written markup go stale silently: index.html carried
+# v4.7 for twenty-seven releases, and the manual's chips were edited by hand
+# every time. Stamp them here, where every release passes, using EXACTLY the
+# rule the app applies at runtime so the static and live values never disagree.
 studio_v = re.search(r"STUDIO_VERSION = '([\d.]+)'",
                      (ROOT/'assets/app.js').read_text(encoding='utf-8')).group(1)
-short_v = 'v' + '.'.join(studio_v.split('.')[:2])
-idx_path = ROOT/'index.html'
-idx = idx_path.read_text(encoding='utf-8')
-stamped = re.sub(r'(id="verChip">)v[\d.]*(<)', r'\g<1>' + short_v + r'\g<2>', idx)
-if stamped != idx:
-    idx_path.write_text(stamped, encoding='utf-8')
-    print(f'  stamped index.html version chip -> {short_v}')
-html = stamped
+chip_v = 'v' + (studio_v[:-2] if studio_v.endswith('.0') else studio_v)   # app.js: replace(/\.0$/,'')
+minor_v = '.'.join(studio_v.split('.')[:2])
+lib_v = re.search(r'"library":"(v\d+)"',
+                  (ROOT/'data/models.js').read_text(encoding='utf-8')).group(1)
+eng_v = re.search(r'ENGINE_VERSION = (\d+)',
+                  (ROOT/'assets/app.js').read_text(encoding='utf-8')).group(1)
+
+def stamp(path, subs):
+    p = ROOT/path
+    txt = was = p.read_text(encoding='utf-8')
+    for pat, rep in subs:
+        txt = re.sub(pat, rep, txt)
+    if txt != was:
+        p.write_text(txt, encoding='utf-8')
+        print(f'  stamped {path}')
+    return txt
+
+html = stamp('index.html', [(r'(id="verChip">)v[\d.]*(<)', r'\g<1>' + chip_v + r'\g<2>')])
+stamp('manual.html', [
+    (r'(id="verChip">)v[\d.]*(<)',                    r'\g<1>' + chip_v + r'\g<2>'),
+    (r'(<span class="chip t">Studio )[\d.]*(</span>)', r'\g<1>' + minor_v + r'\g<2>'),
+    (r'(<span class="chip">Engine )v\d+(</span>)',     r'\g<1>v' + eng_v + r'\g<2>'),
+    (r'(<span class="chip">Library )v\d+(</span>)',    r'\g<1>' + lib_v + r'\g<2>'),
+    (r'studio [\d.]+ · engine v\d+ · library v\d+',
+     f'studio {minor_v} · engine v{eng_v} · library {lib_v}'),
+])
 
 css = (ROOT/'assets/styles.css').read_text(encoding='utf-8')
 html = must_change(html.replace('<link rel="stylesheet" href="assets/styles.css">',
